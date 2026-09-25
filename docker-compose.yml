@@ -1,0 +1,159 @@
+version: '3.8'
+
+# AI-Agile-Project-Management-Suite: Unified Docker Stack
+# Usage:
+#   docker compose up --build -d
+# Services:
+#   - web:         http://localhost:9001 (CodeIgniter 4 WebApp)
+#   - ml:          http://localhost:8000 (FastAPI ML & Local LLM Service)
+#   - phpmyadmin:  http://localhost:9000 (Database GUI)
+#   - mysql:       localhost:9306 (MySQL 8.4)
+#   - redis:       localhost:6379 (Redis 7)
+
+services:
+  # ==========================================
+  # 1. Database: MySQL 8.4
+  # ==========================================
+  mysql:
+    image: mysql:8.4
+    container_name: shared-mysql
+    restart: unless-stopped
+    ports:
+      - "9306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: ${DB_NAME:-db_chege_jira}
+    command: --sql-mode="STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - shared-network
+
+  # ==========================================
+  # 2. Cache & Task Queues: Redis
+  # ==========================================
+  redis:
+    image: redis:alpine
+    container_name: shared-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis-data:/data
+    networks:
+      - shared-network
+
+  # ==========================================
+  # 3. Database GUI: phpMyAdmin (Optional)
+  # ==========================================
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: shared-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "9000:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - shared-network
+
+  # ==========================================
+  # 4. Backend: Python FastAPI ML Service
+  # ==========================================
+  ml-chege-jira:
+    build:
+      context: ./services/ml
+      dockerfile: Dockerfile
+    image: ml-chege-jira:latest
+    container_name: ml-chege-jira
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - API_KEY=${ML_API_KEY:-chege_jira_ml_super_secret_key_2026}
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=${DB_ROOT_PASSWORD:-root_password}
+      - DB_NAME=${DB_NAME:-db_chege_jira}
+      - REDIS_URL=redis://redis:6379/0
+      - MODELS_DIR=/app/models
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-phi3-mini}
+      - N_GPU_LAYERS=0
+      - N_THREADS=4
+      - N_CTX=4096
+    volumes:
+      - ./services/ml/models:/app/models:rw
+      - ./services/ml/app:/app/app:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - shared-network
+
+  # ==========================================
+  # 5. Frontend & Core: CodeIgniter 4 WebApp
+  # ==========================================
+  chege-jira:
+    build:
+      context: ./services/web
+      dockerfile: Dockerfile
+    image: chege-jira-webapp:latest
+    container_name: chege-jira-webapp
+    restart: unless-stopped
+    ports:
+      - "9001:80"
+    environment:
+      - CI_ENVIRONMENT=${CI_ENVIRONMENT:-development}
+      - app.baseURL=http://localhost:9001/
+      - database.default.hostname=mysql
+      - database.default.database=${DB_NAME:-db_chege_jira}
+      - database.default.username=root
+      - database.default.password=${DB_ROOT_PASSWORD:-root_password}
+      - database.default.DBDriver=MySQLi
+      - database.default.port=3306
+      - REDIS_URL=redis://redis:6379
+      - ML_SERVICE_URL=http://ml-chege-jira:8000
+      - ML_API_KEY=${ML_API_KEY:-chege_jira_ml_super_secret_key_2026}
+    volumes:
+      - ./services/web:/var/www/html
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ml-chege-jira:
+        condition: service_started
+    networks:
+      - shared-network
+
+volumes:
+  mysql-data:
+  redis-data:
+
+networks:
+  shared-network:
+    name: chege-shared-network

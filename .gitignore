@@ -1,0 +1,55 @@
+# ==============================================================================
+# AI-Agile-Project-Management-Suite - Git Ignore Rules
+# ==============================================================================
+
+# Environment & Secret files
+.env
+.env.*
+!.env.example
+
+# IDE & Editor Configurations
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Docker Data & Volumes
+mysql-data/
+redis-data/
+
+# ── CodeIgniter 4 (services/web) ──────────────────────────────────────────────
+services/web/vendor/
+services/web/writable/cache/*
+!services/web/writable/cache/index.html
+services/web/writable/debugbar/*
+!services/web/writable/debugbar/index.html
+services/web/writable/logs/*
+!services/web/writable/logs/index.html
+services/web/writable/session/*
+!services/web/writable/session/index.html
+services/web/writable/uploads/*
+!services/web/writable/uploads/index.html
+services/web/public/uploads/*
+!services/web/public/uploads/.gitkeep
+
+# ── Python / FastAPI (services/ml) ────────────────────────────────────────────
+services/ml/__pycache__/
+services/ml/*/__pycache__/
+services/ml/*/*/__pycache__/
+services/ml/*/*/*/__pycache__/
+services/ml/*.py[cod]
+services/ml/.venv/
+services/ml/venv/
+services/ml/.pytest_cache/
+services/ml/.coverage
+services/ml/htmlcov/
+services/ml/dist/
+services/ml/build/
+services/ml/*.egg-info/
+
+# Heavy LLM Model Weights (.gguf / .bin)
+services/ml/models/*.gguf
+services/ml/models/*.bin
+!services/ml/models/.gitkeep
