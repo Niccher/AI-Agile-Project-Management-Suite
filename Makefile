@@ -1,7 +1,8 @@
-.PHONY: help up down restart build logs ps bash-web bash-ml migrate seed
+.PHONY: help deploy up down restart build logs ps bash-web bash-ml migrate seed test-ml
 
 help:
 	@echo "AI-Agile-Project-Management-Suite Commands:"
+	@echo "  make deploy     Run the automated 13-stage deployment pipeline (scripts/deploy.sh)"
 	@echo "  make up         Start all services in background"
 	@echo "  make down       Stop all services"
 	@echo "  make restart    Restart all services"
@@ -12,6 +13,10 @@ help:
 	@echo "  make bash-ml    Enter bash shell in the ML container"
 	@echo "  make migrate    Run CodeIgniter database migrations"
 	@echo "  make seed       Run CodeIgniter database seeders"
+	@echo "  make test-ml    Run pytest inside ML container"
+
+deploy:
+	bash scripts/deploy.sh
 
 up:
 	docker compose up -d
@@ -42,3 +47,6 @@ migrate:
 
 seed:
 	docker compose exec chege-jira php spark db:seed DemoSeeder
+
+test-ml:
+	docker compose exec ml-chege-jira pytest tests/

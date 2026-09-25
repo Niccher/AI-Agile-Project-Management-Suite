@@ -1,24 +1,24 @@
-
 # AI-Agile-Project-Management-Suite: Unified Docker Stack
 # Usage:
-#   docker compose up --build -d
-# Services:
-#   - web:         http://localhost:9001 (CodeIgniter 4 WebApp)
-#   - ml:          http://localhost:8000 (FastAPI ML & Local LLM Service)
-#   - phpmyadmin:  http://localhost:9000 (Database GUI)
-#   - mysql:       localhost:9306 (MySQL 8.4)
-#   - redis:       localhost:6379 (Redis 7)
+#   bash scripts/deploy.sh   # One-click deployment pipeline
+#   docker compose up -d     # Standard manual launch
+#
+# Production Standard Ports:
+#   - Web Dashboard & API : http://localhost:${WEB_PORT:-80}
+#   - ML AI Microservice  : http://localhost:${ML_PORT:-8000} (Swagger: /docs)
+#   - MySQL 8.4 Database  : Port 3306 (Internal to Docker network only)
+#   - Redis 7 Cache/Queue : Port 6379 (Internal to Docker network only)
 
 services:
   # ==========================================
-  # 1. Database: MySQL 8.4
+  # 1. Database: MySQL 8.4 (Internal Only)
   # ==========================================
   mysql:
     image: mysql:8.4
     container_name: shared-mysql
     restart: unless-stopped
-    ports:
-      - "9306:3306"
+    expose:
+      - "3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
       MYSQL_DATABASE: ${DB_NAME:-db_chege_jira}
@@ -35,14 +35,14 @@ services:
       - shared-network
 
   # ==========================================
-  # 2. Cache & Task Queues: Redis
+  # 2. Cache & Task Queues: Redis (Internal Only)
   # ==========================================
   redis:
     image: redis:alpine
     container_name: shared-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -55,27 +55,7 @@ services:
       - shared-network
 
   # ==========================================
-  # 3. Database GUI: phpMyAdmin (Optional)
-  # ==========================================
-  phpmyadmin:
-    image: phpmyadmin:latest
-    container_name: shared-phpmyadmin
-    restart: unless-stopped
-    ports:
-      - "9000:80"
-    environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-      PMA_USER: root
-      PMA_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - shared-network
-
-  # ==========================================
-  # 4. Backend: Python FastAPI ML Service
+  # 3. Backend: Python FastAPI ML Service
   # ==========================================
   ml-chege-jira:
     build:
@@ -85,7 +65,7 @@ services:
     container_name: ml-chege-jira
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${ML_PORT:-8000}:8000"
     environment:
       - APP_ENV=${APP_ENV:-production}
       - APP_HOST=0.0.0.0
@@ -114,7 +94,7 @@ services:
       - shared-network
 
   # ==========================================
-  # 5. Frontend & Core: CodeIgniter 4 WebApp
+  # 4. Frontend & Core: CodeIgniter 4 WebApp
   # ==========================================
   chege-jira:
     build:
@@ -124,10 +104,10 @@ services:
     container_name: chege-jira-webapp
     restart: unless-stopped
     ports:
-      - "9001:80"
+      - "${WEB_PORT:-80}:80"
     environment:
       - CI_ENVIRONMENT=${CI_ENVIRONMENT:-development}
-      - app.baseURL=http://localhost:9001/
+      - app.baseURL=${APP_URL:-http://localhost:${WEB_PORT:-80}/}
       - database.default.hostname=mysql
       - database.default.database=${DB_NAME:-db_chege_jira}
       - database.default.username=root

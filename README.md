@@ -1,62 +1,67 @@
 # AI-Agile-Project-Management-Suite
 
-An enterprise-grade, role-based agile project management system and issue tracker integrated with a high-performance local LLM copilot backend.
+An enterprise-grade, role-based agile project management platform and issue tracker integrated with a high-performance local LLM copilot backend.
 
 The platform orchestrates agile sprints, Kanban boards, timelogs, Wiki documentation, management approvals, and automated AI assistance (task enhancement, priority estimation, sprint summarization, timelog insights, and technical Q&A) powered by on-premise quantized GGUF models.
 
----
-
-## 🏛 Architecture Overview
-
-| Service | Technology | Role | Local URL / Port |
-| :--- | :--- | :--- | :--- |
-| **WebApp** | PHP 8.3 / CodeIgniter 4 / Nginx | Core agile UI, role access, and business logic | `http://localhost:9001` |
-| **ML Backend** | Python 3.12 / FastAPI / Llama.cpp | Local LLM inference & async AI copilot | `http://localhost:8000` (`/docs`) |
-| **phpMyAdmin** | phpMyAdmin 5+ | Visual database management | `http://localhost:9000` |
-| **MySQL** | MySQL 8.4 Server | Relational storage for sprints, tasks, and users | `localhost:9306` (internal 3306) |
-| **Redis** | Redis 7 Alpine | Fast session storage, cache, and async task queue | `localhost:6379` |
+**If you only need to run the system, this page is enough.**  
+Software engineers: [docs/README.md](docs/README.md).
 
 ---
 
-## 🚀 Quick Start (Docker Compose)
+## What “Running” Looks Like
 
-### Prerequisites
+| Piece | URL / How to Open | Dev Login (Default Seeder) |
+| :--- | :--- | :--- |
+| **Web Dashboard** | [http://localhost](http://localhost) (Port 80) | Username: `admin`<br>Password: `admin_password_123` |
+| **ML API Swagger** | [http://localhost:8000/docs](http://localhost:8000/docs) (Port 8000) | Header: `X-API-Key: chege_jira_ml_super_secret_key_2026` |
+| **MySQL Database** | `mysql:3306` | Docker internal network only (`db_chege_jira`) |
+| **Redis Cache/Queue** | `redis:6379` | Docker internal network only |
+
+---
+
+## Prerequisites
+
 - [Git](https://git-scm.com/)
-- [Docker Engine 24+](https://docs.docker.com/engine/) & Docker Compose v2
+- [Docker Engine 24+](https://docs.docker.com/engine/) & Docker Compose v2 (or Docker Desktop)
+- Minimum 4 GB RAM recommended for local quantized LLM inference
 
-### Setup & Run
+---
+
+## Setup and Run (One-Click Automated Deployment)
+
 1. **Clone the repository:**
    ```bash
-   git clone <repo-url> AI-Agile-Project-Management-Suite
+   git clone https://github.com/Niccher/AI-Agile-Project-Management-Suite.git
    cd AI-Agile-Project-Management-Suite
    ```
 
-2. **Configure environment:**
+2. **Run the one-click deployment pipeline:**
    ```bash
-   cp .env.example .env
+   bash scripts/deploy.sh
    ```
+   *(Or run `make deploy`)*
 
-3. **Start all services:**
+3. **What the pipeline does automatically:**
+   - Detects host/LAN IP and patches `.env` with standard ports (`WEB_PORT=80`, `ML_PORT=8000`)
+   - Performs hardware pre-flight checks (CPU, RAM, swap, disk)
+   - Builds and launches the 4-container stack (MySQL, Redis, ML FastAPI, WebApp)
+   - Waits for MySQL and Redis health probes
+   - Applies database migrations and seeds initial admin accounts and demo agile projects
+   - Enforces runtime permissions on `services/web/writable/`
+   - Clears application caches and displays a live endpoint summary report
+
+4. **To stop the system:**
    ```bash
-   docker compose up --build -d
+   make down
+   # or: docker compose down
    ```
-   *(Or use `make build`)*
-
-4. **Verify running containers:**
-   ```bash
-   docker compose ps
-   ```
-
-5. **Access the application:**
-   - **Web Application:** [http://localhost:9001](http://localhost:9001)
-   - **FastAPI Interactive Docs (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
-   - **phpMyAdmin:** [http://localhost:9000](http://localhost:9000)
 
 ---
 
-## 🤖 Local AI Model Setup (Optional for LLM features)
+## Local AI Model Setup (Optional for LLM features)
 
-To execute local LLM inference in the ML service:
+To enable local LLM inference in the ML service:
 
 1. Download a lightweight quantized GGUF model (e.g. `phi3-mini` or `mistral-7b`) into `services/ml/models/`:
    ```bash
@@ -66,26 +71,40 @@ To execute local LLM inference in the ML service:
 
 ---
 
-## 🛠 Developer Commands
+## Roles and Access
 
-A root `Makefile` is provided for common operations:
-
-| Command | Action |
-| :--- | :--- |
-| `make up` | Start all services in the background |
-| `make down` | Stop all containers |
-| `make build` | Rebuild images and start the stack |
-| `make logs` | Tail logs across all services |
-| `make ps` | Check health and status of containers |
-| `make migrate` | Run CodeIgniter database migrations |
-| `make seed` | Seed database with demo projects and accounts |
-| `make bash-web` | Open interactive shell inside WebApp container |
-| `make bash-ml` | Open interactive shell inside ML backend container |
+The system enforces three primary roles:
+- **Admin:** Has complete control over system settings, user provisioning, audit logs, and AI telemetry.
+- **Manager:** Can assign tasks to team members, review/approve submitted work, manage sprints, and generate performance reports.
+- **User:** General team member who can move Kanban cards, execute tasks, submit timelogs, and request AI assistance.
 
 ---
 
-## 🔒 Security & Roles
+## Something Went Wrong?
 
-- **Admin:** System provisioning, user management, audit logs, and AI telemetry.
-- **Manager:** Sprint planning, task assignments, work review/approvals, and exportable reports.
-- **User:** Execution, Kanban card movement, timelogging, and AI assistance prompts.
+- **Port in use:** If port 80 or 8000 is taken on your host machine, edit `.env`:
+  ```env
+  WEB_PORT=8080
+  ML_PORT=8001
+  ```
+  Then reload with: `docker compose up -d`.
+- **Database issues:** If migrations didn't run automatically, execute them manually:
+  ```bash
+  make migrate
+  make seed
+  ```
+- **Review logs:**
+  ```bash
+  make logs
+  ```
+
+---
+
+## Software Engineers
+
+Detailed architectural specifications, API contracts, threat models, and developer guides are located in the [docs/](docs/README.md) directory:
+- [System Architecture](docs/architecture/overview.md)
+- [Communication & Protocols](docs/architecture/communication.md)
+- [API Contract](docs/api/contract.md)
+- [Local Development](docs/engineering/local-development.md)
+- [Runbooks & Restarts](docs/runbooks/restart.md)
