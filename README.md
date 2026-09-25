@@ -1,15 +1,32 @@
 # AI-Agile-Project-Management-Suite
 
-An enterprise-grade, role-based agile project management platform and issue tracker integrated with a high-performance local LLM copilot backend.
+<div align="center">
 
-The platform orchestrates agile sprints, Kanban boards, timelogs, Wiki documentation, management approvals, and automated AI assistance (task enhancement, priority estimation, sprint summarization, timelog insights, and technical Q&A) powered by on-premise quantized GGUF models.
+[![Release](https://img.shields.io/badge/Release-v1.0.0-blue.svg)](https://github.com/Niccher/AI-Agile-Project-Management-Suite/releases)
+[![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
+[![PHP](https://img.shields.io/badge/PHP-8.3_%7C_CodeIgniter_4-777BB4.svg?logo=php&logoColor=white)](services/web)
+[![Python](https://img.shields.io/badge/Python-3.12_%7C_FastAPI-3776AB.svg?logo=python&logoColor=white)](services/ml)
+[![Database](https://img.shields.io/badge/MySQL-8.4-4479A1.svg?logo=mysql&logoColor=white)](docker-compose.yml)
+[![Cache](https://img.shields.io/badge/Redis-7.0-DC382D.svg?logo=redis&logoColor=white)](docker-compose.yml)
+[![Deployment](https://img.shields.io/badge/Deployment-Docker_%7C_GCP_Containers-4285F4.svg?logo=googlecloud&logoColor=white)](docs/architecture/deployment.md)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-Quality_Gates_Passing-success.svg)](.github/workflows/ci.yml)
+
+<p align="center">
+  <strong>An enterprise-grade, role-based agile project management platform & issue tracker integrated with a high-performance local LLM copilot backend.</strong>
+</p>
+
+</div>
+
+---
+
+The platform orchestrates agile sprints, Kanban boards, timelogs, Wiki documentation, management approvals, and automated AI assistance (task enhancement, priority estimation, sprint summarization, timelog insights, and technical Q&A) powered by on-premise quantized GGUF models (`llama-cpp-python`).
 
 **If you only need to run the system, this page is enough.**  
 Software engineers: [docs/README.md](docs/README.md).
 
 ---
 
-## What “Running” Looks Like
+## 🏛 What “Running” Looks Like
 
 | Piece | URL / How to Open | Dev Login (Default Seeder) |
 | :--- | :--- | :--- |
@@ -20,7 +37,7 @@ Software engineers: [docs/README.md](docs/README.md).
 
 ---
 
-## Prerequisites
+## ⚡ Prerequisites
 
 - [Git](https://git-scm.com/)
 - [Docker Engine 24+](https://docs.docker.com/engine/) & Docker Compose v2 (or Docker Desktop)
@@ -28,7 +45,7 @@ Software engineers: [docs/README.md](docs/README.md).
 
 ---
 
-## Setup and Run (One-Click Automated Deployment)
+## 🚀 Setup and Run (One-Click Automated Deployment)
 
 1. **Clone the repository:**
    ```bash
@@ -59,7 +76,17 @@ Software engineers: [docs/README.md](docs/README.md).
 
 ---
 
-## Local AI Model Setup (Optional for LLM features)
+## 🧪 Privacy-First Synthetic Agile Test Data
+
+For testing and benchmarking local LLMs without exposing confidential company projects or personal data:
+
+```bash
+python3 scripts/generate_synthetic_agile_data.py --count 100 --output synthetic_seed.sql
+```
+
+---
+
+## 🤖 Local AI Model Setup (Optional for LLM features)
 
 To enable local LLM inference in the ML service:
 
@@ -71,7 +98,7 @@ To enable local LLM inference in the ML service:
 
 ---
 
-## Roles and Access
+## 🔒 Roles and Access
 
 The system enforces three primary roles:
 - **Admin:** Has complete control over system settings, user provisioning, audit logs, and AI telemetry.
@@ -80,7 +107,7 @@ The system enforces three primary roles:
 
 ---
 
-## Something Went Wrong?
+## 🛠 Something Went Wrong?
 
 - **Port in use:** If port 80 or 8000 is taken on your host machine, edit `.env`:
   ```env
@@ -100,11 +127,21 @@ The system enforces three primary roles:
 
 ---
 
-## Software Engineers
+## 👥 Community & Open-Source Governance
+
+- [Apache 2.0 License](LICENSE) — Permissive license with explicit patent grant protection.
+- [Security Policy](SECURITY.md) — Vulnerability reporting policy & zero-data-leak commitment.
+- [Code of Conduct](CODE_OF_CONDUCT.md) — Contributor Covenant v2.1.
+- [Contributing Guidelines](CONTRIBUTING.md) — Developer setup, coding standards, and PR checklists.
+
+---
+
+## 📚 Software Engineers
 
 Detailed architectural specifications, API contracts, threat models, and developer guides are located in the [docs/](docs/README.md) directory:
 - [System Architecture](docs/architecture/overview.md)
 - [Communication & Protocols](docs/architecture/communication.md)
+- [GCP Container Deployment](docs/architecture/deployment.md)
 - [API Contract](docs/api/contract.md)
 - [Local Development](docs/engineering/local-development.md)
 - [Runbooks & Restarts](docs/runbooks/restart.md)

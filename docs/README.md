@@ -12,7 +12,7 @@ If you are an operator or user looking for setup and execution instructions, ple
 - [System Architecture Overview](architecture/overview.md) — Monorepo structure, high-level components, and topology.
 - [Communication & Networking](architecture/communication.md) — Service-to-service protocols, REST endpoints, and Docker DNS.
 - [Data & Storage](architecture/data-and-storage.md) — MySQL schemas, Redis session/queue isolation, and model storage.
-- [Deployment](architecture/deployment.md) — Docker Compose orchestration, Railway deployment, and production hardening.
+- [Deployment](architecture/deployment.md) — Docker Compose orchestration, GCP Container deployment, and production hardening.
 - [Threat Model & Security](architecture/threat-model.md) — Trust boundaries, RBAC roles, API key protection, and private networks.
 
 ### 2. Services

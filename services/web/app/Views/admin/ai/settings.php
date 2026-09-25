@@ -62,8 +62,8 @@
                             <label class="form-label fw-bold font-13">Microservice URL & Port</label>
                             <input type="text" name="service_url" class="form-control" value="<?= esc($serviceUrl) ?>" placeholder="e.g. http://ml-chege-jira:8000" required>
                             <div class="form-text font-12">
-                                Railway Private: <code>http://ml-chege-jira.railway.internal:8000</code><br>
-                                Local Docker: <code>http://ml-chege-jira:8000</code>
+                                GCP VPC / Internal DNS: <code>http://ml-chege-jira:8000</code><br>
+                                Local Docker Compose: <code>http://ml-chege-jira:8000</code>
                             </div>
                         </div>
 

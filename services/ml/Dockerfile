@@ -33,5 +33,5 @@ RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
 
 EXPOSE 8000
 
-# Railway passes $PORT dynamically; fallback to 8000
+# GCP Cloud Run passes $PORT dynamically; fallback to 8000
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

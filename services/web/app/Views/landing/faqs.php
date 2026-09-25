@@ -55,12 +55,12 @@
                     <div class="accordion-item card mb-3 border">
                         <h2 class="accordion-header" id="headingThree">
                             <button class="accordion-button collapsed fw-bold text-dark font-16" type="button" data-bs-toggle="collapse" data-bs-target="#faqThree" aria-expanded="false" aria-controls="faqThree">
-                                <i class="mdi mdi-docker text-primary me-2 font-18"></i> How do I deploy it on my server or Railway?
+                                <i class="mdi mdi-docker text-primary me-2 font-18"></i> How do I deploy it on my server or GCP?
                             </button>
                         </h2>
                         <div id="faqThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#faqAccordion">
                             <div class="accordion-body text-muted font-14 lh-base">
-                                The fastest method is using Docker. Simply clone the repository, run <code>docker-compose up -d</code>, and visit <code>http://localhost:8080</code>. Database migrations and demo seeders will execute automatically on container startup. For step-by-step instructions, visit our <a href="<?= site_url('setup') ?>">Setup Guide</a>.
+                                The fastest method is using our automated one-click deployment pipeline. Simply clone the repository, run <code>bash scripts/deploy.sh</code>, and visit <code>http://localhost</code>. Database migrations and demo seeders will execute automatically on container startup. For step-by-step instructions, visit our <a href="<?= site_url('setup') ?>">Setup Guide</a>.
                             </div>
                         </div>
                     </div>

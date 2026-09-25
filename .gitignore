@@ -7,6 +7,12 @@
 .env.*
 !.env.example
 
+# GCP & Cloud Credentials
+*credentials*.json
+*service-account*.json
+gcp-key.json
+.gcloudignore
+
 # IDE & Editor Configurations
 .idea/
 .vscode/
@@ -15,9 +21,12 @@
 .DS_Store
 Thumbs.db
 
-# Docker Data & Volumes
+# Docker Data, Local Volumes & Backups
 mysql-data/
 redis-data/
+*.sql
+*.sql.gz
+*.rdb
 
 # ── CodeIgniter 4 (services/web) ──────────────────────────────────────────────
 services/web/vendor/
@@ -31,6 +40,8 @@ services/web/writable/session/*
 !services/web/writable/session/index.html
 services/web/writable/uploads/*
 !services/web/writable/uploads/index.html
+services/web/writable/reports/*
+!services/web/writable/reports/index.html
 services/web/public/uploads/*
 !services/web/public/uploads/.gitkeep
 
@@ -43,6 +54,8 @@ services/ml/*.py[cod]
 services/ml/.venv/
 services/ml/venv/
 services/ml/.pytest_cache/
+services/ml/.mypy_cache/
+services/ml/.ruff_cache/
 services/ml/.coverage
 services/ml/htmlcov/
 services/ml/dist/
@@ -52,4 +65,5 @@ services/ml/*.egg-info/
 # Heavy LLM Model Weights (.gguf / .bin)
 services/ml/models/*.gguf
 services/ml/models/*.bin
+services/ml/models/*.safetensors
 !services/ml/models/.gitkeep

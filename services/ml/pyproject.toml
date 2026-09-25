@@ -42,7 +42,7 @@ build-backend = "hatchling.build"
 packages = ["app"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/app", "/README.md", "/docs", "/scripts"]
+include = ["/app", "/README.md", "/scripts"]
 
 [tool.ruff]
 target-version = "py311"

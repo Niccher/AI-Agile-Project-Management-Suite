@@ -598,7 +598,7 @@
                     </ul>
                     
                     <div class="alert alert-light border font-13 text-muted mb-0">
-                        <i class="mdi mdi-shield-check text-success me-1"></i> Production Build running on Railway / Docker.
+                        <i class="mdi mdi-shield-check text-success me-1"></i> Production Build running on GCP Container / Docker.
                     </div>
                 </div>
                 <div class="modal-footer">

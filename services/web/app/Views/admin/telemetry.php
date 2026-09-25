@@ -376,7 +376,7 @@
                                 <ul class="list-group list-group-flush bg-transparent font-13">
                                     <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
                                         <span class="text-muted">Primary Storage</span>
-                                        <span class="fw-semibold text-dark">Redis 6.2 (Railway Private Network)</span>
+                                        <span class="fw-semibold text-dark">Redis 7 (GCP / Docker Private Network)</span>
                                     </li>
                                     <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
                                         <span class="text-muted">Automatic Failover</span>

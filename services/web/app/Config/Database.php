@@ -198,7 +198,7 @@ class Database extends Config
     {
         parent::__construct();
 
-        // Resolve hostname: prefer dotted CI4 env key, then Railway's MYSQLHOST, then fallback to local
+        // Resolve hostname: prefer dotted CI4 env key, then cloud provider MYSQLHOST, then fallback to local
         $this->default['hostname'] = env('database.default.hostname', env('MYSQLHOST', $this->default['hostname'] ?? 'localhost'));
         $this->default['username'] = env('database.default.username', env('MYSQLUSER',  $this->default['username'] ?? ''));
         $this->default['password'] = env('database.default.password', env('MYSQLPASSWORD', $this->default['password'] ?? ''));
@@ -206,8 +206,8 @@ class Database extends Config
         $this->default['DBDriver'] = env('database.default.DBDriver', $this->default['DBDriver'] ?? 'MySQLi');
         $this->default['port']     = (int) env('database.default.port', env('MYSQLPORT', $this->default['port'] ?? 3306));
 
-        // Socket: only use if explicitly provided via env (TrueHost local needs it).
-        // On Railway (TCP-only), the socket key must be REMOVED — if present, MySQLi
+        // Socket: only use if explicitly provided via env.
+        // In cloud / container environments (TCP-only), the socket key must be REMOVED — if present, MySQLi
         // ignores hostname/port entirely and tries the socket path, which does not exist.
         $socketPath = env('database.default.socket', '');
         if ($socketPath !== '') {

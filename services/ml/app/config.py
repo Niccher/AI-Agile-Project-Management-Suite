@@ -12,9 +12,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Central configuration class for the ML backend.
 
-    Accepts Railway's auto-injected MySQL variables as fallbacks so you only
-    need to set API_KEY manually; all DB credentials are shared from the MySQL
-    service reference variables (${{MySQL.MYSQLHOST}} etc.).
+    Accepts cloud-injected MySQL variables as fallbacks so you only
+    need to set API_KEY manually; all DB credentials can be shared
+    from container environment variables.
     """
 
     # Environment
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
         description="Shared secret API key required on all protected endpoints",
     )
 
-    # Database — primary names (DB_*), with Railway MYSQL* as fallbacks resolved below
+    # Database — primary names (DB_*), with cloud-injected MYSQL* as fallbacks resolved below
     DB_HOST: str = "mysql"
     DB_PORT: int = 3306
     DB_USER: str = "root"
@@ -63,16 +63,16 @@ class Settings(BaseSettings):
     )
 
     @model_validator(mode="after")
-    def _resolve_db_from_railway(self) -> "Settings":
+    def _resolve_db_from_cloud_env(self) -> "Settings":
         """
-        Apply Railway MySQL alias env vars as fallbacks when the primary DB_*
+        Apply cloud MySQL alias env vars as fallbacks when the primary DB_*
         vars are still at their defaults. Supports both individual vars and the
         MYSQL_URL / DATABASE_URL connection string formats.
 
         Priority:
           1. DB_HOST / DB_USER / DB_PASSWORD / DB_NAME (explicit, highest)
           2. MYSQL_URL or DATABASE_URL (full DSN string)
-          3. MYSQLHOST / MYSQLUSER / MYSQLPASSWORD / MYSQLDATABASE (Railway auto)
+          3. MYSQLHOST / MYSQLUSER / MYSQLPASSWORD / MYSQLDATABASE (Cloud SQL / PaaS auto)
         """
         env = os.environ
 
@@ -94,7 +94,7 @@ class Settings(BaseSettings):
             except Exception:
                 pass
 
-        # --- Railway short-form aliases (MYSQLHOST / MYSQLUSER / etc.) ---
+        # --- Cloud SQL / Standard short-form aliases (MYSQLHOST / MYSQLUSER / etc.) ---
         if self.DB_HOST == "mysql" and env.get("MYSQLHOST"):
             self.DB_HOST = env["MYSQLHOST"]
         if self.DB_USER == "root" and env.get("MYSQLUSER"):

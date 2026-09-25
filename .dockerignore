@@ -1,0 +1,66 @@
+# ==============================================================================
+# AI-Agile-Project-Management-Suite - Root Docker Ignore Rules
+# ==============================================================================
+
+# Git & GitHub
+.git
+.github
+.gitignore
+.gitattributes
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Environment & Credentials
+.env
+.env.*
+*.json
+!composer.json
+!composer.lock
+!package.json
+
+# Local Data Volumes & Dumps
+mysql-data/
+redis-data/
+*.sql
+*.sql.gz
+*.rdb
+
+# Heavy ML Models (Mount via volume at runtime)
+services/ml/models/*.gguf
+services/ml/models/*.bin
+services/ml/models/*.safetensors
+!services/ml/models/.gitkeep
+
+# Python caches & virtual environments
+__pycache__
+*.py[cod]
+.venv
+venv
+env
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# Web & Composer caches
+services/web/vendor/
+services/web/writable/logs/*
+services/web/writable/cache/*
+services/web/writable/session/*
+services/web/writable/debugbar/*
+services/web/writable/uploads/*
+services/web/writable/exports/*
+services/web/writable/backups/*
+node_modules/
+
+# IDEs & System
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

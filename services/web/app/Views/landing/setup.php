@@ -86,7 +86,7 @@
     <div class="container text-center py-4">
         <span class="badge bg-primary-lighten text-primary rounded-pill px-3 py-1 font-12 fw-semibold">Quick Start</span>
         <h1 class="fw-bold mt-2 mb-2 display-6">Self-Hosting & Deployment Guide</h1>
-        <p class="text-muted font-16 lead w-75 mx-auto mb-0">Deploy <?= esc(setting('App.siteName')) ?> to your local machine, private cloud, or Railway instance in under 2 minutes.</p>
+        <p class="text-muted font-16 lead w-75 mx-auto mb-0">Deploy <?= esc(setting('App.siteName')) ?> to your local machine, private cloud, or Google Cloud Platform (GCP) container in under 2 minutes.</p>
     </div>
 </section>
 <!-- END PAGE HEADER -->
@@ -106,8 +106,8 @@
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link d-flex align-items-center" id="railway-tab" data-bs-toggle="pill" data-bs-target="#railway-pane" type="button" role="tab">
-                                    <i class="mdi mdi-cloud-upload-outline font-18 me-2"></i> Railway & Cloud
+                                <button class="nav-link d-flex align-items-center" id="gcp-tab" data-bs-toggle="pill" data-bs-target="#gcp-pane" type="button" role="tab">
+                                    <i class="mdi mdi-google-cloud font-18 me-2"></i> Google Cloud (GCP)
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
@@ -188,26 +188,26 @@
                                 </div>
                             </div>
 
-                            <!-- TAB 2: RAILWAY & CLOUD -->
-                            <div class="tab-pane fade" id="railway-pane" role="tabpanel">
+                            <!-- TAB 2: GOOGLE CLOUD PLATFORM (GCP) -->
+                            <div class="tab-pane fade" id="gcp-pane" role="tabpanel">
                                 <div class="d-flex align-items-center justify-content-between mb-3">
                                     <h4 class="fw-bold text-dark mb-0">
-                                        <i class="mdi mdi-cloud-upload-outline text-info me-2"></i> Option 2: Railway & Cloud PaaS
+                                        <i class="mdi mdi-google-cloud text-info me-2"></i> Option 2: Google Cloud Platform (GCP)
                                     </h4>
-                                    <span class="badge bg-info-lighten text-info font-12">Cloud Production</span>
+                                    <span class="badge bg-info-lighten text-info font-12">Cloud Container</span>
                                 </div>
                                 <p class="text-muted font-14 mb-4">
-                                    Deploy directly to Railway, Render, or Fly.io using the integrated Dockerfile and entrypoint script.
+                                    Deploy using Google Cloud Run, Google Kubernetes Engine (GKE), or GCP Compute Engine Container with Cloud SQL.
                                 </p>
 
                                 <div class="card bg-light border-0 p-3 mb-4">
-                                    <h5 class="fw-bold text-dark font-15 mb-2"><i class="mdi mdi-database me-1 text-primary"></i> 1. Attach MySQL Database</h5>
-                                    <p class="text-muted font-14 mb-0">In your Railway project, click <strong>New &rarr; Database &rarr; MySQL</strong>. Railway automatically generates connection variables.</p>
+                                    <h5 class="fw-bold text-dark font-15 mb-2"><i class="mdi mdi-database me-1 text-primary"></i> 1. Attach GCP Cloud SQL (MySQL 8.4)</h5>
+                                    <p class="text-muted font-14 mb-0">Provision a Cloud SQL for MySQL 8.4 instance in your GCP project and attach it using the Cloud SQL Auth Proxy or Serverless VPC Connector.</p>
                                 </div>
 
                                 <div class="card bg-light border-0 p-3 mb-4">
                                     <h5 class="fw-bold text-dark font-15 mb-2"><i class="mdi mdi-tune-variant me-1 text-warning"></i> 2. Configure Environment Variables</h5>
-                                    <p class="text-muted font-14 mb-2">Set the following variables in your Railway web service settings:</p>
+                                    <p class="text-muted font-14 mb-2">Set the following environment variables in your GCP Cloud Run service configuration:</p>
                                     <div class="table-responsive">
                                         <table class="table table-sm table-bordered bg-white mb-0 font-13">
                                             <thead class="table-light">
@@ -218,24 +218,28 @@
                                             </thead>
                                             <tbody>
                                                 <tr>
-                                                    <td><code>MYSQLHOST</code></td>
-                                                    <td><code>${{MySQL.MYSQLHOST}}</code> (Auto-provided by Railway MySQL plugin)</td>
+                                                    <td><code>MYSQLHOST</code> / <code>DB_HOST</code></td>
+                                                    <td><code>127.0.0.1</code> (via Cloud SQL proxy) or private VPC IP</td>
                                                 </tr>
                                                 <tr>
-                                                    <td><code>MYSQLPORT</code></td>
-                                                    <td><code>${{MySQL.MYSQLPORT}}</code></td>
+                                                    <td><code>MYSQLPORT</code> / <code>DB_PORT</code></td>
+                                                    <td><code>3306</code></td>
                                                 </tr>
                                                 <tr>
-                                                    <td><code>MYSQLUSER</code></td>
-                                                    <td><code>${{MySQL.MYSQLUSER}}</code></td>
+                                                    <td><code>MYSQLUSER</code> / <code>DB_USER</code></td>
+                                                    <td><code>root</code> or dedicated application user</td>
                                                 </tr>
                                                 <tr>
-                                                    <td><code>MYSQLPASSWORD</code></td>
-                                                    <td><code>${{MySQL.MYSQLPASSWORD}}</code></td>
+                                                    <td><code>MYSQLPASSWORD</code> / <code>DB_PASSWORD</code></td>
+                                                    <td>Your GCP Cloud SQL database password</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><code>REDIS_URL</code></td>
+                                                    <td>GCP Memorystore for Redis private IP: <code>redis://10.x.x.x:6379</code></td>
                                                 </tr>
                                                 <tr>
                                                     <td><code>app.baseURL</code></td>
-                                                    <td><code>https://${{RAILWAY_PUBLIC_DOMAIN}}</code> or custom domain</td>
+                                                    <td><code>https://your-cloud-run-domain.run.app</code></td>
                                                 </tr>
                                             </tbody>
                                         </table>

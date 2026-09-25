@@ -5,9 +5,9 @@ info:
   version: 0.1.0
 servers:
   - url: http://localhost:8000/api/v1
-    description: Local development server
-  - url: https://artistic-embrace-production-e565.up.railway.app/api/v1
-    description: Railway Production cluster
+    description: Local development container
+  - url: https://api.your-domain.com/api/v1
+    description: GCP Production cluster
 
 security:
   - ApiKeyAuth: []

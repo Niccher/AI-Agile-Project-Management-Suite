@@ -63,10 +63,10 @@
             </div>
             <div class="col-6 col-md-3 py-2">
                 <h3 class="fw-bold mb-0 text-white">1-Click</h3>
-                <p class="mb-0 text-white-50 font-13">Docker & Railway Deploy</p>
+                <p class="mb-0 text-white-50 font-13">Docker & GCP Ready</p>
             </div>
             <div class="col-6 col-md-3 py-2">
-                <h3 class="fw-bold mb-0 text-white">MIT</h3>
+                <h3 class="fw-bold mb-0 text-white">Apache 2.0</h3>
                 <p class="mb-0 text-white-50 font-13">Open Source License</p>
             </div>
         </div>
@@ -211,7 +211,7 @@
                         <span class="avatar-title bg-primary-lighten text-primary rounded-circle font-24" style="width: 50px; height: 50px; line-height: 50px; display: inline-block;">1</span>
                     </div>
                     <h4 class="fw-bold">Deploy Container</h4>
-                    <p class="text-muted font-14 mb-0">Run a single <code>docker-compose up -d</code> command on your local machine, VPS, or Railway.</p>
+                    <p class="text-muted font-14 mb-0">Run a single <code>bash scripts/deploy.sh</code> command on your local machine, VPS, or GCP Container.</p>
                 </div>
             </div>
             <div class="col-md-4">

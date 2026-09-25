@@ -1,0 +1,88 @@
+name: CI Quality Gates
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  # ── 1. Docker Compose Structure Validation ───────────────────
+  validate-docker:
+    name: Validate Docker Compose
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verify Compose Syntax
+        run: |
+          docker compose -f docker-compose.yml config
+
+      - name: Verify deploy.sh Bash Syntax
+        run: |
+          bash -n scripts/deploy.sh
+
+  # ── 2. WebApp PHP Quality & Syntax ──────────────────────────
+  test-web:
+    name: WebApp Syntax & Static Analysis (PHP 8.3)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: intl, mbstring, mysqli, pdo_mysql, curl, zip
+          coverage: none
+
+      - name: PHP Syntax Check (Lint)
+        run: |
+          echo "Linting CodeIgniter 4 PHP files..."
+          find services/web/app -name "*.php" -print0 | xargs -0 -n 1 -P 4 php -l
+
+  # ── 3. ML Backend Python Lint & Tests ───────────────────────
+  test-ml:
+    name: ML Backend Tests & Ruff (Python 3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Linting & Test Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pytest pytest-asyncio pydantic pydantic-settings jinja2 httpx
+
+      - name: Run Ruff Lint
+        run: |
+          ruff check services/ml/app
+
+      - name: Run Unit Tests
+        run: |
+          pytest services/ml/tests/unit/ -v
+
+  # ── 4. Synthetic Data Generator Test ────────────────────────
+  test-synthetic-data:
+    name: Verify Synthetic Data Generator
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test Generator Dry-Run
+        run: |
+          python3 scripts/generate_synthetic_agile_data.py --count 10 --output /tmp/test_seed.sql
+          head -n 20 /tmp/test_seed.sql

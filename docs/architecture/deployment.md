@@ -1,6 +1,6 @@
 # Deployment Architecture
 
-This document describes how to deploy the **AI-Agile-Project-Management-Suite** across bare-metal VPS, on-premise servers, and cloud providers such as Railway.
+This document describes how to deploy the **AI-Agile-Project-Management-Suite** across bare-metal VPS, on-premise servers, and Google Cloud Platform (GCP) containers.
 
 ---
 
@@ -35,31 +35,55 @@ The script executes 13 automated stages:
 
 ---
 
-## ☁ Target 2: Cloud Monorepo Deployment (e.g. Railway)
+## ☁ Target 2: Google Cloud Platform (GCP Container Deployment)
 
-Deploying a multi-service monorepo to Railway:
+Deploying the monorepo to Google Cloud Platform using **GCP Cloud Run**, **Google Kubernetes Engine (GKE)**, or **GCP Compute Engine Container-Optimized OS**:
 
 ```text
-Railway Project
-├── Service 1: MySQL (Add-on)
-├── Service 2: Redis (Add-on)
-├── Service 3: WebApp (Repo Root Directory: /services/web)
-└── Service 4: ML Service (Repo Root Directory: /services/ml)
+Google Cloud Project (GCP)
+├── Container Registry: GCP Artifact Registry (pkg.dev/<project-id>/chege-repo)
+├── Relational DB:      GCP Cloud SQL for MySQL 8.4 (Private VPC IP)
+├── Cache & Queue:      GCP Memorystore for Redis 7.0 (Private VPC IP)
+├── Web Service:        GCP Cloud Run (Container: services/web)
+└── AI Copilot Service: GCP Cloud Run / GKE (Container: services/ml with persistent disk for GGUF models)
 ```
 
-### Configuration Steps:
-1. **WebApp Service:**
-   - Link repo `https://github.com/Niccher/AI-Agile-Project-Management-Suite`
-   - Set **Root Directory** to `/services/web`
-   - Set Environment Variables:
-     - `database.default.hostname` = `${{MySQL.MYSQLHOST}}`
-     - `database.default.database` = `${{MySQL.MYSQLDATABASE}}`
-     - `database.default.username` = `${{MySQL.MYSQLUSER}}`
-     - `database.default.password` = `${{MySQL.MYSQLPASSWORD}}`
-     - `REDIS_URL` = `${{Redis.REDIS_URL}}`
-     - `ML_SERVICE_URL` = `http://${{ML-Service.RAILWAY_PRIVATE_DOMAIN}}:8000`
-2. **ML Service:**
-   - Link same repo
-   - Set **Root Directory** to `/services/ml`
-   - Add volume mount `/app/models` to persist downloaded GGUF weights.
-   - `config.py` contains auto-resolution for Railway MySQL environment variables (`MYSQLHOST`, `MYSQL_URL`, etc.).
+### 1. Build & Push to GCP Artifact Registry
+
+```bash
+# Configure Docker with GCP
+gcloud auth configure-docker us-central1-docker.pkg.dev
+
+# Build & Push WebApp Image
+docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/chege-repo/webapp:latest -f services/web/Dockerfile services/web
+docker push us-central1-docker.pkg.dev/$PROJECT_ID/chege-repo/webapp:latest
+
+# Build & Push ML Backend Image
+docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/chege-repo/ml-backend:latest -f services/ml/Dockerfile services/ml
+docker push us-central1-docker.pkg.dev/$PROJECT_ID/chege-repo/ml-backend:latest
+```
+
+### 2. Deploy Services via Cloud Run with Serverless VPC Access
+
+Both Cloud Run services connect to Cloud SQL and Memorystore via a **Serverless VPC Access Connector**:
+
+1. **WebApp Container Deployment:**
+   ```bash
+   gcloud run deploy chege-webapp \
+     --image=us-central1-docker.pkg.dev/$PROJECT_ID/chege-repo/webapp:latest \
+     --region=us-central1 \
+     --vpc-connector=chege-vpc-connector \
+     --set-env-vars="database.default.hostname=10.x.x.x,database.default.database=db_chege_jira,REDIS_URL=redis://10.y.y.y:6379,ML_SERVICE_URL=https://chege-ml-xxxx.run.app" \
+     --allow-unauthenticated
+   ```
+
+2. **ML Backend Container Deployment:**
+   ```bash
+   gcloud run deploy chege-ml \
+     --image=us-central1-docker.pkg.dev/$PROJECT_ID/chege-repo/ml-backend:latest \
+     --region=us-central1 \
+     --vpc-connector=chege-vpc-connector \
+     --memory=8Gi \
+     --cpu=4 \
+     --set-env-vars="DB_HOST=10.x.x.x,DB_NAME=db_chege_jira,REDIS_URL=redis://10.y.y.y:6379/0,API_KEY=your_production_secret"
+   ```

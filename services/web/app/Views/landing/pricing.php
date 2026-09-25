@@ -53,7 +53,7 @@
                         </li>
                         <li class="mb-3 d-flex align-items-center">
                             <i class="mdi mdi-check-circle text-success font-18 me-2"></i>
-                            1-Click Docker & Railway Deployment
+                            1-Click Docker & GCP Container Deployment
                         </li>
                         <li class="d-flex align-items-center">
                             <i class="mdi mdi-check-circle text-success font-18 me-2"></i>
