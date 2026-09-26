@@ -34,6 +34,27 @@ class Cache extends BaseConfig
      */
     public string $backupHandler = 'dummy';
 
+    public function __construct()
+    {
+        parent::__construct();
+
+        // High-Availability Dynamic Resilience Fallback
+        if (class_exists(\App\Session\Handlers\ResilientSessionHandler::class)) {
+            $params = \App\Session\Handlers\ResilientSessionHandler::getRedisParams();
+            $this->redis['host']     = $params['host'];
+            $this->redis['port']     = $params['port'];
+            $this->redis['password'] = !empty($params['pass']) ? $params['pass'] : null;
+
+            if (\App\Session\Handlers\ResilientSessionHandler::isRedisAlive()) {
+                $this->handler       = 'redis';
+                $this->backupHandler = 'file';
+            } else {
+                $this->handler       = 'file';
+                $this->backupHandler = 'dummy';
+            }
+        }
+    }
+
     /**
      * --------------------------------------------------------------------------
      * Key Prefix

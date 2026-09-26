@@ -23,7 +23,6 @@ RUN pip install --no-cache-dir uv
 COPY pyproject.toml README.md ./
 COPY app/ ./app/
 COPY scripts/ ./scripts/
-COPY docs/ ./docs/
 
 # Install dependencies and package
 RUN uv pip install --system -e "."

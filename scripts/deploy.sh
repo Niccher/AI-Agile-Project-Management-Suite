@@ -100,7 +100,13 @@ finish_deployment() {
 
 # ── 1. Detect Dynamic IP ──────────────────────────────────────
 section "1. Detecting Dynamic IP"
-DETECTED_IP=$(curl -s --max-time 4 ip.me 2>/dev/null | tr -d '[:space:]' || true)
+# 1. GCP Compute Engine metadata server probe (instant on GCP)
+DETECTED_IP=$(curl -s -m 2 -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip 2>/dev/null | tr -d '[:space:]' || true)
+
+# 2. Public IP fallbacks
+if [ -z "$DETECTED_IP" ]; then
+    DETECTED_IP=$(curl -s --max-time 4 ip.me 2>/dev/null | tr -d '[:space:]' || true)
+fi
 if [ -z "$DETECTED_IP" ]; then
     DETECTED_IP=$(curl -s --max-time 4 ifconfig.me 2>/dev/null | tr -d '[:space:]' || true)
 fi

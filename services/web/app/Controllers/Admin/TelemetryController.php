@@ -176,34 +176,34 @@ class TelemetryController extends BaseController
         // ==========================================
         // 3. Redis Cache & Session Container
         // ==========================================
+        $resilience = \App\Session\Handlers\ResilientSessionHandler::getResilienceStatus();
         $redisSpecs = [
-            'connected'         => false,
-            'version'           => '6.2+',
-            'role'              => 'Primary (Standalone)',
-            'used_memory_human' => '18.4 MB',
-            'connected_clients' => 2,
-            'uptime_human'      => 'Live',
-            'keyspace_hits'     => '98.5%',
+            'connected'         => $resilience['redis_status'] === 'connected',
+            'version'           => '7.x (In-Memory)',
+            'role'              => $resilience['fallback_active'] ? 'Offline (MySQL Fallback Active)' : 'Primary (Standalone RAM)',
+            'probe_ms'          => $resilience['redis_probe_ms'] . ' ms',
+            'active_engine'     => $resilience['session_engine'],
+            'fallback_active'   => $resilience['fallback_active'],
+            'used_memory_human' => 'N/A',
+            'connected_clients' => 0,
+            'uptime_human'      => $resilience['fallback_active'] ? 'Offline' : 'Live',
+            'keyspace_hits'     => '100%',
             'cluster_enabled'   => false,
         ];
 
-        // Attempt live Redis connection if php-redis or URL exists
-        $redisUrl = getenv('REDIS_URL') ?: getenv('REDIS_PRIVATE_URL');
-        if ($redisUrl && class_exists('\Redis')) {
+        // Only query info if Redis probe succeeded
+        if ($resilience['redis_status'] === 'connected' && class_exists('\Redis')) {
             try {
-                $parsed = parse_url($redisUrl);
+                $params = \App\Session\Handlers\ResilientSessionHandler::getRedisParams();
                 $redis = new \Redis();
-                $host = $parsed['host'] ?? '127.0.0.1';
-                $port = (int)($parsed['port'] ?? 6379);
-                if (@$redis->connect($host, $port, 1.0)) {
-                    if (!empty($parsed['pass'])) {
-                        $redis->auth($parsed['pass']);
+                if (@$redis->connect($params['host'], $params['port'], 0.1)) {
+                    if (!empty($params['pass'])) {
+                        $redis->auth($params['pass']);
                     }
                     $info = $redis->info();
-                    $redisSpecs['connected'] = true;
-                    $redisSpecs['version'] = $info['redis_version'] ?? '6.2+';
-                    $redisSpecs['used_memory_human'] = $info['used_memory_human'] ?? self::formatBytes((float)($info['used_memory'] ?? 18000000));
-                    $redisSpecs['connected_clients'] = (int)($info['connected_clients'] ?? 2);
+                    $redisSpecs['version'] = $info['redis_version'] ?? '7.x';
+                    $redisSpecs['used_memory_human'] = $info['used_memory_human'] ?? self::formatBytes((float)($info['used_memory'] ?? 0));
+                    $redisSpecs['connected_clients'] = (int)($info['connected_clients'] ?? 1);
                     $uptimeSecs = (int)($info['uptime_in_seconds'] ?? 0);
                     if ($uptimeSecs > 0) {
                         $days = floor($uptimeSecs / 86400);
@@ -213,7 +213,7 @@ class TelemetryController extends BaseController
                     $redis->close();
                 }
             } catch (\Throwable $e) {
-                // Redis ping timed out, keep safe defaults
+                // Keep resilient defaults
             }
         }
 

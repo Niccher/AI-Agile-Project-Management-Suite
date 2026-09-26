@@ -414,6 +414,16 @@
                     </div>
 
                     <ul class="list-unstyled topbar-menu mb-0 d-flex align-items-center ms-auto">
+                        <?php if ($isAdmin && \App\Session\Handlers\ResilientSessionHandler::isFallbackActive()): ?>
+                            <li class="me-2 d-none d-md-inline-block">
+                                <a href="<?= site_url('admin/telemetry') ?>" class="text-decoration-none">
+                                    <span class="badge bg-warning text-dark font-12 py-1 px-2 border border-warning shadow-sm" title="Redis is unreachable. The suite has degraded to MySQL session storage.">
+                                        <i class="mdi mdi-alert-circle me-1"></i> Storage Degraded: MySQL Fallback Active
+                                    </span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+
                         <!-- Mobile Search Trigger Icon -->
                         <li class="d-inline-block d-sm-none me-1">
                             <a class="nav-link" href="javascript:void(0);" id="mobile-search-trigger" title="Search (Ctrl + K)">

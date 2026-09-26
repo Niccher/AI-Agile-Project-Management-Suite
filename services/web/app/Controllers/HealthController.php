@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Session\Handlers\ResilientSessionHandler;
 use CodeIgniter\Controller;
 use Config\Database;
 
@@ -18,6 +19,10 @@ class HealthController extends Controller
             $dbConnected = false;
         }
 
+        // 1. Resilience Telemetry (50ms non-blocking probe)
+        $resilience = ResilientSessionHandler::getResilienceStatus();
+
+        // 2. ML Service Health
         $mlHealth = null;
         $mlServiceUrl = rtrim(env('ML_SERVICE_URL', 'http://ml-chege-jira:8000'), '/');
         
@@ -31,15 +36,26 @@ class HealthController extends Controller
             $mlHealth = ['success' => false, 'error' => $e->getMessage()];
         }
 
+        // Determine WebApp status
+        $webappStatus = 'healthy';
+        if (!$dbConnected) {
+            $webappStatus = 'critical';
+        } elseif ($resilience['fallback_active']) {
+            $webappStatus = 'healthy_degraded';
+        }
+
         $healthStatus = [
             'webapp' => [
-                'status' => 'healthy',
-                'database_connected' => $dbConnected
+                'status'             => $webappStatus,
+                'database_connected' => $dbConnected,
+                'active_engine'      => $resilience['session_engine'],
             ],
+            'resilience' => $resilience,
             'ml_service' => $mlHealth,
-            'timestamp' => time()
+            'timestamp'  => time()
         ];
 
-        return $this->response->setJSON($healthStatus);
+        $statusCode = (!$dbConnected) ? 503 : 200;
+        return $this->response->setStatusCode($statusCode)->setJSON($healthStatus);
     }
 }
