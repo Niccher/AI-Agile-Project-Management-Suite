@@ -41,6 +41,10 @@ class AuthGroups extends ShieldAuthGroups
      * @see https://codeigniter4.github.io/shield/quick_start_guide/using_authorization/#change-available-groups for more info
      */
     public array $groups = [
+        'superadmin' => [
+            'title'       => 'Super Administrator',
+            'description' => 'Complete unrestricted control of the platform, settings, users, and audit logs.',
+        ],
         'admin' => [
             'title'       => 'System Administrator',
             'description' => 'Complete control of the platform settings, users, and audit logs.',
@@ -84,6 +88,15 @@ class AuthGroups extends ShieldAuthGroups
      * This defines group-level permissions.
      */
     public array $matrix = [
+        'superadmin' => [
+            'platform.*',
+            'users.*',
+            'audit.*',
+            'projects.*',
+            'tasks.*',
+            'reports.*',
+            'time.*',
+        ],
         'admin' => [
             'platform.*',
             'users.*',

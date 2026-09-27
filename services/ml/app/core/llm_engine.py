@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 # Try importing Llama from llama_cpp
 try:
     from llama_cpp import Llama  # type: ignore
-except ImportError:
+except Exception as e:
     Llama = Any  # type: ignore
-    logger.warning("llama-cpp-python is not installed or failed to import.")
+    logger.warning("llama-cpp-python is not installed or failed to import: %s", e)
 
 
 MODEL_DOWNLOAD_URLS: dict[str, str] = {

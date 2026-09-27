@@ -211,7 +211,7 @@
                                                 <?php endif; ?>
                                             </td>
                                             <td class="font-13"><?= esc($m['size_gb'] ?? 0) ?> GB</td>
-                                            <td>
+                                            <td id="telemetry-ram-status-<?= esc($mKey) ?>">
                                                 <?php if (!empty($m['loaded_in_ram'])): ?>
                                                     <span class="badge bg-success"><i class="mdi mdi-memory me-1"></i>In RAM</span>
                                                 <?php else: ?>
@@ -222,49 +222,24 @@
                                             <td class="font-13">
                                                 <?= !empty($m['avg_duration_ms']) ? esc($m['avg_duration_ms']) . ' ms' : '-' ?>
                                             </td>
-                                            <td class="text-end">
+                                            <td class="text-end" id="telemetry-actions-<?= esc($mKey) ?>">
                                                 <div class="btn-group btn-group-sm">
                                                     <?php if (empty($m['exists_on_disk'])): ?>
-                                                        <!-- Download Model -->
-                                                        <form method="post" action="<?= site_url('admin/ai/cache-action') ?>" class="d-inline">
-                                                            <?= csrf_field() ?>
-                                                            <input type="hidden" name="action" value="download">
-                                                            <input type="hidden" name="model_key" value="<?= esc($mKey) ?>">
-                                                            <button type="submit" class="btn btn-outline-primary" <?= ($m['download_status'] ?? '') === 'downloading' ? 'disabled' : '' ?>>
-                                                                <i class="mdi mdi-download me-1"></i> Download GGUF
-                                                            </button>
-                                                        </form>
+                                                        <button type="button" class="btn btn-outline-primary" onclick="triggerTelemetryModelAction('download', '<?= esc($mKey) ?>')" <?= ($m['download_status'] ?? '') === 'downloading' ? 'disabled' : '' ?>>
+                                                            <i class="mdi mdi-download me-1"></i> Download GGUF
+                                                        </button>
                                                     <?php else: ?>
                                                         <?php if (!empty($m['loaded_in_ram'])): ?>
-                                                            <!-- Reload in RAM -->
-                                                            <form method="post" action="<?= site_url('admin/ai/cache-action') ?>" class="d-inline">
-                                                                <?= csrf_field() ?>
-                                                                <input type="hidden" name="action" value="reload">
-                                                                <input type="hidden" name="model_key" value="<?= esc($mKey) ?>">
-                                                                <button type="submit" class="btn btn-outline-warning" title="Reload model weights in RAM">
-                                                                    <i class="mdi mdi-reload me-1"></i> Reload
-                                                                </button>
-                                                            </form>
-
-                                                            <!-- Evict from RAM -->
-                                                            <form method="post" action="<?= site_url('admin/ai/cache-action') ?>" class="d-inline ms-1">
-                                                                <?= csrf_field() ?>
-                                                                <input type="hidden" name="action" value="evict">
-                                                                <input type="hidden" name="model_key" value="<?= esc($mKey) ?>">
-                                                                <button type="submit" class="btn btn-outline-danger" title="Evict from RAM to free memory">
-                                                                    <i class="mdi mdi-eject me-1"></i> Evict
-                                                                </button>
-                                                            </form>
+                                                            <button type="button" class="btn btn-outline-warning" onclick="triggerTelemetryModelAction('reload', '<?= esc($mKey) ?>')" title="Reload model weights in RAM">
+                                                                <i class="mdi mdi-reload me-1"></i> Reload
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-danger ms-1" onclick="triggerTelemetryModelAction('evict', '<?= esc($mKey) ?>')" title="Evict from RAM to free memory">
+                                                                <i class="mdi mdi-eject me-1"></i> Evict
+                                                            </button>
                                                         <?php else: ?>
-                                                            <!-- Preload into RAM -->
-                                                            <form method="post" action="<?= site_url('admin/ai/cache-action') ?>" class="d-inline">
-                                                                <?= csrf_field() ?>
-                                                                <input type="hidden" name="action" value="preload">
-                                                                <input type="hidden" name="model_key" value="<?= esc($mKey) ?>">
-                                                                <button type="submit" class="btn btn-outline-success">
-                                                                    <i class="mdi mdi-lightning-bolt me-1"></i> Pre-load into RAM
-                                                                </button>
-                                                            </form>
+                                                            <button type="button" class="btn btn-outline-success" onclick="triggerTelemetryModelAction('preload', '<?= esc($mKey) ?>')">
+                                                                <i class="mdi mdi-lightning-bolt me-1"></i> Pre-load into RAM
+                                                            </button>
                                                         <?php endif; ?>
                                                     <?php endif; ?>
                                                 </div>
@@ -280,4 +255,104 @@
         </div>
     </div>
 </div>
+
+<script>
+function triggerTelemetryModelAction(action, modelKey) {
+    let confirmTitle = 'Confirm Action';
+    let confirmText = `Are you sure you want to perform "${action}" on ${modelKey}?`;
+    let confirmBtn = 'Yes, Proceed';
+    let confirmColor = '#3b82f6';
+
+    if (action === 'download') {
+        confirmTitle = 'Download Model?';
+        confirmText = `Start background download for ${modelKey}?`;
+        confirmBtn = 'Download';
+    } else if (action === 'preload') {
+        confirmTitle = 'Pre-load Model to RAM?';
+        confirmText = `Load ${modelKey} into host RAM?`;
+        confirmBtn = 'Pre-load';
+        confirmColor = '#10b981';
+    } else if (action === 'reload') {
+        confirmTitle = 'Reload Model in RAM?';
+        confirmText = `Restart and refresh memory cache for ${modelKey}?`;
+        confirmBtn = 'Reload';
+        confirmColor = '#f59e0b';
+    } else if (action === 'evict') {
+        confirmTitle = 'Evict Model from RAM?';
+        confirmText = `Unload ${modelKey} to free system memory?`;
+        confirmBtn = 'Evict';
+        confirmColor = '#ef4444';
+    }
+
+    Swal.fire({
+        title: confirmTitle,
+        text: confirmText,
+        icon: action === 'evict' ? 'warning' : 'question',
+        showCancelButton: true,
+        confirmButtonText: confirmBtn,
+        confirmButtonColor: confirmColor,
+        cancelButtonText: 'Cancel'
+    }).then(result => {
+        if (!result.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Executing...',
+            text: `Applying ${action} to ${modelKey}`,
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const formData = new FormData();
+        formData.append('action', action);
+        formData.append('model_key', modelKey);
+        formData.append('redirect', 'telemetry');
+        if (window.csrfToken) formData.append(window.csrfToken, window.csrfHash);
+
+        fetch('<?= site_url('admin/ai/cache-action') ?>', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.status === 'success') {
+                Swal.fire({ icon: 'success', title: 'Success', text: res.message, timer: 2000, showConfirmButton: false });
+                const ramCell = document.getElementById('telemetry-ram-status-' + modelKey);
+                const actionCell = document.getElementById('telemetry-actions-' + modelKey);
+                if (action === 'preload' || action === 'reload') {
+                    if (ramCell) ramCell.innerHTML = '<span class="badge bg-success"><i class="mdi mdi-memory me-1"></i>In RAM</span>';
+                    if (actionCell) {
+                        actionCell.innerHTML = `
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-warning" onclick="triggerTelemetryModelAction('reload', '${modelKey}')" title="Reload model weights in RAM">
+                                    <i class="mdi mdi-reload me-1"></i> Reload
+                                </button>
+                                <button type="button" class="btn btn-outline-danger ms-1" onclick="triggerTelemetryModelAction('evict', '${modelKey}')" title="Evict from RAM to free memory">
+                                    <i class="mdi mdi-eject me-1"></i> Evict
+                                </button>
+                            </div>
+                        `;
+                    }
+                } else if (action === 'evict') {
+                    if (ramCell) ramCell.innerHTML = '<span class="badge bg-light text-muted">Uncached</span>';
+                    if (actionCell) {
+                        actionCell.innerHTML = `
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-success" onclick="triggerTelemetryModelAction('preload', '${modelKey}')">
+                                    <i class="mdi mdi-lightning-bolt me-1"></i> Pre-load into RAM
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
+            } else {
+                Swal.fire({ icon: 'error', title: 'Action Failed', text: res.message || 'Operation failed' });
+            }
+        })
+        .catch(err => {
+            Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+        });
+    });
+}
+</script>
 <?= $this->endSection() ?>

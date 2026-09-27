@@ -107,10 +107,22 @@ class AiController extends BaseController
         ]);
 
         if (!empty($res['success'])) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'  => 'success',
+                    'message' => 'AI Service URL and runtime parameters updated and synchronized successfully.',
+                ]);
+            }
             return redirect()->to(site_url('admin/ai/settings'))->with('message', 'AI Service URL and runtime parameters updated and synchronized successfully.');
         }
 
         $warning = 'Saved connection settings locally, but could not sync parameters with ML backend at ' . esc($serviceUrl) . ' (' . ($res['error']['message'] ?? 'Service unreachable') . ')';
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status'  => 'warning',
+                'message' => $warning,
+            ]);
+        }
         return redirect()->to(site_url('admin/ai/settings'))->with('message', $warning);
     }
 
@@ -126,11 +138,30 @@ class AiController extends BaseController
         $health = $testLlm->getHealth();
 
         if (!empty($health['success'])) {
-            return redirect()->to(site_url('admin/ai/settings'))->with('message', 'Connection successful! ML Microservice is healthy and reachable at ' . esc($serviceUrl));
+            $msg = 'Connection successful! ML Microservice is healthy and reachable at ' . esc($serviceUrl);
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'     => 'success',
+                    'isOnline'   => true,
+                    'message'    => $msg,
+                    'serviceUrl' => $serviceUrl,
+                    'data'       => $health['data'] ?? [],
+                ]);
+            }
+            return redirect()->to(site_url('admin/ai/settings'))->with('message', $msg);
         }
 
         $errMsg = $health['error']['message'] ?? 'Could not reach service';
-        return redirect()->to(site_url('admin/ai/settings'))->with('error', 'Connection failed to ' . esc($serviceUrl) . ': ' . $errMsg);
+        $fullError = 'Connection failed to ' . esc($serviceUrl) . ': ' . $errMsg;
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status'     => 'error',
+                'isOnline'   => false,
+                'message'    => $fullError,
+                'serviceUrl' => $serviceUrl,
+            ]);
+        }
+        return redirect()->to(site_url('admin/ai/settings'))->with('error', $fullError);
     }
 
     /**
@@ -153,14 +184,35 @@ class AiController extends BaseController
         } elseif ($action === 'evict') {
             $res = $this->llm->evictModel($modelKey);
         } else {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['status' => 'error', 'message' => 'Invalid model action.']);
+            }
             return redirect()->to(site_url($targetUrl))->with('error', 'Invalid model action.');
         }
 
         if (!empty($res['success'])) {
-            return redirect()->to(site_url($targetUrl))->with('message', $res['data']['message'] ?? 'Model operation initiated successfully.');
+            $msg = $res['data']['message'] ?? 'Model operation initiated successfully.';
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'    => 'success',
+                    'action'    => $action,
+                    'model_key' => $modelKey,
+                    'message'   => $msg,
+                    'data'      => $res['data'] ?? [],
+                ]);
+            }
+            return redirect()->to(site_url($targetUrl))->with('message', $msg);
         }
 
         $msg = $res['error']['message'] ?? 'Model operation failed.';
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status'    => 'error',
+                'action'    => $action,
+                'model_key' => $modelKey,
+                'message'   => $msg,
+            ]);
+        }
         return redirect()->to(site_url($targetUrl))->with('error', $msg);
     }
 

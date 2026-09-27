@@ -40,7 +40,7 @@
     <div class="row">
         <!-- Left Column: Connection & Hardware Parameters -->
         <div class="col-lg-5">
-            <form method="post" action="<?= site_url('admin/ai/settings/update') ?>">
+            <form id="aiSettingsForm" method="post" action="<?= site_url('admin/ai/settings/update') ?>">
                 <?= csrf_field() ?>
 
                 <!-- 1. Connection Card -->
@@ -49,7 +49,7 @@
                         <h5 class="card-title my-0">
                             <i class="uil-plug me-1 text-primary"></i> Microservice Connection
                         </h5>
-                        <div>
+                        <div id="connectionStatusBadge">
                             <?php if ($isOnline): ?>
                                 <span class="badge bg-success-lighten text-success"><i class="mdi mdi-check-circle me-1"></i>Connected</span>
                             <?php else: ?>
@@ -60,7 +60,7 @@
                     <div class="card-body">
                         <div class="mb-3">
                             <label class="form-label fw-bold font-13">Microservice URL & Port</label>
-                            <input type="text" name="service_url" class="form-control" value="<?= esc($serviceUrl) ?>" placeholder="e.g. http://ml-chege-jira:8000" required>
+                            <input type="text" name="service_url" id="service_url" class="form-control" value="<?= esc($serviceUrl) ?>" placeholder="e.g. http://ml-chege-jira:8000" required>
                             <div class="form-text font-12">
                                 GCP VPC / Internal DNS: <code>http://ml-chege-jira:8000</code><br>
                                 Local Docker Compose: <code>http://ml-chege-jira:8000</code>
@@ -79,7 +79,7 @@
                         </div>
 
                         <div class="d-flex justify-content-end">
-                            <button type="submit" formaction="<?= site_url('admin/ai/test-connection') ?>" class="btn btn-sm btn-outline-secondary">
+                            <button type="button" id="btnTestConnection" class="btn btn-sm btn-outline-secondary">
                                 <i class="mdi mdi-connection me-1"></i> Test Connection
                             </button>
                         </div>
@@ -225,53 +225,24 @@
                                         <?php endif; ?>
                                     </div>
 
-                                    <div class="action-btn-group">
+                                    <div class="action-btn-group" id="action-btn-group-<?= esc($mKey) ?>">
                                         <?php if (!$isDownloaded): ?>
-                                            <!-- Download Form -->
-                                            <form method="post" action="<?= site_url('admin/ai/cache-action') ?>" class="d-inline">
-                                                <?= csrf_field() ?>
-                                                <input type="hidden" name="action" value="download">
-                                                <input type="hidden" name="model_key" value="<?= esc($mKey) ?>">
-                                                <input type="hidden" name="redirect" value="settings">
-                                                <button type="submit" class="btn btn-xs btn-primary shadow-sm" <?= $isDownloading ? 'disabled' : '' ?>>
-                                                    <i class="mdi mdi-download me-1"></i> Download GGUF (<?= esc($m['approx_size_gb'] ?? '') ?> GB)
-                                                </button>
-                                            </form>
+                                            <button type="button" class="btn btn-xs btn-primary shadow-sm" onclick="triggerModelAction('download', '<?= esc($mKey) ?>', '<?= esc($m['approx_size_gb'] ?? '') ?> GB')" <?= $isDownloading ? 'disabled' : '' ?>>
+                                                <i class="mdi mdi-download me-1"></i> Download GGUF (<?= esc($m['approx_size_gb'] ?? '') ?> GB)
+                                            </button>
                                         <?php else: ?>
                                             <div class="btn-group btn-group-sm">
                                                 <?php if (!$isLoaded): ?>
-                                                    <!-- Preload into RAM -->
-                                                    <form method="post" action="<?= site_url('admin/ai/cache-action') ?>" class="d-inline">
-                                                        <?= csrf_field() ?>
-                                                        <input type="hidden" name="action" value="preload">
-                                                        <input type="hidden" name="model_key" value="<?= esc($mKey) ?>">
-                                                        <input type="hidden" name="redirect" value="settings">
-                                                        <button type="submit" class="btn btn-xs btn-outline-success">
-                                                            <i class="mdi mdi-lightning-bolt me-1"></i> Pre-load to RAM
-                                                        </button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-xs btn-outline-success" onclick="triggerModelAction('preload', '<?= esc($mKey) ?>')">
+                                                        <i class="mdi mdi-lightning-bolt me-1"></i> Pre-load to RAM
+                                                    </button>
                                                 <?php else: ?>
-                                                    <!-- Reload in RAM -->
-                                                    <form method="post" action="<?= site_url('admin/ai/cache-action') ?>" class="d-inline">
-                                                        <?= csrf_field() ?>
-                                                        <input type="hidden" name="action" value="reload">
-                                                        <input type="hidden" name="model_key" value="<?= esc($mKey) ?>">
-                                                        <input type="hidden" name="redirect" value="settings">
-                                                        <button type="submit" class="btn btn-xs btn-outline-warning">
-                                                            <i class="mdi mdi-reload me-1"></i> Reload
-                                                        </button>
-                                                    </form>
-
-                                                    <!-- Evict from RAM -->
-                                                    <form method="post" action="<?= site_url('admin/ai/cache-action') ?>" class="d-inline ms-1">
-                                                        <?= csrf_field() ?>
-                                                        <input type="hidden" name="action" value="evict">
-                                                        <input type="hidden" name="model_key" value="<?= esc($mKey) ?>">
-                                                        <input type="hidden" name="redirect" value="settings">
-                                                        <button type="submit" class="btn btn-xs btn-outline-danger">
-                                                            <i class="mdi mdi-eject me-1"></i> Evict
-                                                        </button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-xs btn-outline-warning" onclick="triggerModelAction('reload', '<?= esc($mKey) ?>')">
+                                                        <i class="mdi mdi-reload me-1"></i> Reload
+                                                    </button>
+                                                    <button type="button" class="btn btn-xs btn-outline-danger ms-1" onclick="triggerModelAction('evict', '<?= esc($mKey) ?>')">
+                                                        <i class="mdi mdi-eject me-1"></i> Evict
+                                                    </button>
                                                 <?php endif; ?>
                                             </div>
                                         <?php endif; ?>
@@ -289,8 +260,126 @@
 <script>
 let pollingInterval = null;
 
+function triggerModelAction(action, modelKey, meta = '') {
+    let confirmTitle = 'Confirm Action';
+    let confirmText = `Are you sure you want to perform "${action}" on ${modelKey}?`;
+    let confirmBtn = 'Yes, Proceed';
+    let confirmColor = '#3b82f6';
+
+    if (action === 'download') {
+        confirmTitle = 'Download Model Weights?';
+        confirmText = `Download ${modelKey} (${meta}) to the container storage? This will run in the background.`;
+        confirmBtn = 'Download Now';
+    } else if (action === 'preload') {
+        confirmTitle = 'Pre-load Model to RAM?';
+        confirmText = `Load ${modelKey} into memory for instant inference responses?`;
+        confirmBtn = 'Pre-load';
+        confirmColor = '#10b981';
+    } else if (action === 'reload') {
+        confirmTitle = 'Reload Model in RAM?';
+        confirmText = `Restart and refresh the active memory cache for ${modelKey}?`;
+        confirmBtn = 'Reload';
+        confirmColor = '#f59e0b';
+    } else if (action === 'evict') {
+        confirmTitle = 'Evict Model from RAM?';
+        confirmText = `Free system memory by unloading ${modelKey} from RAM?`;
+        confirmBtn = 'Evict';
+        confirmColor = '#ef4444';
+    }
+
+    Swal.fire({
+        title: confirmTitle,
+        text: confirmText,
+        icon: action === 'evict' ? 'warning' : 'question',
+        showCancelButton: true,
+        confirmButtonText: confirmBtn,
+        confirmButtonColor: confirmColor,
+        cancelButtonText: 'Cancel'
+    }).then(result => {
+        if (!result.isConfirmed) return;
+
+        if (action === 'download') {
+            const progressBox = document.getElementById('progress-box-' + modelKey);
+            const progressBar = document.getElementById('progress-bar-' + modelKey);
+            const progressText = document.getElementById('progress-text-' + modelKey);
+            const statusBadge = document.getElementById('status-badge-' + modelKey);
+
+            if (progressBox) progressBox.classList.remove('d-none');
+            if (progressBar) progressBar.style.width = '3%';
+            if (progressText) progressText.innerText = 'Starting...';
+            if (statusBadge) statusBadge.innerHTML = '<span class="badge bg-warning text-dark"><i class="mdi mdi-cloud-download me-1"></i>Downloading (Starting...)</span>';
+        } else {
+            Swal.fire({
+                title: 'Executing Action...',
+                text: `Applying ${action} to ${modelKey}`,
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+        }
+
+        const formData = new FormData();
+        formData.append('action', action);
+        formData.append('model_key', modelKey);
+        formData.append('redirect', 'settings');
+        if (window.csrfToken) formData.append(window.csrfToken, window.csrfHash);
+
+        fetch('<?= site_url('admin/ai/cache-action') ?>', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.status === 'success') {
+                if (action === 'download') {
+                    if (typeof notifySuccess === 'function') {
+                        notifySuccess(res.message);
+                    }
+                    if (!pollingInterval) {
+                        pollingInterval = setInterval(pollModelStatus, 2500);
+                    }
+                } else if (action === 'preload' || action === 'reload') {
+                    Swal.fire({ icon: 'success', title: 'Loaded in RAM', text: res.message, timer: 2000, showConfirmButton: false });
+                    const badge = document.getElementById('status-badge-' + modelKey);
+                    if (badge) badge.innerHTML = '<span class="badge bg-success"><i class="mdi mdi-memory me-1"></i>In RAM</span>';
+                    const btnGroup = document.getElementById('action-btn-group-' + modelKey);
+                    if (btnGroup) {
+                        btnGroup.innerHTML = `
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-xs btn-outline-warning" onclick="triggerModelAction('reload', '${modelKey}')">
+                                    <i class="mdi mdi-reload me-1"></i> Reload
+                                </button>
+                                <button type="button" class="btn btn-xs btn-outline-danger ms-1" onclick="triggerModelAction('evict', '${modelKey}')">
+                                    <i class="mdi mdi-eject me-1"></i> Evict
+                                </button>
+                            </div>
+                        `;
+                    }
+                } else if (action === 'evict') {
+                    Swal.fire({ icon: 'success', title: 'Evicted from RAM', text: res.message, timer: 2000, showConfirmButton: false });
+                    const badge = document.getElementById('status-badge-' + modelKey);
+                    if (badge) badge.innerHTML = '<span class="badge bg-success-lighten text-success"><i class="mdi mdi-check-circle-outline me-1"></i>Ready on Disk</span>';
+                    const btnGroup = document.getElementById('action-btn-group-' + modelKey);
+                    if (btnGroup) {
+                        btnGroup.innerHTML = `
+                            <button type="button" class="btn btn-xs btn-outline-success" onclick="triggerModelAction('preload', '${modelKey}')">
+                                <i class="mdi mdi-lightning-bolt me-1"></i> Pre-load to RAM
+                            </button>
+                        `;
+                    }
+                }
+            } else {
+                Swal.fire({ icon: 'error', title: 'Action Failed', text: res.message || 'Operation could not be completed' });
+            }
+        })
+        .catch(err => {
+            Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+        });
+    });
+}
+
 function pollModelStatus(manual = false) {
-    fetch('<?= site_url('admin/ai/models-json') ?>')
+    fetch('<?= site_url('admin/ai/models-json') ?>', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(res => res.json())
         .then(data => {
             if (!data || !data.models) return;
@@ -302,6 +391,7 @@ function pollModelStatus(manual = false) {
                 const progressBar = document.getElementById('progress-bar-' + key);
                 const progressText = document.getElementById('progress-text-' + key);
                 const statusBadge = document.getElementById('status-badge-' + key);
+                const btnGroup = document.getElementById('action-btn-group-' + key);
 
                 if (model.download_status === 'downloading') {
                     hasActiveDownloads = true;
@@ -311,6 +401,21 @@ function pollModelStatus(manual = false) {
                     if (statusBadge) statusBadge.innerHTML = '<span class="badge bg-warning text-dark"><i class="mdi mdi-cloud-download me-1"></i>Downloading (' + (model.download_progress_pct || 0) + '%)</span>';
                 } else if (model.download_status === 'completed' || model.exists_on_disk) {
                     if (progressBox) progressBox.classList.add('d-none');
+                    if (statusBadge) {
+                        if (model.loaded_in_ram) {
+                            statusBadge.innerHTML = '<span class="badge bg-success"><i class="mdi mdi-memory me-1"></i>In RAM (' + (model.ram_mb || 0) + ' MB)</span>';
+                        } else {
+                            statusBadge.innerHTML = '<span class="badge bg-success-lighten text-success"><i class="mdi mdi-check-circle-outline me-1"></i>Ready on Disk</span>';
+                        }
+                    }
+                    if (btnGroup && btnGroup.querySelector('.btn-primary')) {
+                        // Switch from download button to preload button dynamically
+                        btnGroup.innerHTML = `
+                            <button type="button" class="btn btn-xs btn-outline-success" onclick="triggerModelAction('preload', '${key}')">
+                                <i class="mdi mdi-lightning-bolt me-1"></i> Pre-load to RAM
+                            </button>
+                        `;
+                    }
                 }
             });
 
@@ -319,15 +424,109 @@ function pollModelStatus(manual = false) {
             } else if (!hasActiveDownloads && pollingInterval && !manual) {
                 clearInterval(pollingInterval);
                 pollingInterval = null;
-                // Reload to refresh action buttons once download completes
-                window.location.reload();
+                if (typeof notifySuccess === 'function') {
+                    notifySuccess('Model download completed!');
+                }
             }
         })
         .catch(err => console.error('Model poll error:', err));
 }
 
-// Start polling on load if any download is active
+// Intercept Test Connection & Settings Form on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
+    // 1. Test Connection Interception
+    const btnTest = document.getElementById('btnTestConnection');
+    if (btnTest) {
+        btnTest.addEventListener('click', function() {
+            btnTest.disabled = true;
+            const serviceUrl = document.getElementById('service_url').value;
+            const apiKey = document.getElementById('api_key').value;
+
+            Swal.fire({
+                title: 'Testing Connection...',
+                text: `Checking reachability of ML microservice at ${serviceUrl || 'configured URL'}`,
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            const formData = new FormData();
+            formData.append('service_url', serviceUrl);
+            formData.append('api_key', apiKey);
+            if (window.csrfToken) formData.append(window.csrfToken, window.csrfHash);
+
+            fetch('<?= site_url('admin/ai/test-connection') ?>', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(res => {
+                btnTest.disabled = false;
+                const badge = document.getElementById('connectionStatusBadge');
+                if (res.status === 'success' || res.isOnline) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Connected!',
+                        text: res.message,
+                        confirmButtonText: 'Great'
+                    });
+                    if (badge) badge.innerHTML = '<span class="badge bg-success-lighten text-success"><i class="mdi mdi-check-circle me-1"></i>Connected</span>';
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Connection Failed',
+                        text: res.message,
+                        confirmButtonText: 'Understood'
+                    });
+                    if (badge) badge.innerHTML = '<span class="badge bg-danger-lighten text-danger"><i class="mdi mdi-alert-circle me-1"></i>Unreachable</span>';
+                }
+            })
+            .catch(err => {
+                btnTest.disabled = false;
+                Swal.fire({ icon: 'error', title: 'Network Request Failed', text: err.message });
+            });
+        });
+    }
+
+    // 2. AI Settings Form Interception
+    const formSettings = document.getElementById('aiSettingsForm');
+    if (formSettings) {
+        formSettings.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btnSubmit = formSettings.querySelector('button[type="submit"]');
+            if (btnSubmit) btnSubmit.disabled = true;
+
+            const fd = new FormData(formSettings);
+            fetch(formSettings.action, {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (btnSubmit) btnSubmit.disabled = false;
+                if (res.status === 'success') {
+                    if (typeof notifySuccess === 'function') {
+                        notifySuccess(res.message);
+                    } else {
+                        Swal.fire({ icon: 'success', title: 'Saved!', text: res.message, timer: 2500, showConfirmButton: false });
+                    }
+                } else {
+                    if (typeof notifyWarning === 'function') {
+                        notifyWarning(res.message);
+                    } else {
+                        Swal.fire({ icon: 'warning', title: 'Notice', text: res.message });
+                    }
+                }
+            })
+            .catch(err => {
+                if (btnSubmit) btnSubmit.disabled = false;
+                Swal.fire({ icon: 'error', title: 'Submission Error', text: err.message });
+            });
+        });
+    }
+
+    // 3. Poll on page load if any model download is in progress
     <?php 
         $hasDownloading = false;
         foreach ($models as $m) {

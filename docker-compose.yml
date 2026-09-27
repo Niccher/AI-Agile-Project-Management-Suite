@@ -82,6 +82,12 @@ services:
       - N_GPU_LAYERS=0
       - N_THREADS=4
       - N_CTX=4096
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     volumes:
       - ./services/ml/models:/app/models:rw
     depends_on:
@@ -90,7 +96,10 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - shared-network
+      shared-network:
+        aliases:
+          - ml-chege-jira
+          - ml-service
 
   # ==========================================
   # 4. Frontend & Core: CodeIgniter 4 WebApp

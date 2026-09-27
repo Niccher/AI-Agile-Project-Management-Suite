@@ -23,6 +23,9 @@ class WorkApprovalController extends BaseController
         $task = $taskModel->find($id);
         
         if (!$task) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['status' => 'error', 'message' => 'Task not found.']);
+            }
             return redirect()->back()->with('error', 'Task not found.');
         }
         
@@ -44,9 +47,15 @@ class WorkApprovalController extends BaseController
                 );
             }
             
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['status' => 'success', 'message' => 'Task approved successfully.', 'id' => $id]);
+            }
             return redirect()->back()->with('message', 'Task approved successfully.');
         }
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Failed to approve task.']);
+        }
         return redirect()->back()->with('error', 'Failed to approve task.');
     }
 
@@ -56,6 +65,9 @@ class WorkApprovalController extends BaseController
         $task = $taskModel->find($id);
         
         if (!$task) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['status' => 'error', 'message' => 'Task not found.']);
+            }
             return redirect()->back()->with('error', 'Task not found.');
         }
         
@@ -78,9 +90,15 @@ class WorkApprovalController extends BaseController
                 );
             }
             
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['status' => 'success', 'message' => 'Task rejected.', 'id' => $id]);
+            }
             return redirect()->back()->with('message', 'Task rejected.');
         }
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Failed to reject task.']);
+        }
         return redirect()->back()->with('error', 'Failed to reject task.');
     }
 }

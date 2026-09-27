@@ -645,7 +645,7 @@
                         <span><kbd class="bg-white text-dark border px-1">&gt;</kbd> commands</span>
                     </div>
                     <div class="d-none d-sm-block font-11">
-                        <strong>Chege Jira</strong> Spotlight
+                        <strong><?= esc(setting('App.siteName') ?? 'Chege Jira') ?></strong> Spotlight
                     </div>
                 </div>
             </div>

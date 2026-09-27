@@ -41,6 +41,15 @@ class SystemSettingsController extends BaseController
                 setting('App.defaultTimezone', $timezone);
             }
 
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'   => 'success',
+                    'tab'      => 'general',
+                    'siteName' => setting('App.siteName'),
+                    'siteDesc' => setting('App.siteDesc'),
+                    'message'  => 'General settings saved successfully.'
+                ]);
+            }
             return redirect()->to(site_url('admin/settings?tab=general'))->with('message', 'General settings saved successfully.');
         }
 
@@ -57,6 +66,13 @@ class SystemSettingsController extends BaseController
             setting('Auth.lockoutMinutes', max(1, $lockoutMinutes));
             setting('Auth.sessionTimeout', max(300, $sessionTimeout));
 
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'  => 'success',
+                    'tab'     => 'security',
+                    'message' => 'Security & Session preferences updated.'
+                ]);
+            }
             return redirect()->to(site_url('admin/settings?tab=security'))->with('message', 'Security & Session preferences updated.');
         }
 
@@ -87,6 +103,13 @@ class SystemSettingsController extends BaseController
             }
             setting('Email.SMTPCrypto', $smtpCrypto);
 
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'  => 'success',
+                    'tab'     => 'email',
+                    'message' => 'Email gateway configuration updated successfully.'
+                ]);
+            }
             return redirect()->to(site_url('admin/settings?tab=email'))->with('message', 'Email gateway configuration updated successfully.');
         }
 
@@ -99,6 +122,13 @@ class SystemSettingsController extends BaseController
             setting('Project.requireReview', $requireReview);
             setting('Project.maxAttachmentMb', max(1, $maxAttachmentMb));
 
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'  => 'success',
+                    'tab'     => 'project',
+                    'message' => 'Project & Workflow defaults saved.'
+                ]);
+            }
             return redirect()->to(site_url('admin/settings?tab=project'))->with('message', 'Project & Workflow defaults saved.');
         }
 
@@ -109,9 +139,22 @@ class SystemSettingsController extends BaseController
             setting('App.maintenanceMode', $maintenanceMode);
             setting('App.maintenanceNotice', $maintenanceNotice);
 
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'  => 'success',
+                    'tab'     => 'maintenance',
+                    'message' => 'Maintenance mode state updated.'
+                ]);
+            }
             return redirect()->to(site_url('admin/settings?tab=maintenance'))->with('message', 'Maintenance mode state updated.');
         }
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status'  => 'error',
+                'message' => 'Unknown settings tab submitted.'
+            ]);
+        }
         return redirect()->to(site_url('admin/settings'))->with('error', 'Unknown settings tab submitted.');
     }
 
@@ -119,6 +162,12 @@ class SystemSettingsController extends BaseController
     {
         $recipient = trim((string)$this->request->getPost('test_recipient'));
         if (empty($recipient) || !filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'  => 'error',
+                    'message' => 'Please provide a valid recipient email address.'
+                ]);
+            }
             return redirect()->to(site_url('admin/settings?tab=email'))->with('error', 'Please provide a valid recipient email address.');
         }
 
@@ -149,13 +198,25 @@ class SystemSettingsController extends BaseController
 
         try {
             if ($email->send(false)) {
-                return redirect()->to(site_url('admin/settings?tab=email'))->with('message', 'Test email successfully dispatched to ' . esc($recipient));
+                $msg = 'Test email successfully dispatched to ' . esc($recipient);
+                if ($this->request->isAJAX()) {
+                    return $this->response->setJSON(['status' => 'success', 'message' => $msg]);
+                }
+                return redirect()->to(site_url('admin/settings?tab=email'))->with('message', $msg);
             } else {
                 $debugger = $email->printDebugger(['headers', 'subject']);
-                return redirect()->to(site_url('admin/settings?tab=email'))->with('error', 'Failed to send test email. Server debug notice: ' . strip_tags($debugger));
+                $errMsg = 'Failed to send test email. Server debug notice: ' . strip_tags($debugger);
+                if ($this->request->isAJAX()) {
+                    return $this->response->setJSON(['status' => 'error', 'message' => $errMsg]);
+                }
+                return redirect()->to(site_url('admin/settings?tab=email'))->with('error', $errMsg);
             }
         } catch (\Throwable $e) {
-            return redirect()->to(site_url('admin/settings?tab=email'))->with('error', 'SMTP Connection Exception: ' . $e->getMessage());
+            $errMsg = 'SMTP Connection Exception: ' . $e->getMessage();
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['status' => 'error', 'message' => $errMsg]);
+            }
+            return redirect()->to(site_url('admin/settings?tab=email'))->with('error', $errMsg);
         }
     }
 
@@ -163,9 +224,23 @@ class SystemSettingsController extends BaseController
     {
         $res = DatabaseBackup::createBackup();
         if ($res['status'] === 'success') {
-            return redirect()->to(site_url('admin/settings?tab=maintenance'))->with('message', "Database backup created successfully: {$res['filename']} ({$res['filesize']})");
+            $msg = "Database backup created successfully: {$res['filename']} ({$res['filesize']})";
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'   => 'success',
+                    'message'  => $msg,
+                    'filename' => $res['filename'],
+                    'filesize' => $res['filesize'],
+                    'created'  => date('Y-m-d H:i:s'),
+                ]);
+            }
+            return redirect()->to(site_url('admin/settings?tab=maintenance'))->with('message', $msg);
         }
-        return redirect()->to(site_url('admin/settings?tab=maintenance'))->with('error', 'Failed to create backup: ' . ($res['message'] ?? 'Unknown error'));
+        $errMsg = 'Failed to create backup: ' . ($res['message'] ?? 'Unknown error');
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['status' => 'error', 'message' => $errMsg]);
+        }
+        return redirect()->to(site_url('admin/settings?tab=maintenance'))->with('error', $errMsg);
     }
 
     public function downloadBackup($filename)

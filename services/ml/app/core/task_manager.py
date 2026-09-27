@@ -13,8 +13,8 @@ class TaskManager:
             self.redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True, socket_timeout=0.5)
             self.redis_client.ping()
             self.use_redis = True
-        except (redis.ConnectionError, redis.TimeoutError):
-            pass # Use fallback_store
+        except Exception:
+            self.use_redis = False  # Use fallback_store
         
     def create_task(self, model_key: str | None = None) -> str:
         task_id = str(uuid.uuid4())

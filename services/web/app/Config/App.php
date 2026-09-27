@@ -19,6 +19,10 @@ class App extends BaseConfig
     //public string $baseURL = 'http://localhost:8080/';
     public string $baseURL = 'http://localhost:8080/';
     public string $siteName = 'Chege Jira';
+    public string $siteDesc = 'Agile Project Management Platform';
+    public string $brandName = 'Chege Jira';
+    public string $tagline = 'Velocity & AI-Assisted Sprints';
+    public string $supportEmail = 'support@chege.local';
 
     /**
      * Allowed Hostnames in the Site URL other than the hostname in the baseURL.

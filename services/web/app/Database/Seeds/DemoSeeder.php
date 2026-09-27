@@ -28,8 +28,8 @@ class DemoSeeder extends Seeder
             $users->save($user);
             $admin = $users->findById($users->getInsertID()) ?? $users->findByCredentials(['username' => 'admin']);
             if ($admin) {
-                $admin->addGroup('admin');
-                $admin->addGroup('superadmin');
+                try { $admin->addGroup('admin'); } catch (\Throwable $e) {}
+                try { $admin->addGroup('superadmin'); } catch (\Throwable $e) {}
             }
         } else {
             // Update password to match configured admin password
@@ -37,10 +37,10 @@ class DemoSeeder extends Seeder
             $admin->active = 1;
             $users->save($admin);
             if (!$admin->inGroup('admin')) {
-                $admin->addGroup('admin');
+                try { $admin->addGroup('admin'); } catch (\Throwable $e) {}
             }
             if (!$admin->inGroup('superadmin')) {
-                $admin->addGroup('superadmin');
+                try { $admin->addGroup('superadmin'); } catch (\Throwable $e) {}
             }
         }
 

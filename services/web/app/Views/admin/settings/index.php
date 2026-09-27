@@ -383,4 +383,173 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Intercept all Settings Update Tab Forms
+    document.querySelectorAll('form[action*="admin/settings/update"]').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = form.querySelector('button[type="submit"]');
+            if (btn) btn.disabled = true;
+
+            const fd = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (btn) btn.disabled = false;
+                if (res.status === 'success') {
+                    if (typeof notifySuccess === 'function') {
+                        notifySuccess(res.message);
+                    } else {
+                        Swal.fire({ icon: 'success', title: 'Saved', text: res.message, timer: 2000, showConfirmButton: false });
+                    }
+
+                    // Dynamically update site branding across DOM if general settings updated
+                    if (res.tab === 'general' && res.siteName) {
+                        document.title = `System Settings • ${res.siteName}`;
+                        document.querySelectorAll('.logo-lg span, .navbar-brand span, .brand-text').forEach(el => {
+                            el.textContent = res.siteName;
+                        });
+                    }
+                } else {
+                    if (typeof notifyWarning === 'function') {
+                        notifyWarning(res.message || 'Validation error');
+                    } else {
+                        Swal.fire({ icon: 'warning', title: 'Notice', text: res.message || 'Validation error' });
+                    }
+                }
+            })
+            .catch(err => {
+                if (btn) btn.disabled = false;
+                Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+            });
+        });
+    });
+
+    // 2. Intercept Send Test Email Form
+    const emailTestForm = document.querySelector('form[action*="send-test-email"]');
+    if (emailTestForm) {
+        emailTestForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = emailTestForm.querySelector('button[type="submit"]');
+            if (btn) btn.disabled = true;
+
+            const recipient = emailTestForm.querySelector('input[name="test_recipient"]').value;
+            Swal.fire({
+                title: 'Sending Test Email...',
+                text: `Attempting SMTP delivery to ${recipient}`,
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            const fd = new FormData(emailTestForm);
+            fetch(emailTestForm.action, {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (btn) btn.disabled = false;
+                if (res.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Dispatched Successfully!',
+                        text: res.message,
+                        confirmButtonText: 'Great'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'SMTP Error',
+                        text: res.message,
+                        confirmButtonText: 'Check Settings'
+                    });
+                }
+            })
+            .catch(err => {
+                if (btn) btn.disabled = false;
+                Swal.fire({ icon: 'error', title: 'Network Request Failed', text: err.message });
+            });
+        });
+    }
+
+    // 3. Intercept Create Database Backup Form
+    const backupForm = document.querySelector('form[action*="backup/create"]');
+    if (backupForm) {
+        backupForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = backupForm.querySelector('button[type="submit"]');
+            if (btn) btn.disabled = true;
+
+            Swal.fire({
+                title: 'Generating Database Backup...',
+                text: 'Dumping MySQL database tables and generating compressed SQL archive',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            const fd = new FormData(backupForm);
+            fetch(backupForm.action, {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (btn) btn.disabled = false;
+                if (res.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Backup Generated!',
+                        text: res.message,
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
+
+                    // Dynamically prepend new backup row into table
+                    const tbody = document.querySelector('table tbody');
+                    if (tbody) {
+                        const emptyRow = tbody.querySelector('td[colspan]');
+                        if (emptyRow) emptyRow.closest('tr').remove();
+
+                        const newRow = document.createElement('tr');
+                        const downloadUrl = '<?= site_url('admin/settings/backup/download/') ?>' + encodeURIComponent(res.filename);
+                        newRow.innerHTML = `
+                            <td class="ps-3">
+                                <i class="mdi mdi-file-document-outline text-primary me-1"></i>
+                                <code>${res.filename}</code>
+                            </td>
+                            <td><span class="badge bg-light text-secondary">${res.filesize}</span></td>
+                            <td>${res.created || 'Just now'}</td>
+                            <td class="text-end pe-3">
+                                <a href="${downloadUrl}" class="btn btn-xs btn-outline-primary py-1 px-2">
+                                    <i class="mdi mdi-download me-1"></i> Download
+                                </a>
+                            </td>
+                        `;
+                        tbody.prepend(newRow);
+                    }
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Backup Failed',
+                        text: res.message,
+                        confirmButtonText: 'Close'
+                    });
+                }
+            })
+            .catch(err => {
+                if (btn) btn.disabled = false;
+                Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+            });
+        });
+    }
+});
+</script>
 <?= $this->endSection() ?>
