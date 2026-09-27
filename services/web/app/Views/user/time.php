@@ -188,10 +188,9 @@
                                 <th>Task Description</th>
                                 <th>Duration</th>
                             </tr>
-                        </thead>
-                        <tbody>
+                        <tbody id="timeLogsTableBody">
                         <?php if (empty($time_logs)): ?>
-                            <tr>
+                            <tr id="emptyLogsRow">
                                 <td colspan="4" class="text-center py-4 text-muted">
                                     <i class="mdi mdi-timer-off-outline font-24 d-block mb-1"></i>
                                     No time entries recorded yet.
@@ -360,12 +359,11 @@ $(document).ready(function() {
             return;
         }
 
-        $.post('<?= site_url('time/start') ?>', {
-            <?= csrf_token() ?>: '<?= csrf_hash() ?>',
+        dispatchAsyncAction('<?= site_url('time/start') ?>', {
             project_id: project,
             task_name: task
-        }, function(response) {
-            if (response.status === 'success') {
+        }).then(function(response) {
+            if (response && response.status === 'success') {
                 currentLogId = response.id;
                 startTimestamp = Date.now();
                 
@@ -375,34 +373,107 @@ $(document).ready(function() {
 
                 showActiveTimerUI(task, 0);
                 startTimerInterval(0);
-                showToast(`Started tracking time for: ${task}`, 'success');
             }
         });
     });
 
-    // Stop timer
-    $('#stopTimerBtn').on('click', function() {
+    // Stop timer with zero-reload
+    $('#stopTimerBtn').on('click', async function() {
         if (!currentLogId) return;
 
-        $.post('<?= site_url('time/stop') ?>/' + currentLogId, {
-            <?= csrf_token() ?>: '<?= csrf_hash() ?>'
-        }, function(response) {
-            if (response.status === 'success') {
-                clearInterval(timerInterval);
-                localStorage.removeItem('active_timer_log_id');
-                localStorage.removeItem('active_timer_start');
-                localStorage.removeItem('active_timer_task');
-                
-                showToast(`Time logged successfully!`, 'success');
-                setTimeout(() => window.location.reload(), 1200);
-            }
-        });
+        const res = await dispatchAsyncAction('<?= site_url('time/stop') ?>/' + currentLogId);
+        if (res && res.status === 'success') {
+            clearInterval(timerInterval);
+            const task = localStorage.getItem('active_timer_task') || 'Work session';
+            const durationSec = res.duration || Math.floor((Date.now() - parseInt(startTimestamp || Date.now())) / 1000);
+            const durationHrs = (durationSec / 3600).toFixed(2);
+
+            localStorage.removeItem('active_timer_log_id');
+            localStorage.removeItem('active_timer_start');
+            localStorage.removeItem('active_timer_task');
+
+            $('#activeTimerSection').hide();
+            $('#quickStartSection').show();
+
+            $('#emptyLogsRow').remove();
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+            const newRow = `
+                <tr>
+                    <td class="font-13">
+                        <span class="fw-semibold text-body">${dateStr}</span><br>
+                        <span class="text-muted font-12">${timeStr}</span>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-xs rounded-circle me-2 d-flex align-items-center justify-content-center text-white font-10" style="width: 24px; height: 24px; background-color: #3e60d5;">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <span class="fw-semibold font-13 text-body">Current Project</span>
+                        </div>
+                    </td>
+                    <td class="font-13 text-body">${$('<div>').text(task).html()}</td>
+                    <td>
+                        <span class="badge bg-success-lighten text-success font-13">${durationHrs} hrs</span>
+                    </td>
+                </tr>`;
+            $('#timeLogsTableBody').prepend(newRow);
+        }
     });
 
     // Manual entry modal
     $('#manualEntryBtn').on('click', function() {
         const modal = new bootstrap.Modal(document.getElementById('manualEntryModal'));
         modal.show();
+    });
+
+    $('#manualEntryForm').on('submit', async function(e) {
+        e.preventDefault();
+        const form = this;
+        const btn = $('#saveEntryBtn');
+        btn.prop('disabled', true).html('<i class="mdi mdi-spin mdi-loading me-1"></i> Saving...');
+
+        const formData = new FormData(form);
+        const projectName = $('#entryProject option:selected').text().trim() || 'General';
+        const taskName = formData.get('task_name') || '';
+        const duration = parseFloat(formData.get('duration') || 1.0).toFixed(2);
+        const dateVal = formData.get('date') || '';
+
+        const res = await dispatchAsyncAction(form.action, formData);
+        btn.prop('disabled', false).text('Save Log');
+
+        if (res && (res.success || res.status === 'success')) {
+            const modalEl = document.getElementById('manualEntryModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+            form.reset();
+
+            $('#emptyLogsRow').remove();
+            const newRow = `
+                <tr>
+                    <td class="font-13">
+                        <span class="fw-semibold text-body">${dateVal || 'Today'}</span><br>
+                        <span class="text-muted font-12">Logged</span>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-xs rounded-circle me-2 d-flex align-items-center justify-content-center text-white font-10" style="width: 24px; height: 24px; background-color: #3e60d5;">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <span class="fw-semibold font-13 text-body">${$('<div>').text(projectName).html()}</span>
+                        </div>
+                    </td>
+                    <td class="font-13 text-body">${$('<div>').text(taskName).html()}</td>
+                    <td>
+                        <span class="badge bg-success-lighten text-success font-13">${duration} hrs</span>
+                    </td>
+                </tr>`;
+            $('#timeLogsTableBody').prepend(newRow);
+        }
     });
 
     $('#saveEntryBtn').on('click', function() {

@@ -22,9 +22,33 @@ class TaskApiController extends BaseController
             'order_index' => 0,
         ];
 
-        $taskModel->insert($data);
+        $insertId = $taskModel->insert($data);
+        $newTask = $taskModel->find($insertId);
+
+        if ($this->request->isAJAX() || $this->request->header('Accept')?->getValue() === 'application/json' || str_contains($this->request->header('Content-Type')?->getValue() ?? '', 'json')) {
+            return $this->response->setJSON([
+                'success' => true,
+                'status'  => 'success',
+                'message' => 'Task added successfully.',
+                'task'    => $newTask,
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Task added successfully.');
+    }
+
+    public function delete($id = null)
+    {
+        $taskModel = new TaskModel();
+        $userId = auth()->id();
+
+        $task = $taskModel->where('user_id', $userId)->find($id);
+        if (!$task) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Task not found']);
+        }
+
+        $taskModel->delete($id);
+        return $this->response->setJSON(['status' => 'success', 'message' => 'Task deleted successfully.']);
     }
 
     public function update($id = null)

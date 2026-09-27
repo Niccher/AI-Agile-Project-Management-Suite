@@ -233,12 +233,12 @@ class TelemetryController extends BaseController
         ];
 
         // Attempt HTTP health ping to ML service if configured
-        $mlEndpoint = getenv('ML_SERVICE_URL') ?: 'http://127.0.0.1:8000';
-        $ctx = stream_context_create(['http' => ['timeout' => 0.8, 'ignore_errors' => true]]);
+        $mlEndpoint = env('ML_SERVICE_URL', getenv('ML_SERVICE_URL') ?: 'http://ml-chege-jira:8000');
+        $ctx = stream_context_create(['http' => ['timeout' => 1.5, 'ignore_errors' => true]]);
         $mlRes = @file_get_contents(rtrim($mlEndpoint, '/') . '/api/v1/health', false, $ctx);
         if ($mlRes) {
             $mlJson = json_decode($mlRes, true);
-            if (!empty($mlJson['status'])) {
+            if (!empty($mlJson['success']) || !empty($mlJson['status']) || !empty($mlJson['data']['status'])) {
                 $mlSpecs['connected'] = true;
                 $mlSpecs['version'] = $mlJson['version'] ?? 'v1.2.0';
             }

@@ -120,7 +120,7 @@
 <div class="modal fade" id="addTaskModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="<?= site_url('projects/task/store') ?>" method="POST">
+            <form id="createTaskForm" action="<?= site_url('projects/task/store') ?>" method="POST">
                 <?= csrf_field() ?>
                 <input type="hidden" name="project_id" value="<?= $project['id'] ?>">
                 <div class="modal-header bg-primary text-white">
@@ -262,6 +262,74 @@
             });
         }
 
+        // Create task form AJAX intercept
+        $('#createTaskForm').on('submit', async function(e) {
+            e.preventDefault();
+            const form = this;
+            const submitBtn = $(form).find('button[type="submit"], #createTaskBtn');
+            submitBtn.prop('disabled', true);
+
+            const formData = new FormData(form);
+            const status = formData.get('status') || 'todo';
+            const title = formData.get('title') || '';
+            const priority = formData.get('priority') || 'medium';
+            const description = formData.get('description') || '';
+
+            const res = await dispatchAsyncAction(form.action, formData);
+            submitBtn.prop('disabled', false);
+
+            if (res && (res.success || res.status === 'success')) {
+                const modalEl = document.getElementById('addTaskModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                }
+                form.reset();
+
+                const taskId = (res.task && res.task.id) ? res.task.id : Date.now();
+                const priorityBadge = priority === 'critical' ? 'bg-danger' : (priority === 'high' ? 'bg-warning' : 'bg-primary');
+                const newCardHtml = `
+                    <div class="kanban-card" data-task-id="${taskId}" data-description="${$('<div>').text(description).html()}" data-priority="${priority}" data-due-date="" draggable="true">
+                        <div class="kanban-card-header">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="task-title text-truncate" title="${$('<div>').text(title).html()}">
+                                    ${$('<div>').text(title).html()}
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item small edit-task-btn" href="#"><i class="fas fa-edit me-2"></i>Edit</a></li>
+                                        <li><a class="dropdown-item small text-danger" href="#"><i class="fas fa-trash me-2"></i>Delete</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="kanban-card-body">
+                            <p class="small text-truncate-2">${$('<div>').text(description).html()}</p>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <div class="task-meta">
+                                    <span class="badge ${priorityBadge}">${priority.charAt(0).toUpperCase() + priority.slice(1)}</span>
+                                </div>
+                                <div class="task-date small text-muted">
+                                    <i class="fas fa-calendar-alt me-1"></i> Today
+                                </div>
+                            </div>
+                        </div>
+                        <div class="kanban-card-footer">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="task-assignee">
+                                    <div class="user-avatar" title="Assignee">${title.substring(0, 2).toUpperCase()}</div>
+                                </div>
+                                <div class="task-comments"><i class="fas fa-comment"></i> 0</div>
+                            </div>
+                        </div>
+                    </div>`;
+
+                $(`#${status}-list`).prepend(newCardHtml);
+                updateColumnCounts();
+            }
+        });
+
         // Edit task modal trigger
         $(document).on('click', '.edit-task-btn', function(e) {
             e.preventDefault();
@@ -278,27 +346,72 @@
             }
         });
 
-        $('#saveTaskEditBtn').on('click', function() {
+        // Edit task save without page reload
+        $('#saveTaskEditBtn').on('click', async function() {
             const id = $('#editTaskId').val();
             const btn = $(this);
             btn.prop('disabled', true).html('<i class="mdi mdi-spin mdi-loading me-1"></i> Saving...');
 
-            $.post('<?= site_url('projects/task/update/') ?>' + id, {
-                <?= csrf_token() ?>: '<?= csrf_hash() ?>',
-                title: $('#editTaskTitle').val(),
-                description: $('#editTaskDescription').val(),
-                priority: $('#editTaskPriority').val(),
-                due_date: $('#editTaskDueDate').val()
-            }, function(res) {
-                if (res && res.status === 'success') {
-                    location.reload();
-                } else {
-                    alert(res.message || 'Error updating task');
-                    btn.prop('disabled', false).text('Save Changes');
+            const title = $('#editTaskTitle').val().trim();
+            const description = $('#editTaskDescription').val().trim();
+            const priority = $('#editTaskPriority').val();
+            const dueDate = $('#editTaskDueDate').val();
+
+            const res = await dispatchAsyncAction('<?= site_url('projects/task/update/') ?>' + id, {
+                title: title,
+                description: description,
+                priority: priority,
+                due_date: dueDate
+            });
+
+            btn.prop('disabled', false).text('Save Changes');
+
+            if (res && (res.success || res.status === 'success')) {
+                const card = $(`.kanban-card[data-task-id="${id}"]`);
+                if (card.length) {
+                    card.find('.task-title').text(title).attr('title', title);
+                    card.find('.kanban-card-body p').text(description);
+                    card.data('description', description);
+                    card.data('priority', priority);
+                    card.data('due-date', dueDate);
+
+                    const badge = card.find('.task-meta .badge');
+                    badge.removeClass('bg-danger bg-warning bg-primary')
+                        .addClass(priority === 'critical' ? 'bg-danger' : (priority === 'high' ? 'bg-warning' : 'bg-primary'))
+                        .text(priority.charAt(0).toUpperCase() + priority.slice(1));
                 }
-            }).fail(function() {
-                alert('Server communication error');
-                btn.prop('disabled', false).text('Save Changes');
+
+                const modalEl = document.getElementById('editTaskModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                }
+            }
+        });
+
+        // Delete task with SweetAlert2 confirmation
+        $(document).on('click', '.kanban-card .text-danger', function(e) {
+            e.preventDefault();
+            const card = $(this).closest('.kanban-card');
+            const taskId = card.data('task-id');
+            const taskTitle = card.find('.task-title').text().trim();
+
+            confirmAction({
+                title: 'Delete Task?',
+                text: `Are you sure you want to permanently delete "${taskTitle}"?`,
+                confirmButtonText: 'Yes, Delete',
+                confirmButtonColor: '#fa5c7c',
+                onConfirm: async () => {
+                    const res = await dispatchAsyncAction('<?= site_url('projects/task/delete/') ?>' + taskId);
+                    if (res && (res.success || res.status === 'success')) {
+                        card.fadeOut(250, function() {
+                            $(this).remove();
+                            updateColumnCounts();
+                        });
+                        return true;
+                    }
+                    return false;
+                }
             });
         });
     }

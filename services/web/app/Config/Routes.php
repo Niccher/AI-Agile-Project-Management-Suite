@@ -94,6 +94,7 @@ $routes->group('', ['filter' => 'session'], function($routes) {
     $routes->post('/projects/task/move', 'Api\TaskApiController::move');
     $routes->post('/projects/task/store', 'Api\TaskApiController::store');
     $routes->post('/projects/task/update/(:num)', 'Api\TaskApiController::update/$1');
+    $routes->post('/projects/task/delete/(:num)', 'Api\TaskApiController::delete/$1');
     
     // Analytics & Settings
     $routes->get('/analytics', 'User\AnalyticsController::index');
@@ -118,6 +119,7 @@ $routes->group('api', ['filter' => 'session'], function($routes) {
     $routes->post('tasks/move', 'Api\TaskApiController::move');
     $routes->post('tasks/store', 'Api\TaskApiController::store');
     $routes->post('tasks/(:num)/update', 'Api\TaskApiController::update/$1');
+    $routes->post('tasks/(:num)/delete', 'Api\TaskApiController::delete/$1');
     
     // Notes
     $routes->post('notes/(:num)/star', 'Api\NoteApiController::toggleStar/$1');

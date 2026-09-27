@@ -136,7 +136,7 @@ class TimeTrackerController extends BaseUserController
         $startTime = $date . ' ' . date('H:i:s');
         $durationSeconds = max(60, (int)round($durationHours * 3600));
 
-        $timeModel->insert([
+        $insertId = $timeModel->insert([
             'user_id'    => $this->userId,
             'project_id' => $projectId ? (int)$projectId : null,
             'task_name'  => $taskName,
@@ -145,6 +145,17 @@ class TimeTrackerController extends BaseUserController
             'duration'   => $durationSeconds,
             'notes'      => $notes
         ]);
+
+        if ($this->request->isAJAX() || $this->request->header('Accept')?->getValue() === 'application/json' || str_contains($this->request->header('Content-Type')?->getValue() ?? '', 'json')) {
+            $newLog = $timeModel->find($insertId);
+            return $this->response->setJSON([
+                'success'  => true,
+                'status'   => 'success',
+                'message'  => 'Time log recorded successfully (' . $durationHours . ' hrs).',
+                'log'      => $newLog,
+                'duration' => $durationHours,
+            ]);
+        }
 
         $redirectUrl = site_url('time');
         if ($projectId) {

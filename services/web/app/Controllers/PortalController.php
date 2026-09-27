@@ -108,6 +108,18 @@ class PortalController extends BaseController
         $token = $this->portalTokenModel->generateToken($projectId, $userId, $label, $expiresAt);
         $portalUrl = site_url('portal/' . $token);
 
+        if ($this->request->isAJAX() || $this->request->header('Accept')?->getValue() === 'application/json') {
+            return $this->response->setJSON([
+                'success'    => true,
+                'status'     => 'success',
+                'message'    => 'Client Portal link created: ' . $portalUrl,
+                'token'      => $token,
+                'portal_url' => $portalUrl,
+                'label'      => $label,
+                'expires_at' => $expiresAt
+            ]);
+        }
+
         return redirect()->back()->with('message', 'Client Portal link created: ' . $portalUrl);
     }
 
@@ -122,6 +134,16 @@ class PortalController extends BaseController
         }
 
         $this->portalTokenModel->revokeToken($tokenId);
+
+        if ($this->request->isAJAX() || $this->request->header('Accept')?->getValue() === 'application/json') {
+            return $this->response->setJSON([
+                'success'  => true,
+                'status'   => 'success',
+                'message'  => 'Portal link revoked successfully.',
+                'token_id' => $tokenId
+            ]);
+        }
+
         return redirect()->back()->with('message', 'Portal link revoked successfully.');
     }
 }

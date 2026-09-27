@@ -262,7 +262,7 @@ $sprintProjectSlug = !empty($project['slug']) ? $project['slug'] : $project['id'
                         <div class="mt-1 mt-md-0">
                             <form action="<?= site_url('projects/sprints/start/' . $ps['id']) ?>" method="POST" class="d-inline">
                                 <?= csrf_field() ?>
-                                <button type="submit" class="btn btn-primary btn-sm rounded-pill">
+                                <button type="button" class="btn btn-primary btn-sm rounded-pill start-sprint-btn">
                                     <i class="mdi mdi-play me-1"></i> Start Sprint
                                 </button>
                             </form>
@@ -639,5 +639,57 @@ $sprintProjectSlug = !empty($project['slug']) ? $project['slug'] : $project['id'
         burndownChart = new ApexCharts(document.getElementById('burndown-apex-chart'), options);
         burndownChart.render();
     }
+
+    // Zero-Reload Sprint Lifecycle UX Handlers
+    $(document).on('click', '.start-sprint-btn', function(e) {
+        e.preventDefault();
+        const form = $(this).closest('form');
+        confirmAction({
+            title: 'Start Sprint?',
+            text: 'Are you ready to activate this sprint and begin tracking velocity?',
+            confirmButtonText: 'Yes, Start Sprint',
+            confirmButtonColor: '#727cf5',
+            onConfirm: async () => {
+                const res = await dispatchAsyncAction(form.attr('action'), new FormData(form[0]));
+                if (res && (res.success || res.status === 'success')) {
+                    setTimeout(() => window.location.reload(), 600);
+                    return true;
+                }
+                return false;
+            }
+        });
+    });
+
+    $('#createSprintModal form').on('submit', async function(e) {
+        e.preventDefault();
+        const form = this;
+        const res = await dispatchAsyncAction(form.action, new FormData(form));
+        if (res && (res.success || res.status === 'success')) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('createSprintModal'));
+            if (modal) modal.hide();
+            setTimeout(() => window.location.reload(), 600);
+        }
+    });
+
+    $('#completeSprintModal form').on('submit', function(e) {
+        e.preventDefault();
+        const form = this;
+        confirmAction({
+            title: 'Complete Sprint?',
+            text: 'Are you sure you want to finish this sprint? Unfinished tasks will be returned to the backlog.',
+            confirmButtonText: 'Yes, Complete Sprint',
+            confirmButtonColor: '#0acf97',
+            onConfirm: async () => {
+                const res = await dispatchAsyncAction(form.action, new FormData(form));
+                if (res && (res.success || res.status === 'success')) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('completeSprintModal'));
+                    if (modal) modal.hide();
+                    setTimeout(() => window.location.reload(), 600);
+                    return true;
+                }
+                return false;
+            }
+        });
+    });
 </script>
 <?= $this->endSection() ?>

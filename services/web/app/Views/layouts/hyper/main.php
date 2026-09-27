@@ -33,6 +33,10 @@
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#727cf5">
 
+    <!-- CSRF Token Meta for Asynchronous Requests -->
+    <meta name="csrf-token" content="<?= csrf_hash() ?>">
+    <meta name="csrf-header" content="<?= csrf_header() ?>">
+
     <!-- Open Graph / Facebook / LinkedIn -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="<?= current_url() ?>">
@@ -651,6 +655,10 @@
     <!-- bundle -->
     <script src="<?= base_url('assets/hyper/js/vendor.min.js') ?>"></script>
     <script src="<?= base_url('assets/hyper/js/app.min.js') ?>"></script>
+
+    <!-- SweetAlert2 & Zero-Reload Async UX Engine -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="<?= base_url('assets/hyper/js/async-actions.js') ?>"></script>
     
     <script>
         (function() {

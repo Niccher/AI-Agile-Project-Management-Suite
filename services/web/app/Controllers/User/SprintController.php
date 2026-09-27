@@ -121,6 +121,14 @@ class SprintController extends BaseUserController
             'completed_points' => 0,
         ]);
 
+        if ($this->request->isAJAX() || $this->request->header('Accept')?->getValue() === 'application/json') {
+            return $this->response->setJSON([
+                'success' => true,
+                'status'  => 'success',
+                'message' => 'New Sprint created in planning mode.',
+            ]);
+        }
+
         return redirect()->back()->with('success', 'New Sprint created in planning mode.');
     }
 
@@ -132,12 +140,18 @@ class SprintController extends BaseUserController
     {
         $sprint = $this->sprintModel->find($sprintId);
         if (!$sprint) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'status' => 'error', 'message' => 'Sprint not found.']);
+            }
             return redirect()->back()->with('error', 'Sprint not found.');
         }
 
         // Check if there is already an active sprint for this project
         $existingActive = $this->sprintModel->getActiveSprint($sprint['project_id']);
         if ($existingActive && $existingActive['id'] != $sprintId) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'status' => 'error', 'message' => 'There is already an active sprint (' . esc($existingActive['name']) . '). Complete it before starting a new one.']);
+            }
             return redirect()->back()->with('error', 'There is already an active sprint (' . esc($existingActive['name']) . '). Complete it before starting a new one.');
         }
 
@@ -173,6 +187,14 @@ class SprintController extends BaseUserController
             'Sprint "' . esc($sprint['name']) . '" is now active with ' . $pts['total_points'] . ' story points.',
             'projects/sprints/' . ($project['slug'] ?? $sprint['project_id'])
         );
+
+        if ($this->request->isAJAX() || $this->request->header('Accept')?->getValue() === 'application/json') {
+            return $this->response->setJSON([
+                'success' => true,
+                'status'  => 'success',
+                'message' => 'Sprint "' . esc($sprint['name']) . '" has officially started!',
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Sprint "' . esc($sprint['name']) . '" has officially started!');
     }
@@ -212,6 +234,14 @@ class SprintController extends BaseUserController
            ->where('sprint_id', $sprintId)
            ->whereNotIn('status', ['done', 'approved'])
            ->update(['sprint_id' => null]);
+
+        if ($this->request->isAJAX() || $this->request->header('Accept')?->getValue() === 'application/json') {
+            return $this->response->setJSON([
+                'success' => true,
+                'status'  => 'success',
+                'message' => 'Sprint "' . esc($sprint['name']) . '" closed! Completed points: ' . $pts['completed_points'] . '/' . $pts['total_points'] . '.',
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Sprint "' . esc($sprint['name']) . '" closed! Completed points: ' . $pts['completed_points'] . '/' . $pts['total_points'] . '. Remaining tasks moved to Backlog.');
     }

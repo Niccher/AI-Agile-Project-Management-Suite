@@ -421,16 +421,66 @@ $(document).ready(function() {
         modal.show();
     });
 
-    $('#createTaskBtn').on('click', function() {
+    $('#createTaskBtn').on('click', async function() {
         const taskTitle = $('#taskTitle').val().trim();
         if (!taskTitle) {
-            showToast('Please enter a task title', 'danger');
+            Toast.fire({ icon: 'warning', title: 'Please enter a task title' });
             return;
         }
 
-        showToast(`Task "${taskTitle}" created successfully!`, 'success');
-        $('#newTaskForm')[0].reset();
-        bootstrap.Modal.getInstance(document.getElementById('newTaskModal')).hide();
+        const taskDescription = $('#taskDescription').val().trim();
+        const taskColumn = $('#taskColumn').val() || 'planning';
+        const taskPriority = $('#taskPriority').val() || 'medium';
+        const taskDueDate = $('#taskDueDate').val() || '';
+
+        const btn = $(this);
+        btn.prop('disabled', true).html('<i class="mdi mdi-spin mdi-loading me-1"></i> Creating...');
+
+        const res = await dispatchAsyncAction('<?= site_url('tasks/store') ?>', {
+            title: taskTitle,
+            description: taskDescription,
+            status: taskColumn,
+            priority: taskPriority,
+            due_date: taskDueDate
+        });
+
+        btn.prop('disabled', false).text('Create Task');
+
+        if (res && (res.success || res.status === 'success')) {
+            const modalEl = document.getElementById('newTaskModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+            $('#newTaskForm')[0].reset();
+
+            const taskId = (res.task && res.task.id) ? res.task.id : Date.now();
+            const badgeClass = taskPriority === 'high' ? 'bg-danger' : (taskPriority === 'medium' ? 'bg-warning' : 'bg-info');
+            const newCardHtml = `
+                <div class="card kanban-card mb-2 shadow-none border" draggable="true" data-task-id="${taskId}">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="badge ${badgeClass}">${taskPriority.toUpperCase()}</span>
+                            <div class="dropdown">
+                                <a href="#" class="dropdown-toggle arrow-none text-muted" data-bs-toggle="dropdown"><i class="mdi mdi-dots-vertical font-18"></i></a>
+                                <div class="dropdown-menu dropdown-menu-end">
+                                    <a class="dropdown-item" href="javascript:void(0);"><i class="mdi mdi-pencil me-1"></i>Edit</a>
+                                    <a class="dropdown-item text-danger" href="javascript:void(0);"><i class="mdi mdi-delete me-1"></i>Delete</a>
+                                </div>
+                            </div>
+                        </div>
+                        <h6 class="task-title font-14 mb-1">${$('<div>').text(taskTitle).html()}</h6>
+                        <p class="text-muted font-12 mb-2 text-truncate-2">${$('<div>').text(taskDescription).html()}</p>
+                        <div class="d-flex justify-content-between align-items-center font-12 text-muted">
+                            <div><i class="mdi mdi-calendar me-1"></i>Today</div>
+                            <div class="avatar-group"><span class="avatar-xs rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" style="width:24px;height:24px;font-size:10px;">${taskTitle.substring(0, 2).toUpperCase()}</span></div>
+                        </div>
+                    </div>
+                </div>`;
+
+            $(`.kanban-column[data-column="${taskColumn}"] .kanban-column-body .mt-auto`).before(newCardHtml);
+            updateColumnCounts();
+        }
     });
 
     $('#taskSearch').on('keyup', function() {
@@ -474,7 +524,16 @@ $(document).ready(function() {
         if (draggedTask) {
             $(this).find('.mt-auto').before(draggedTask);
             const columnName = $(this).closest('.kanban-column').find('.card-header h6').text().trim();
-            showToast(`Task moved to ${columnName}`, 'info');
+            const columnStatus = $(this).closest('.kanban-column').data('column') || 'planning';
+            const taskId = draggedTask.data('task-id');
+
+            dispatchAsyncAction('<?= site_url('tasks/move') ?>', {
+                task_id: taskId,
+                status: columnStatus,
+                order: $(this).find('.kanban-card').index(draggedTask)
+            }, { silent: true });
+
+            Toast.fire({ icon: 'info', title: `Task moved to ${columnName}` });
             updateColumnCounts();
         }
     });
@@ -489,41 +548,32 @@ $(document).ready(function() {
     $(document).on('click', '.kanban-card .dropdown-item', function(e) {
         e.stopPropagation();
         const action = $(this).text().trim();
-        const taskTitle = $(this).closest('.kanban-card').find('.task-title').text();
+        const card = $(this).closest('.kanban-card');
+        const taskId = card.data('task-id');
+        const taskTitle = card.find('.task-title').text();
 
         if (action.includes('Edit')) {
-            showToast(`Editing task: ${taskTitle}`, 'warning');
+            Toast.fire({ icon: 'info', title: `Editing task: ${taskTitle}` });
         } else if (action.includes('Delete')) {
-            if (confirm(`Delete task "${taskTitle}"?`)) {
-                $(this).closest('.kanban-card').fadeOut(300, function() {
-                    $(this).remove();
-                    updateColumnCounts();
-                });
-                showToast(`Task "${taskTitle}" deleted`, 'danger');
-            }
+            confirmAction({
+                title: 'Delete Task?',
+                text: `Are you sure you want to delete "${taskTitle}"?`,
+                confirmButtonText: 'Yes, Delete',
+                confirmButtonColor: '#fa5c7c',
+                onConfirm: async () => {
+                    const res = await dispatchAsyncAction('<?= site_url('tasks/') ?>' + taskId + '/delete');
+                    if (res && (res.success || res.status === 'success')) {
+                        card.fadeOut(250, function() {
+                            $(this).remove();
+                            updateColumnCounts();
+                        });
+                        return true;
+                    }
+                    return false;
+                }
+            });
         }
     });
-
-    function showToast(message, type = 'info') {
-        const toastId = 'toast-' + Date.now();
-        const toastHtml = `
-            <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        ${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-            </div>
-        `;
-        $('.toast-container').append(toastHtml);
-        const toastEl = document.getElementById(toastId);
-        const toast = new bootstrap.Toast(toastEl);
-        toast.show();
-        $(toastEl).on('hidden.bs.toast', function() {
-            $(this).remove();
-        });
-    }
 
     updateColumnCounts();
 });

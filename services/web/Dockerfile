@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install pre-compiled PHP extensions (eliminates 10-minute ICU/gd source compilation)
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
-RUN install-php-extensions intl mysqli pdo_mysql zip gd
+RUN install-php-extensions intl mysqli pdo_mysql zip gd redis
 
 # Configure Nginx
 COPY nginx.conf /etc/nginx/sites-available/default

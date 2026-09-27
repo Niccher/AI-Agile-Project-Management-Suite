@@ -368,7 +368,7 @@ $projectSlug = !empty($project['slug']) ? $project['slug'] : $project['id'];
                                     <h6 class="font-13 fw-bold text-dark mb-2">
                                         <i class="mdi mdi-link-variant me-1 text-primary"></i> Create Client Status Link
                                     </h6>
-                                    <form method="POST" action="<?= site_url('projects/portal/generate') ?>" class="row g-2">
+                                    <form id="generatePortalForm" method="POST" action="<?= site_url('projects/portal/generate') ?>" class="row g-2">
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="project_id" value="<?= $project['id'] ?>">
                                         <div class="col-md-7 col-12">
@@ -423,9 +423,9 @@ $projectSlug = !empty($project['slug']) ? $project['slug'] : $project['id'];
                                                         <a href="<?= $link ?>" target="_blank" class="btn btn-outline-primary btn-sm" title="Open Client Portal">
                                                             <i class="mdi mdi-open-in-new"></i>
                                                         </a>
-                                                        <form method="POST" action="<?= site_url('projects/portal/revoke/' . $t['id']) ?>" onsubmit="return confirm('Revoke this client link?');" class="d-inline">
+                                                        <form method="POST" action="<?= site_url('projects/portal/revoke/' . $t['id']) ?>" class="d-inline revoke-portal-form">
                                                             <?= csrf_field() ?>
-                                                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Revoke access">
+                                                            <button type="button" class="btn btn-outline-danger btn-sm revoke-portal-btn" title="Revoke access">
                                                                 <i class="mdi mdi-link-off"></i>
                                                             </button>
                                                         </form>
@@ -634,6 +634,39 @@ $projectSlug = !empty($project['slug']) ? $project['slug'] : $project['id'];
                 tempInput.remove();
                 showToast('Client Portal link copied to clipboard!', 'success');
             }
+        });
+
+        // Asynchronous Client Portal Generation
+        $('#generatePortalForm').on('submit', async function(e) {
+            e.preventDefault();
+            const form = this;
+            const res = await dispatchAsyncAction(form.action, new FormData(form));
+            if (res && (res.success || res.status === 'success')) {
+                form.reset();
+                setTimeout(() => window.location.reload(), 600);
+            }
+        });
+
+        // Asynchronous Client Portal Link Revocation
+        $(document).on('click', '.revoke-portal-btn', function(e) {
+            e.preventDefault();
+            const form = $(this).closest('form');
+            const itemRow = $(this).closest('.p-2.mb-2');
+            confirmAction({
+                title: 'Revoke Client Link?',
+                text: 'Stakeholders using this link will immediately lose portal access.',
+                confirmButtonText: 'Yes, Revoke',
+                confirmButtonColor: '#fa5c7c',
+                onConfirm: async () => {
+                    const res = await dispatchAsyncAction(form.attr('action'), new FormData(form[0]));
+                    if (res && (res.success || res.status === 'success')) {
+                        itemRow.addClass('opacity-50');
+                        itemRow.find('.btn-group').html('<span class="badge bg-secondary-lighten text-secondary font-11">Revoked</span>');
+                        return true;
+                    }
+                    return false;
+                }
+            });
         });
 
         // Toast notification function

@@ -25,8 +25,16 @@ async def get_telemetry(
     system_metrics = get_system_telemetry()
     models_status = engine_manager.list_models_on_disk()
 
-    # Read current DB config
-    ai_conf = await get_ai_config(session)
+    # Read current DB config safely
+    try:
+        ai_conf = await get_ai_config(session)
+    except Exception:
+        ai_conf = {
+            "default_model": settings.DEFAULT_MODEL,
+            "n_gpu_layers": settings.N_GPU_LAYERS,
+            "n_threads": settings.N_THREADS,
+            "n_ctx": settings.N_CTX,
+        }
 
     # Check DB connectivity & table existence
     db_connected = False
