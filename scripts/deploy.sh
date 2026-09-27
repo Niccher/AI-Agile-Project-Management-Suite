@@ -274,13 +274,20 @@ $REDIS_HEALTHY || { echo ""; warn "Redis did not report healthy within timeout. 
 # ── 8. Run Database Migrations & Seeding ──────────────────────
 section "8. Running Database Migrations & Seeding"
 if $MYSQL_HEALTHY; then
-    docker compose exec -T chege-jira php spark migrate --all 2>&1 \
-        && log "Database migrations applied successfully" \
-        || warn "Migrations had notices or completed with warnings"
+    log "Running core application database migrations..."
+    docker compose exec -T chege-jira php spark migrate 2>&1 \
+        && log "Core database migrations applied successfully" \
+        || warn "Core migrations had notices or completed with warnings"
+
+    log "Running settings migrations..."
+    docker compose exec -T chege-jira php spark migrate -n CodeIgniter\\Settings 2>&1 \
+        && log "Settings migrations applied successfully" \
+        || warn "Settings migrations had notices or completed with warnings"
 
     log "Applying initial database seeders..."
-    docker compose exec -T chege-jira php spark db:seed DemoSeeder 2>&1 || true
-    log "Seeders executed successfully"
+    docker compose exec -T chege-jira php spark db:seed DemoSeeder 2>&1 \
+        && log "Seeders executed successfully" \
+        || warn "Seeder notices (ignored if already seeded)"
 else
     warn "Skipping migrations because MySQL is not yet healthy"
 fi
