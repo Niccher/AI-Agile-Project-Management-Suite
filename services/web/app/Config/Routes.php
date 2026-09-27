@@ -181,8 +181,10 @@ $routes->group('admin', ['filter' => ['session', 'admin']], function($routes) {
     $routes->get('ai/reports/status/(:segment)', 'Admin\AiReportsController::status/$1');
 });
 
-// Load default Shield routes, excluding those we'll customize
-service('auth')->routes($routes, ['except' => ['login', 'register', 'forgot', 'reset', 'verify-email', 'locked', 'logout']]);
+// Load default Shield routes if Shield auth service is registered
+if (function_exists('service') && service('auth') !== null) {
+    service('auth')->routes($routes, ['except' => ['login', 'register', 'forgot', 'reset', 'verify-email', 'locked', 'logout']]);
+}
 
 // Direct Logout routes (root /logout and /auth/logout)
 $routes->get('logout', [\App\Controllers\Auth\LoginController::class, 'logoutAction'], ['as' => 'logout']);

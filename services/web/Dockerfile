@@ -1,19 +1,16 @@
 # syntax=docker/dockerfile:1
 FROM php:8.3-fpm
 
-# ── System dependencies ────────────────────────────────────────────────────────
+# ── System dependencies & pre-compiled PHP extensions ─────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
         nginx \
-        libicu-dev \
-        libzip-dev \
-        libpng-dev \
-        libjpeg-dev \
-        libfreetype6-dev \
         zip \
         unzip \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) intl mysqli pdo_mysql zip gd \
     && rm -rf /var/lib/apt/lists/*
+
+# Install pre-compiled PHP extensions (eliminates 10-minute ICU/gd source compilation)
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+RUN install-php-extensions intl mysqli pdo_mysql zip gd
 
 # Configure Nginx
 COPY nginx.conf /etc/nginx/sites-available/default
@@ -23,8 +20,7 @@ WORKDIR /var/www/html
 # ── Composer dependency layer ─────────────────────────────────────────────────
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --ignore-platform-reqs \
-    && rm /usr/bin/composer
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --ignore-platform-reqs
 
 # ── Application code ──────────────────────────────────────────────────────────
 COPY . /var/www/html

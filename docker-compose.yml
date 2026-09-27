@@ -84,7 +84,6 @@ services:
       - N_CTX=4096
     volumes:
       - ./services/ml/models:/app/models:rw
-      - ./services/ml/app:/app/app:ro
     depends_on:
       mysql:
         condition: service_healthy
@@ -119,6 +118,7 @@ services:
       - ML_API_KEY=${ML_API_KEY:-chege_jira_ml_super_secret_key_2026}
     volumes:
       - ./services/web:/var/www/html
+      - web-vendor:/var/www/html/vendor
     depends_on:
       mysql:
         condition: service_healthy
@@ -132,6 +132,7 @@ services:
 volumes:
   mysql-data:
   redis-data:
+  web-vendor:
 
 networks:
   shared-network:
