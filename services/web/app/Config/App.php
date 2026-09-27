@@ -206,11 +206,33 @@ class App extends BaseConfig
     {
         parent::__construct();
         
+        // 1. Detect dynamic host from incoming request headers
         if (isset($_SERVER['HTTP_HOST'])) {
             $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) ? 'https' : 'http';
             $this->baseURL = $protocol . '://' . $_SERVER['HTTP_HOST'] . '/';
+
+            $host = explode(':', $_SERVER['HTTP_HOST'])[0];
+            if (! in_array($host, $this->allowedHostnames, true)) {
+                $this->allowedHostnames[] = $host;
+            }
         }
         
-        $this->baseURL = env('app.baseURL', $this->baseURL);
+        // 2. Override with configured environment URL if set and not generic localhost
+        $configuredBaseUrl = env('app.baseURL', env('APP_URL', ''));
+        if (! empty($configuredBaseUrl)) {
+            // If request came from an external host, don't overwrite it with default localhost
+            if (! isset($_SERVER['HTTP_HOST']) || (! str_contains($configuredBaseUrl, 'localhost') && ! str_contains($configuredBaseUrl, '127.0.0.1'))) {
+                $this->baseURL = rtrim($configuredBaseUrl, '/') . '/';
+            }
+        }
+
+        // 3. Ensure trailing slash is always present
+        $this->baseURL = rtrim($this->baseURL, '/') . '/';
+
+        // 4. Ensure baseURL host is registered in allowedHostnames
+        $baseHost = parse_url($this->baseURL, PHP_URL_HOST);
+        if ($baseHost && ! in_array($baseHost, $this->allowedHostnames, true)) {
+            $this->allowedHostnames[] = $baseHost;
+        }
     }
 }

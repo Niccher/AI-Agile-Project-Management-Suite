@@ -198,27 +198,34 @@ else
     BASE_URL="http://${DETECTED_IP}:${WEB_PORT}/"
 fi
 
-# Ensure essential env variables exist in .env
-ensure_env_var() {
-    local KEY=$1
-    local VAL=$2
-    if ! grep -q "^${KEY}=" .env; then
-        echo "${KEY}=${VAL}" >> .env
-        log "Injected missing env var: ${KEY}"
+set_env() {
+    local K="$1" V="$2"
+    if grep -q "^${K}=" .env; then
+        sed -i "s|^${K}=.*|${K}=${V}|g" .env
+    elif grep -q "^${K} *=" .env; then
+        sed -i "s|^${K} *=.*|${K} = ${V}|g" .env
+    else
+        echo "${K}=${V}" >> .env
     fi
 }
 
-ensure_env_var "WEB_PORT" "$WEB_PORT"
-ensure_env_var "ML_PORT" "$ML_PORT"
-ensure_env_var "APP_URL" "${BASE_URL%/}"
-ensure_env_var "DB_ROOT_PASSWORD" "root_password"
-ensure_env_var "DB_NAME" "db_chege_jira"
-ensure_env_var "ML_SERVICE_URL" "http://ml-chege-jira:8000"
-ensure_env_var "ML_API_KEY" "chege_jira_ml_super_secret_key_2026"
-ensure_env_var "DEFAULT_MODEL" "phi3-mini"
+set_env "WEB_PORT" "$WEB_PORT"
+set_env "ML_PORT" "$ML_PORT"
+set_env "APP_URL" "$BASE_URL"
+set_env "app.baseURL" "$BASE_URL"
+set_env "BASE_URL" "$BASE_URL"
+set_env "DB_ROOT_PASSWORD" "root_password"
+set_env "DB_NAME" "db_chege_jira"
+set_env "ML_SERVICE_URL" "http://ml-chege-jira:8000"
+set_env "ML_API_KEY" "chege_jira_ml_super_secret_key_2026"
+set_env "DEFAULT_MODEL" "phi3-mini"
 
-log "Configured WebApp Port: ${WEB_PORT} | ML Microservice Port: ${ML_PORT}"
-log "Application Base URL: ${BASE_URL}"
+log "app.baseURL               -> ${BASE_URL}"
+log "WEB_PORT                  -> ${WEB_PORT} (Standard HTTP)"
+log "ML_PORT                   -> ${ML_PORT} (AI Microservice API)"
+
+# Mirror .env to services/web/.env for native CI4 DotEnv discovery
+cp .env services/web/.env 2>/dev/null || true
 
 # ── 5. Stop Old Containers & Clear Conflicts ──────────────────
 section "5. Conflict Resolution & Container Cleanup"
