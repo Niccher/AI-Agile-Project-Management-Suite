@@ -31,6 +31,17 @@ class DemoSeeder extends Seeder
                 $admin->addGroup('admin');
                 $admin->addGroup('superadmin');
             }
+        } else {
+            // Update password to match configured admin password
+            $admin->setPassword($adminPass);
+            $admin->active = 1;
+            $users->save($admin);
+            if (!$admin->inGroup('admin')) {
+                $admin->addGroup('admin');
+            }
+            if (!$admin->inGroup('superadmin')) {
+                $admin->addGroup('superadmin');
+            }
         }
 
         $dev = $users->findByCredentials(['email' => 'dev@chegejira.local'])
@@ -48,6 +59,13 @@ class DemoSeeder extends Seeder
             $users->save($user);
             $dev = $users->findById($users->getInsertID()) ?? $users->findByCredentials(['username' => 'developer']);
             if ($dev) {
+                $dev->addGroup('user');
+            }
+        } else {
+            $dev->setPassword('secret');
+            $dev->active = 1;
+            $users->save($dev);
+            if (!$dev->inGroup('user')) {
                 $dev->addGroup('user');
             }
         }
