@@ -615,12 +615,12 @@
                             <a href="<?= site_url('admin/telemetry') ?>" class="text-muted text-decoration-none mx-2 hover-primary">System Status</a>
                         </div>
                         <div class="col-md-4 text-center text-md-end font-14">
-                            <span class="badge bg-primary-lighten text-primary text-decoration-none px-2 py-1 font-12 me-1">
-                                WebApp: v1.2.0
-                            </span>
-                            <span class="badge bg-success-lighten text-success text-decoration-none px-2 py-1 font-12">
-                                ML Engine: v1.2.0
-                            </span>
+                            <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-1 font-12 me-1 shadow-none border-primary" data-bs-toggle="modal" data-bs-target="#appVersionModal" title="Click to view WebApp Changelog & Version details">
+                                <i class="mdi mdi-web me-1"></i> WebApp: v1.3.0
+                            </button>
+                            <button type="button" class="btn btn-xs btn-outline-success rounded-pill px-2 py-1 font-12 shadow-none border-success" data-bs-toggle="modal" data-bs-target="#appVersionModal" title="Click to view ML Engine Specs & AI Telemetry details">
+                                <i class="mdi mdi-robot me-1"></i> ML Engine: v1.3.0
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -635,34 +635,140 @@
 
     <!-- App Version & Changelog Modal -->
     <div class="modal fade" id="appVersionModal" tabindex="-1" aria-labelledby="appVersionModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title text-white" id="appVersionModalLabel">
-                        <i class="mdi mdi-information-outline me-1"></i> <?= esc(setting('App.siteName')) ?> v1.2.0
-                    </h5>
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white py-3">
+                    <div class="d-flex align-items-center">
+                        <i class="mdi mdi-information-outline font-22 me-2"></i>
+                        <div>
+                            <h5 class="modal-title text-white mb-0" id="appVersionModalLabel">
+                                <?= esc(setting('App.siteName')) ?> Platform Information
+                            </h5>
+                            <small class="text-white-50">Version & Architecture Changelog</small>
+                        </div>
+                    </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <div class="d-flex align-items-center mb-3">
-                        <span class="badge bg-success-lighten text-success font-13 px-3 py-1">Latest Release</span>
-                        <span class="text-muted font-13 ms-auto"><i class="mdi mdi-calendar-outline me-1"></i> September 2026</span>
-                    </div>
-                    
-                    <h5 class="fw-bold mb-2 text-dark">Release Highlights:</h5>
-                    <ul class="font-14 text-muted ps-3 mb-3">
-                        <li class="mb-1"><strong>Hyper SaaS Theme:</strong> Upgraded to Bootstrap 5 with responsive dark/light layouts.</li>
-                        <li class="mb-1"><strong>Interactive Drag & Drop Kanban:</strong> Real-time ticket management with visual priority badges.</li>
-                        <li class="mb-1"><strong>Automated Database Seeding:</strong> 1-click startup with default accounts & demo projects.</li>
-                        <li class="mb-1"><strong>Dynamic Colored Avatars:</strong> Initials-based profile avatars for all team members.</li>
-                        <li class="mb-1"><strong>Time Tracker & PDF Reports:</strong> Integrated effort tracking and printable sprint reports.</li>
+                <div class="modal-body p-0">
+                    <!-- Nav Tabs -->
+                    <ul class="nav nav-tabs nav-bordered px-3 pt-2 bg-light" role="tablist">
+                        <li class="nav-item">
+                            <a href="#modal-tab-webapp" data-bs-toggle="tab" aria-expanded="true" class="nav-link active py-2">
+                                <i class="mdi mdi-web me-1 text-primary"></i> <strong>WebApp v1.3.0</strong>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#modal-tab-ml" data-bs-toggle="tab" aria-expanded="false" class="nav-link py-2">
+                                <i class="mdi mdi-robot me-1 text-success"></i> <strong>ML Engine v1.3.0</strong>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#modal-tab-sys" data-bs-toggle="tab" aria-expanded="false" class="nav-link py-2">
+                                <i class="mdi mdi-server-network me-1 text-info"></i> <strong>System & Runtime</strong>
+                            </a>
+                        </li>
                     </ul>
-                    
-                    <div class="alert alert-light border font-13 text-muted mb-0">
-                        <i class="mdi mdi-shield-check text-success me-1"></i> Production Build running on GCP Container / Docker.
+
+                    <div class="tab-content p-4">
+                        <!-- WebApp Tab -->
+                        <div class="tab-pane show active" id="modal-tab-webapp">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-primary px-2 py-1 font-13">WebApp v1.3.0</span>
+                                <span class="badge bg-success-lighten text-success font-12 ms-2">Production Stable</span>
+                                <span class="text-muted font-12 ms-auto"><i class="mdi mdi-calendar me-1"></i> October 2026</span>
+                            </div>
+                            
+                            <h6 class="fw-bold text-dark mb-2"><i class="mdi mdi-star-circle text-warning me-1"></i> What's New in v1.3.0:</h6>
+                            <div class="list-group list-group-flush mb-3">
+                                <div class="list-group-item px-0 py-2 border-bottom">
+                                    <div class="fw-semibold text-dark"><i class="mdi mdi-calendar-clock text-primary me-1"></i> FullCalendar Interactive View</div>
+                                    <small class="text-muted">Dynamic monthly and weekly event rendering for team tasks, sprints, time logs, and system audits with seamless date navigation.</small>
+                                </div>
+                                <div class="list-group-item px-0 py-2 border-bottom">
+                                    <div class="fw-semibold text-dark"><i class="mdi mdi-checkbox-marked-circle-outline text-success me-1"></i> Manager Work Approvals Queue</div>
+                                    <small class="text-muted">Multi-status tabbed dashboard (Pending, Approved, Rejected) with instant interactive review modals and one-click approvals.</small>
+                                </div>
+                                <div class="list-group-item px-0 py-2 border-bottom">
+                                    <div class="fw-semibold text-dark"><i class="mdi mdi-file-pdf-box text-danger me-1"></i> Pure AJAX Team Reports & Downloads</div>
+                                    <small class="text-muted">Zero-reload report generation and deletion with native binary PDF/CSV download streaming and real-time tabular updates.</small>
+                                </div>
+                                <div class="list-group-item px-0 py-2 border-bottom">
+                                    <div class="fw-semibold text-dark"><i class="mdi mdi-chart-timeline-variant text-info me-1"></i> Role-Based Team Analytics</div>
+                                    <small class="text-muted">Dynamic velocity calculations, logged effort breakdown, task status distributions, and team member performance metrics.</small>
+                                </div>
+                                <div class="list-group-item px-0 py-2">
+                                    <div class="fw-semibold text-dark"><i class="mdi mdi-keyboard text-secondary me-1"></i> Command Palette Spotlight</div>
+                                    <small class="text-muted">Quick global search and instant keyboard navigation across projects, boards, and admin tools (<kbd>Ctrl+K</kbd> / <kbd>Cmd+K</kbd>).</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ML Engine Tab -->
+                        <div class="tab-pane" id="modal-tab-ml">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-success px-2 py-1 font-13">ML Engine v1.3.0</span>
+                                <span class="badge bg-info-lighten text-info font-12 ms-2">FastAPI Microservice</span>
+                                <span class="text-muted font-12 ms-auto"><i class="mdi mdi-calendar me-1"></i> October 2026</span>
+                            </div>
+
+                            <h6 class="fw-bold text-dark mb-2"><i class="mdi mdi-brain text-purple me-1"></i> AI Engine Architecture & Capabilities:</h6>
+                            <div class="list-group list-group-flush mb-3">
+                                <div class="list-group-item px-0 py-2 border-bottom">
+                                    <div class="fw-semibold text-dark"><i class="mdi mdi-transit-connection-variant text-primary me-1"></i> Resilient Multi-Host Discovery</div>
+                                    <small class="text-muted">Automatic fallback discovery connecting to <code>http://ml-chege-jira:8000</code>, <code>http://127.0.0.1:8000</code>, or <code>http://localhost:8000</code> without manual intervention.</small>
+                                </div>
+                                <div class="list-group-item px-0 py-2 border-bottom">
+                                    <div class="fw-semibold text-dark"><i class="mdi mdi-cpu-64-bit text-success me-1"></i> llama-cpp-python GGUF Inference</div>
+                                    <small class="text-muted">Optimized CPU & GPU quantized local LLM execution for AI sprint estimation, ticket generation, and team summary reports.</small>
+                                </div>
+                                <div class="list-group-item px-0 py-2 border-bottom">
+                                    <div class="fw-semibold text-dark"><i class="mdi mdi-database-sync text-info me-1"></i> Automated AI Schema Guarding</div>
+                                    <small class="text-muted">Self-healing database migration ensuring token telemetry, model registry, and audit tables remain consistently synced.</small>
+                                </div>
+                                <div class="list-group-item px-0 py-2">
+                                    <div class="fw-semibold text-dark"><i class="mdi mdi-pulse text-danger me-1"></i> Real-Time Telemetry Probes</div>
+                                    <small class="text-muted">Live health checking and token consumption reporting with asynchronous AJAX refreshing.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- System Tab -->
+                        <div class="tab-pane" id="modal-tab-sys">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-dark px-2 py-1 font-13">Suite Infrastructure</span>
+                                <span class="badge bg-light text-dark border font-12 ms-2">GCP Container Platform</span>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0 font-13">
+                                    <tbody>
+                                        <tr>
+                                            <th class="bg-light w-35 text-muted">Web Framework</th>
+                                            <td class="fw-semibold text-dark">CodeIgniter 4.x (PHP 8.2+)</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light text-muted">Database Server</th>
+                                            <td class="fw-semibold text-dark">MySQL 8.0+ / MariaDB 10.11+</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light text-muted">UI Architecture</th>
+                                            <td class="fw-semibold text-dark">Hyper SaaS Theme (Bootstrap 5.3 + FullCalendar 6)</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light text-muted">AI Microservice</th>
+                                            <td class="fw-semibold text-dark">Python 3.11+ / FastAPI / Uvicorn (Port 8000)</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light text-muted">Environment</th>
+                                            <td class="fw-semibold text-dark"><span class="badge bg-success-lighten text-success">Production Cloud VM</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer bg-light py-2">
                     <button type="button" class="btn btn-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>

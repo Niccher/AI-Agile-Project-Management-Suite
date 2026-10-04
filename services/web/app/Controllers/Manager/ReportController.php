@@ -155,15 +155,7 @@ class ReportController extends BaseController
         }
 
         if ($filepath && file_exists($filepath)) {
-            $ext = strtolower(pathinfo($filepath, PATHINFO_EXTENSION));
-            $mime = ($ext === 'pdf') ? 'application/pdf' : 'text/csv';
-
-            return $this->response
-                ->setHeader('Content-Type', $mime)
-                ->setHeader('Content-Disposition', 'attachment; filename="' . $downloadName . '"')
-                ->setHeader('Content-Length', (string)filesize($filepath))
-                ->setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
-                ->setBody(file_get_contents($filepath));
+            return $this->response->download($filepath, null)->setFileName($downloadName);
         }
         
         return redirect()->back()->with('error', 'Report file not found.');
