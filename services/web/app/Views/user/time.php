@@ -350,50 +350,78 @@ $(document).ready(function() {
     }
 
     // Start timer
-    $('#startTimerBtn').on('click', function() {
+    $('#startTimerBtn').on('click', async function() {
         const project = $('#quickProjectSelect').val();
         const task = $('#quickTaskInput').val().trim();
+        const projectName = $('#quickProjectSelect option:selected').text().trim() || 'General';
 
         if (!project || !task) {
-            showToast('Please select a project and enter a task description', 'warning');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Required Information',
+                text: 'Please select a project and enter a task description before starting the timer.'
+            });
             return;
         }
 
-        dispatchAsyncAction('<?= site_url('time/start') ?>', {
+        const btn = $(this);
+        btn.prop('disabled', true).html('<i class="mdi mdi-spin mdi-loading me-1"></i> Starting...');
+
+        const response = await dispatchAsyncAction('<?= site_url('time/start') ?>', {
             project_id: project,
             task_name: task
-        }).then(function(response) {
-            if (response && response.status === 'success') {
-                currentLogId = response.id;
-                startTimestamp = Date.now();
-                
-                localStorage.setItem('active_timer_log_id', currentLogId);
-                localStorage.setItem('active_timer_start', startTimestamp);
-                localStorage.setItem('active_timer_task', task);
-
-                showActiveTimerUI(task, 0);
-                startTimerInterval(0);
-            }
         });
+
+        btn.prop('disabled', false).html('<i class="mdi mdi-play me-1"></i> Start');
+
+        if (response && (response.status === 'success' || response.success)) {
+            currentLogId = response.id;
+            startTimestamp = Date.now();
+            
+            localStorage.setItem('active_timer_log_id', currentLogId);
+            localStorage.setItem('active_timer_start', startTimestamp);
+            localStorage.setItem('active_timer_task', task);
+            localStorage.setItem('active_timer_project_name', response.project_name || projectName);
+
+            showActiveTimerUI(task, 0);
+            startTimerInterval(0);
+            window.dispatchEvent(new Event('active_timer_updated'));
+
+            if (typeof Toast !== 'undefined') {
+                Toast.fire({ icon: 'success', title: `Timer started for "${task}"` });
+            }
+        } else {
+            Swal.fire({ icon: 'error', title: 'Error', text: response.message || 'Failed to start timer.' });
+        }
     });
 
     // Stop timer with zero-reload
     $('#stopTimerBtn').on('click', async function() {
         if (!currentLogId) return;
 
+        const btn = $(this);
+        btn.prop('disabled', true).html('<i class="mdi mdi-spin mdi-loading me-1"></i> Stopping...');
+
         const res = await dispatchAsyncAction('<?= site_url('time/stop') ?>/' + currentLogId);
-        if (res && res.status === 'success') {
+        btn.prop('disabled', false).html('<i class="mdi mdi-stop-circle me-1"></i> Stop Timer');
+
+        if (res && (res.status === 'success' || res.success)) {
             clearInterval(timerInterval);
             const task = localStorage.getItem('active_timer_task') || 'Work session';
-            const durationSec = res.duration || Math.floor((Date.now() - parseInt(startTimestamp || Date.now())) / 1000);
+            const durationSec = res.duration || Math.floor((Date.now() - parseInt(startTimestamp || Date.now(), 10)) / 1000);
             const durationHrs = (durationSec / 3600).toFixed(2);
+            const projectName = localStorage.getItem('active_timer_project_name') || 'Current Project';
 
             localStorage.removeItem('active_timer_log_id');
             localStorage.removeItem('active_timer_start');
             localStorage.removeItem('active_timer_task');
+            localStorage.removeItem('active_timer_project_name');
+            currentLogId = null;
+            startTimestamp = null;
 
             $('#activeTimerSection').hide();
             $('#quickStartSection').show();
+            window.dispatchEvent(new Event('active_timer_stopped'));
 
             $('#emptyLogsRow').remove();
             const now = new Date();
@@ -411,7 +439,7 @@ $(document).ready(function() {
                             <div class="avatar-xs rounded-circle me-2 d-flex align-items-center justify-content-center text-white font-10" style="width: 24px; height: 24px; background-color: #3e60d5;">
                                 <i class="fas fa-folder"></i>
                             </div>
-                            <span class="fw-semibold font-13 text-body">Current Project</span>
+                            <span class="fw-semibold font-13 text-body">${$('<div>').text(projectName).html()}</span>
                         </div>
                     </td>
                     <td class="font-13 text-body">${$('<div>').text(task).html()}</td>
@@ -420,7 +448,19 @@ $(document).ready(function() {
                     </td>
                 </tr>`;
             $('#timeLogsTableBody').prepend(newRow);
+
+            if (typeof Toast !== 'undefined') {
+                Toast.fire({ icon: 'success', title: `Recorded ${durationHrs} hrs for "${task}"` });
+            }
         }
+    });
+
+    window.addEventListener('active_timer_stopped', function() {
+        if (timerInterval) clearInterval(timerInterval);
+        currentLogId = null;
+        startTimestamp = null;
+        $('#activeTimerSection').hide();
+        $('#quickStartSection').show();
     });
 
     // Manual entry modal
@@ -437,7 +477,7 @@ $(document).ready(function() {
 
         const formData = new FormData(form);
         const projectName = $('#entryProject option:selected').text().trim() || 'General';
-        const taskName = formData.get('task_name') || '';
+        const taskName = formData.get('task_name') || 'Work session';
         const duration = parseFloat(formData.get('duration') || 1.0).toFixed(2);
         const dateVal = formData.get('date') || '';
 
@@ -453,6 +493,9 @@ $(document).ready(function() {
             form.reset();
 
             $('#emptyLogsRow').remove();
+            const pName = res.project_name || projectName;
+            const pColor = res.project_color || '#3e60d5';
+
             const newRow = `
                 <tr>
                     <td class="font-13">
@@ -461,10 +504,10 @@ $(document).ready(function() {
                     </td>
                     <td>
                         <div class="d-flex align-items-center">
-                            <div class="avatar-xs rounded-circle me-2 d-flex align-items-center justify-content-center text-white font-10" style="width: 24px; height: 24px; background-color: #3e60d5;">
+                            <div class="avatar-xs rounded-circle me-2 d-flex align-items-center justify-content-center text-white font-10" style="width: 24px; height: 24px; background-color: ${pColor};">
                                 <i class="fas fa-folder"></i>
                             </div>
-                            <span class="fw-semibold font-13 text-body">${$('<div>').text(projectName).html()}</span>
+                            <span class="fw-semibold font-13 text-body">${$('<div>').text(pName).html()}</span>
                         </div>
                     </td>
                     <td class="font-13 text-body">${$('<div>').text(taskName).html()}</td>
@@ -473,6 +516,12 @@ $(document).ready(function() {
                     </td>
                 </tr>`;
             $('#timeLogsTableBody').prepend(newRow);
+
+            if (typeof Toast !== 'undefined') {
+                Toast.fire({ icon: 'success', title: `Manual log recorded (${duration} hrs)` });
+            }
+        } else {
+            Swal.fire({ icon: 'error', title: 'Error', text: (res && res.message) ? res.message : 'Failed to save log.' });
         }
     });
 

@@ -126,11 +126,17 @@ class TimeTrackerController extends BaseUserController
 
     public function logManual()
     {
-        $projectId = $this->request->getPost('project_id');
-        $taskName = trim($this->request->getPost('task_name') ?? 'Work session');
-        $date = $this->request->getPost('date') ?: date('Y-m-d');
-        $durationHours = (float)($this->request->getPost('duration') ?? 1.0);
-        $notes = $this->request->getPost('notes');
+        $input = $this->request->getJSON(true) ?: $this->request->getPost();
+        
+        $projectId = !empty($input['project_id']) ? (int)$input['project_id'] : ($this->request->getVar('project_id') ? (int)$this->request->getVar('project_id') : null);
+        $taskName = trim($input['task_name'] ?? $this->request->getVar('task_name') ?? 'Work session');
+        $date = !empty($input['date']) ? $input['date'] : ($this->request->getVar('date') ?: date('Y-m-d'));
+        $durationHours = (float)($input['duration'] ?? $this->request->getVar('duration') ?? 1.0);
+        $notes = $input['notes'] ?? $this->request->getVar('notes') ?? '';
+
+        if (empty($taskName)) {
+            $taskName = 'Work session';
+        }
 
         $timeModel = new TimeLogModel();
         $startTime = $date . ' ' . date('H:i:s');
@@ -138,7 +144,7 @@ class TimeTrackerController extends BaseUserController
 
         $insertId = $timeModel->insert([
             'user_id'    => $this->userId,
-            'project_id' => $projectId ? (int)$projectId : null,
+            'project_id' => $projectId,
             'task_name'  => $taskName,
             'start_time' => $startTime,
             'end_time'   => date('Y-m-d H:i:s', strtotime($startTime) + $durationSeconds),
@@ -146,23 +152,37 @@ class TimeTrackerController extends BaseUserController
             'notes'      => $notes
         ]);
 
+        $projectModel = new ProjectModel();
+        $projectName = 'General';
+        $projectColor = '#3e60d5';
+        $projectSlug = '';
+        if ($projectId) {
+            $proj = $projectModel->find($projectId);
+            if ($proj) {
+                $projectName = $proj['name'] ?? 'General';
+                $projectColor = $proj['color'] ?? '#3e60d5';
+                $projectSlug = $proj['slug'] ?? (string)$projectId;
+            }
+        }
+
         if ($this->request->isAJAX() || $this->request->header('Accept')?->getValue() === 'application/json' || str_contains($this->request->header('Content-Type')?->getValue() ?? '', 'json')) {
             $newLog = $timeModel->find($insertId);
             return $this->response->setJSON([
-                'success'  => true,
-                'status'   => 'success',
-                'message'  => 'Time log recorded successfully (' . $durationHours . ' hrs).',
-                'log'      => $newLog,
-                'duration' => $durationHours,
+                'success'       => true,
+                'status'        => 'success',
+                'message'       => 'Time log recorded successfully (' . round($durationHours, 2) . ' hrs).',
+                'log'           => $newLog,
+                'project_name'  => $projectName,
+                'project_color' => $projectColor,
+                'project_slug'  => $projectSlug,
+                'duration'      => $durationHours,
             ]);
         }
 
         $redirectUrl = site_url('time');
-        if ($projectId) {
-            $proj = (new ProjectModel())->find($projectId);
-            $slug = $proj['slug'] ?? $projectId;
-            $redirectUrl = site_url('projects/time/' . $slug);
+        if ($projectId && !empty($projectSlug)) {
+            $redirectUrl = site_url('projects/time/' . $projectSlug);
         }
-        return redirect()->to($redirectUrl)->with('success', 'Time log recorded successfully (' . $durationHours . ' hrs).');
+        return redirect()->to($redirectUrl)->with('success', 'Time log recorded successfully (' . round($durationHours, 2) . ' hrs).');
     }
 }

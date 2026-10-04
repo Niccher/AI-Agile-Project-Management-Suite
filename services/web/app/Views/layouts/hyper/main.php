@@ -298,12 +298,6 @@
                             <span> Projects </span>
                         </a>
                     </li>
-                    <li class="side-nav-item <?= $isKanban ? 'menuitem-active' : '' ?>">
-                        <a href="<?= site_url('kanban') ?>" class="side-nav-link <?= $isKanban ? 'active' : '' ?>">
-                            <i class="uil-clipboard-alt text-info"></i>
-                            <span> Kanban Board </span>
-                        </a>
-                    </li>
                     <li class="side-nav-item <?= $isTime ? 'menuitem-active' : '' ?>">
                         <a href="<?= site_url('time') ?>" class="side-nav-link <?= $isTime ? 'active' : '' ?>">
                             <i class="uil-clock text-warning"></i>
@@ -448,6 +442,20 @@
                             <a class="nav-link" href="javascript:void(0);" id="mobile-search-trigger" title="Search (Ctrl + K)">
                                 <i class="uil-search font-22"></i>
                             </a>
+                        </li>
+
+                        <!-- Topbar Live Running Timer Widget -->
+                        <li class="me-2" id="topbar-timer-widget" style="display: none;">
+                            <div class="d-flex align-items-center bg-danger-lighten border border-danger-subtle rounded-pill px-2 py-1 text-danger font-12 fw-semibold shadow-sm">
+                                <span class="spinner-grow spinner-grow-sm text-danger me-1" role="status" style="width: 8px; height: 8px;"></span>
+                                <a href="<?= site_url('time') ?>" class="text-danger text-decoration-none d-flex align-items-center me-1" title="Active Timer (Click to view Time Tracker)">
+                                    <span class="font-monospace fw-bold me-1" id="topbar-timer-clock">00:00:00</span>
+                                    <span class="text-truncate text-body d-none d-lg-inline font-11" style="max-width: 120px;" id="topbar-timer-task">Task</span>
+                                </a>
+                                <button type="button" class="btn btn-xs btn-outline-danger rounded-circle p-0 d-flex align-items-center justify-content-center" id="topbar-timer-stop-btn" style="width: 18px; height: 18px;" title="Stop Timer">
+                                    <i class="mdi mdi-stop font-11"></i>
+                                </button>
+                            </div>
                         </li>
 
                         <li class="notification-list me-1">
@@ -1089,6 +1097,84 @@
 
             // Start polling timer
             setInterval(pollNotifications, 30000);
+        })();
+
+        // Global Topbar Live Timer Controller
+        (function() {
+            var timerWidget = document.getElementById('topbar-timer-widget');
+            var timerClock = document.getElementById('topbar-timer-clock');
+            var timerTask = document.getElementById('topbar-timer-task');
+            var timerStopBtn = document.getElementById('topbar-timer-stop-btn');
+            var liveInterval = null;
+
+            function formatDuration(totalSec) {
+                var h = Math.floor(totalSec / 3600);
+                var m = Math.floor((totalSec % 3600) / 60);
+                var s = totalSec % 60;
+                return (h < 10 ? '0' + h : h) + ':' + (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+            }
+
+            function syncGlobalTimer() {
+                var logId = localStorage.getItem('active_timer_log_id');
+                var startMs = localStorage.getItem('active_timer_start');
+                var task = localStorage.getItem('active_timer_task') || 'Work session';
+
+                if (logId && startMs && timerWidget) {
+                    timerWidget.style.display = 'inline-block';
+                    if (timerTask) timerTask.innerText = task;
+
+                    if (liveInterval) clearInterval(liveInterval);
+                    var tick = function() {
+                        var elapsed = Math.max(0, Math.floor((Date.now() - parseInt(startMs, 10)) / 1000));
+                        if (timerClock) timerClock.innerText = formatDuration(elapsed);
+                    };
+                    tick();
+                    liveInterval = setInterval(tick, 1000);
+                } else if (timerWidget) {
+                    timerWidget.style.display = 'none';
+                    if (liveInterval) clearInterval(liveInterval);
+                }
+            }
+
+            if (timerStopBtn) {
+                timerStopBtn.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    var logId = localStorage.getItem('active_timer_log_id');
+                    if (!logId) return;
+
+                    timerStopBtn.disabled = true;
+                    try {
+                        var res = await fetch('<?= site_url('time/stop') ?>/' + logId, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                            }
+                        }).then(function(r) { return r.json(); });
+
+                        if (res && res.status === 'success') {
+                            localStorage.removeItem('active_timer_log_id');
+                            localStorage.removeItem('active_timer_start');
+                            localStorage.removeItem('active_timer_task');
+                            syncGlobalTimer();
+                            window.dispatchEvent(new Event('active_timer_stopped'));
+                            if (typeof Toast !== 'undefined') {
+                                Toast.fire({ icon: 'success', title: res.message || 'Timer stopped.' });
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Stop timer error:', err);
+                    } finally {
+                        timerStopBtn.disabled = false;
+                    }
+                });
+            }
+
+            window.addEventListener('active_timer_updated', syncGlobalTimer);
+            window.addEventListener('active_timer_stopped', syncGlobalTimer);
+            window.addEventListener('storage', syncGlobalTimer);
+            syncGlobalTimer();
         })();
     </script>
     
