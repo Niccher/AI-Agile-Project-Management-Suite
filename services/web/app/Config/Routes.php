@@ -120,6 +120,20 @@ $routes->group('api', ['filter' => 'session'], function($routes) {
     $routes->post('tasks/store', 'Api\TaskApiController::store');
     $routes->post('tasks/(:num)/update', 'Api\TaskApiController::update/$1');
     $routes->post('tasks/(:num)/delete', 'Api\TaskApiController::delete/$1');
+
+    // Task Comments API
+    $routes->get('tasks/(:num)/comments', 'Api\TaskCommentApiController::list/$1');
+    $routes->post('tasks/(:num)/comments', 'Api\TaskCommentApiController::store/$1');
+    $routes->post('comments/(:num)/delete', 'Api\TaskCommentApiController::delete/$1');
+
+    // Task Attachments API
+    $routes->get('tasks/(:num)/attachments', 'Api\TaskAttachmentApiController::list/$1');
+    $routes->post('tasks/(:num)/attachments', 'Api\TaskAttachmentApiController::upload/$1');
+    $routes->get('attachments/(:num)/download', 'Api\TaskAttachmentApiController::download/$1');
+    $routes->post('attachments/(:num)/delete', 'Api\TaskAttachmentApiController::delete/$1');
+
+    // Task Activities API
+    $routes->get('tasks/(:num)/activities', 'Api\TaskActivityApiController::list/$1');
     
     // Notes
     $routes->post('notes/(:num)/star', 'Api\NoteApiController::toggleStar/$1');
@@ -128,6 +142,7 @@ $routes->group('api', ['filter' => 'session'], function($routes) {
     // Sprints API
     $routes->post('sprints/assign-task', 'Api\SprintApiController::assignTask');
     $routes->post('sprints/task-points', 'Api\SprintApiController::updatePoints');
+    $routes->get('projects/(:num)/velocity', 'Api\SprintApiController::getVelocity/$1');
     
     // Notifications API
     $routes->get('notifications/unread-count', 'Api\NotificationApiController::unreadCount');
@@ -155,9 +170,11 @@ $managerRouteHandler = function($routes) {
 $routes->group('manage', ['filter' => ['session', 'manager']], $managerRouteHandler);
 $routes->group('manager', ['filter' => ['session', 'manager']], $managerRouteHandler);
 
-// Admin zone — requires login + admin role
 $routes->group('admin', ['filter' => ['session', 'admin']], function($routes) {
     $routes->get('/', 'Admin\UserManagementController::index');
+    $routes->get('users', 'Admin\UserManagementController::index');
+    $routes->post('users/invite', 'Admin\UserManagementController::invite');
+    $routes->post('users/invite/revoke/(:num)', 'Admin\UserManagementController::revokeInvite/$1');
     $routes->post('users/provision', 'Admin\UserManagementController::provision');
     $routes->post('users/(:num)/role', 'Admin\UserManagementController::assignRole/$1');
     $routes->post('users/(:num)/deactivate', 'Admin\UserManagementController::deactivate/$1');
@@ -221,6 +238,10 @@ $routes->group('auth', static function ($routes) {
 
     // Email Verification Success
     $routes->get('verify-email-success', [\App\Controllers\Auth\AccountController::class, 'verifyEmailSuccess']);
+
+    // Accept Invite
+    $routes->get('invite/(:segment)', [\App\Controllers\Auth\InviteController::class, 'acceptView/$1']);
+    $routes->post('invite/(:segment)', [\App\Controllers\Auth\InviteController::class, 'acceptAction/$1']);
 
     // Locked Account
     $routes->get('locked', [\App\Controllers\Auth\AccountController::class, 'lockedView']);

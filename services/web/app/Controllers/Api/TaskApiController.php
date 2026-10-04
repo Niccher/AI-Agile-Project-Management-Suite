@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\TaskModel;
 use App\Models\ProjectModel;
 use App\Services\AuditService;
+use App\Services\ActivityLogger;
 use App\Services\NotificationService;
 
 class TaskApiController extends BaseController
@@ -17,22 +18,28 @@ class TaskApiController extends BaseController
 
         $assignedTo = $this->request->getPost('assigned_to') ?: null;
         $dueDate = $this->request->getPost('due_date') ?: null;
+        $storyPoints = $this->request->getPost('story_points');
+        $storyPoints = ($storyPoints !== null && $storyPoints !== '') ? (int)$storyPoints : null;
 
         $data = [
-            'user_id'     => $userId,
-            'project_id'  => $this->request->getPost('project_id'),
-            'title'       => $this->request->getPost('title'),
-            'description' => $this->request->getPost('description'),
-            'status'      => $this->request->getPost('status') ?? 'todo',
-            'priority'    => $this->request->getPost('priority') ?? 'medium',
-            'assigned_to' => $assignedTo,
-            'assigned_by' => $assignedTo ? $userId : null,
-            'due_date'    => $dueDate,
-            'order_index' => 0,
+            'user_id'      => $userId,
+            'project_id'   => $this->request->getPost('project_id'),
+            'title'        => $this->request->getPost('title'),
+            'description'  => $this->request->getPost('description'),
+            'status'       => $this->request->getPost('status') ?? 'todo',
+            'priority'     => $this->request->getPost('priority') ?? 'medium',
+            'story_points' => $storyPoints,
+            'assigned_to'  => $assignedTo,
+            'assigned_by'  => $assignedTo ? $userId : null,
+            'due_date'     => $dueDate,
+            'order_index'  => 0,
         ];
 
         $insertId = $taskModel->insert($data);
         $newTask = $taskModel->find($insertId);
+
+        // Activity log
+        ActivityLogger::log($insertId, 'created', 'Task created', $userId);
 
         if (!empty($assignedTo) && (int)$assignedTo !== (int)$userId) {
             try {
@@ -105,7 +112,7 @@ class TaskApiController extends BaseController
         }
 
         $json = $this->request->getJSON(true);
-        $allowedFields = ['title', 'description', 'priority', 'due_date', 'status', 'assigned_to'];
+        $allowedFields = ['title', 'description', 'priority', 'due_date', 'status', 'assigned_to', 'story_points'];
         $data = [];
         foreach ($allowedFields as $field) {
             $value = $this->request->getPost($field) ?? ($json[$field] ?? null);
@@ -123,6 +130,9 @@ class TaskApiController extends BaseController
 
         $taskModel->update($id, $data);
         $updatedTask = $taskModel->find($id);
+
+        // Activity log for edits
+        ActivityLogger::log($id, 'updated', 'Task details updated', $userId);
 
         if (!empty($newAssignedTo) && (int)$newAssignedTo !== (int)$oldAssignedTo && (int)$newAssignedTo !== (int)$userId) {
             try {
@@ -160,7 +170,7 @@ class TaskApiController extends BaseController
         $currentUser = auth()->user();
         $isAdmin = $currentUser && ($currentUser->inGroup('admin') || $currentUser->inGroup('superadmin') || $currentUser->inGroup('manager'));
 
-        $taskId = $this->request->getPost('task_id');
+        $taskId = (int)$this->request->getPost('task_id');
         $newStatus = $this->request->getPost('status');
         $newOrder = (int)($this->request->getPost('order') ?? 0);
 
@@ -188,6 +198,14 @@ class TaskApiController extends BaseController
         }
 
         $taskModel->update($taskId, $updateData);
+
+        // Activity log
+        ActivityLogger::log(
+            $taskId,
+            'status_changed',
+            "Status changed from {$oldStatus} to {$newStatus}",
+            $userId
+        );
 
         // Audit Trail
         if (class_exists(AuditService::class)) {
@@ -249,10 +267,9 @@ class TaskApiController extends BaseController
         }
 
         return $this->response->setJSON([
-            'status'     => 'success',
-            'task_id'    => $taskId,
-            'old_status' => $oldStatus,
-            'new_status' => $newStatus
+            'status'  => 'success',
+            'message' => 'Task stage updated.',
+            'task'    => array_merge($task, $updateData)
         ]);
     }
 }

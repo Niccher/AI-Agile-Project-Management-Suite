@@ -5,6 +5,8 @@ namespace App\Controllers\Api;
 use App\Controllers\BaseController;
 use App\Models\SprintModel;
 use App\Models\TaskModel;
+use App\Services\ActivityLogger;
+use App\Services\VelocityService;
 
 class SprintApiController extends BaseController
 {
@@ -41,6 +43,13 @@ class SprintApiController extends BaseController
         if ($sprintId) {
             $sprintModel->recalculatePoints($sprintId);
         }
+
+        ActivityLogger::log(
+            $taskId,
+            'sprint_changed',
+            $sprintId ? "Moved to Sprint #{$sprintId}" : "Moved to Backlog",
+            $userId
+        );
 
         return $this->response->setJSON([
             'status'     => 'success',
@@ -79,10 +88,34 @@ class SprintApiController extends BaseController
             $sprintModel->recalculatePoints((int)$task['sprint_id']);
         }
 
+        ActivityLogger::log($taskId, 'points_changed', "Estimated at {$points} story points", $userId);
+
         return $this->response->setJSON([
             'status'       => 'success',
             'task_id'      => $taskId,
             'story_points' => $points,
+        ]);
+    }
+
+    /**
+     * Get Velocity metrics for a project
+     * GET /api/projects/{projectId}/velocity
+     */
+    public function getVelocity(int $projectId)
+    {
+        $userId = auth()->id();
+        $isSolo = is_solo_mode();
+
+        $teamVelocity = VelocityService::calculateTeamVelocity($projectId, 3);
+        $personalVelocity = $userId ? VelocityService::calculatePersonalVelocity($userId, $projectId, 3) : 0.0;
+
+        return $this->response->setJSON([
+            'status'            => 'success',
+            'is_solo_mode'      => $isSolo,
+            'team_velocity'     => $teamVelocity,
+            'personal_velocity' => $personalVelocity,
+            'active_velocity'   => $isSolo ? $personalVelocity : $teamVelocity,
+            'label'             => $isSolo ? 'My Velocity' : 'Team Velocity',
         ]);
     }
 }

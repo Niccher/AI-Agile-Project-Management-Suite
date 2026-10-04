@@ -275,6 +275,7 @@
                     $isTeam = str_contains($uri, 'team');
                     $isApprovals = str_contains($uri, 'approvals');
                     $isReports = str_contains($uri, 'reports');
+                    $isAdminUsers = (str_starts_with($uri, 'admin/users') || $uri === 'admin');
                     $isAdminSettings = str_contains($uri, 'admin/settings');
                     $isAdminTelemetry = str_contains($uri, 'admin/telemetry');
                     $isAdminAiTelemetry = str_contains($uri, 'admin/ai/telemetry');
@@ -334,7 +335,7 @@
                         </a>
                     </li>
 
-                    <?php if ($isManager): ?>
+                    <?php if ($isManager && !is_solo_mode()): ?>
                         <li class="side-nav-title side-nav-item mt-2">Team Management</li>
                         <li class="side-nav-item <?= $isTeam ? 'menuitem-active' : '' ?>">
                             <a href="<?= site_url('manager/team') ?>" class="side-nav-link <?= $isTeam ? 'active' : '' ?>">
@@ -354,10 +355,24 @@
                                 <span> Sprint Reports </span>
                             </a>
                         </li>
+                    <?php elseif ($isManager && is_solo_mode()): ?>
+                        <li class="side-nav-title side-nav-item mt-2">Reports & Sprints</li>
+                        <li class="side-nav-item <?= $isReports ? 'menuitem-active' : '' ?>">
+                            <a href="<?= site_url('manager/reports') ?>" class="side-nav-link <?= $isReports ? 'active' : '' ?>">
+                                <i class="uil-file-alt text-warning"></i>
+                                <span> Sprint Reports </span>
+                            </a>
+                        </li>
                     <?php endif; ?>
 
                     <?php if ($isAdmin): ?>
                         <li class="side-nav-title side-nav-item mt-2">Administration</li>
+                        <li class="side-nav-item <?= $isAdminUsers ? 'menuitem-active' : '' ?>">
+                            <a href="<?= site_url('admin/users') ?>" class="side-nav-link <?= $isAdminUsers ? 'active' : '' ?>">
+                                <i class="uil-users-alt text-primary"></i>
+                                <span> <?= is_solo_mode() ? 'Account & Team' : 'User Management' ?> </span>
+                            </a>
+                        </li>
                         <li class="side-nav-item <?= $isAdminSettings ? 'menuitem-active' : '' ?>">
                             <a href="<?= site_url('admin/settings') ?>" class="side-nav-link <?= $isAdminSettings ? 'active' : '' ?>">
                                 <i class="uil-sliders-v-alt text-danger"></i>

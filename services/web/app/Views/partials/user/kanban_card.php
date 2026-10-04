@@ -37,6 +37,7 @@ $initials = !empty($task['assignee_name']) ? strtoupper(substr($task['assignee_n
      data-due-date="<?= esc($task['due_date'] ?? '') ?>" 
      data-status="<?= esc($task['status'] ?? 'todo') ?>"
      data-assigned-to="<?= esc($task['assigned_to'] ?? '') ?>"
+     data-story-points="<?= esc($task['story_points'] ?? '') ?>"
      draggable="true"
      style="border-left: 4px solid <?= $priorityBorder ?> !important;">
     
@@ -84,6 +85,11 @@ $initials = !empty($task['assignee_name']) ? strtoupper(substr($task['assignee_n
                 <span class="badge <?= $priorityBadgeClass ?> font-11 rounded-pill priority-pill">
                     <?= ucfirst($priority) ?>
                 </span>
+                <?php if (!empty($task['story_points'])): ?>
+                    <span class="badge bg-info-lighten text-info font-11 rounded-pill" title="<?= (int)$task['story_points'] ?> Story Points">
+                        <i class="mdi mdi-numeric-<?= (int)$task['story_points'] ?>-circle-outline me-1"></i><?= (int)$task['story_points'] ?> pts
+                    </span>
+                <?php endif; ?>
             </div>
             
             <div class="task-date font-11 <?= $isOverdue ? 'text-danger fw-bold' : ($isDueToday ? 'text-warning fw-semibold' : 'text-muted') ?>" title="Due Date">

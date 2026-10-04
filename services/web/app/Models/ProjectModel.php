@@ -16,7 +16,7 @@ class ProjectModel extends Model
         'user_id', 'name', 'slug', 'short_code', 'description', 'tech_stack', 'status', 
         'priority', 'start_date', 'due_date', 'progress', 
         'repository_url', 'categories', 'icon', 'color', 
-        'budget', 'is_archived', 'deleted_at'
+        'budget', 'is_archived', 'closed_at', 'deleted_at'
     ];
 
     // Dates
@@ -152,7 +152,7 @@ class ProjectModel extends Model
                 $db = \Config\Database::connect();
                 $isAssigned = $db->table('tasks')
                     ->where('project_id', $project['id'])
-                    ->where('assignee_id', $userId)
+                    ->where('assigned_to', $userId)
                     ->countAllResults() > 0;
 
                 if (!$isAssigned) {
@@ -363,7 +363,7 @@ class ProjectModel extends Model
     public function getCategoriesByProjectId(int $projectId)
     {
         $project = $this->find($projectId);
-        return $project ? json_decode($project['categories'], true) : [];
+        return ($project && !empty($project['categories'])) ? (json_decode((string)$project['categories'], true) ?: []) : [];
     }
 
     /**
@@ -372,7 +372,7 @@ class ProjectModel extends Model
     public function getTechStackByProjectId(int $projectId)
     {
         $project = $this->find($projectId);
-        return $project ? json_decode($project['tech_stack'], true) : [];
+        return ($project && !empty($project['tech_stack'])) ? (json_decode((string)$project['tech_stack'], true) ?: []) : [];
     }
 
     /**

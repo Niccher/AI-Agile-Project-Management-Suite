@@ -271,9 +271,12 @@ class ProjectController extends BaseUserController
 
         $id = (int)$project['id'];
         $newArchiveStatus = empty($project['is_archived']) ? 1 : 0;
-        $projectModel->update($id, ['is_archived' => $newArchiveStatus]);
+        $projectModel->update($id, [
+            'is_archived' => $newArchiveStatus,
+            'closed_at'   => $newArchiveStatus ? date('Y-m-d H:i:s') : null,
+        ]);
 
-        $statusMsg = $newArchiveStatus ? 'Project archived successfully.' : 'Project unarchived successfully.';
+        $statusMsg = $newArchiveStatus ? 'Project archived successfully. Backlogs remain intact.' : 'Project restored from archive.';
         return redirect()->to('/projects')->with('message', $statusMsg);
     }
 

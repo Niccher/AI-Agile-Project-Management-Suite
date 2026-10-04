@@ -151,3 +151,53 @@ if (! function_exists('sendPasswordResetEmail')) {
         return false;
     }
 }
+
+if (! function_exists('sendInviteEmail')) {
+    /**
+     * Sends an invitation email to a newly invited team member.
+     *
+     * @param string $recipientEmail
+     * @param string $role
+     * @param string $token
+     * @return bool
+     */
+    function sendInviteEmail(string $recipientEmail, string $role, string $token): bool
+    {
+        $email = \Config\Services::email();
+
+        $config = [
+            'mailType' => 'html',
+            'wordWrap' => true,
+        ];
+        $email->initialize($config);
+
+        $siteName  = function_exists('setting') ? (setting('App.siteName') ?? 'AI Agile Suite') : 'AI Agile Suite';
+        $fromEmail = function_exists('setting') ? (setting('Email.fromEmail') ?? (setting('App.supportEmail') ?? 'notifications@chege.local')) : 'notifications@chege.local';
+        $fromName  = function_exists('setting') ? (setting('Email.fromName') ?? ($siteName . ' Team')) : ($siteName . ' Team');
+
+        $email->setFrom($fromEmail, $fromName);
+        $email->setTo($recipientEmail);
+        $email->setSubject('You have been invited to join ' . $siteName);
+
+        $inviteLink = site_url("auth/invite/{$token}");
+
+        $message = "<h2>You're Invited!</h2>";
+        $message .= "<p>You have been invited to join <strong>" . esc($siteName) . "</strong> with the role of <strong>" . esc(ucfirst($role)) . "</strong>.</p>";
+        $message .= "<p>Click the link below to accept the invitation and set up your password:</p>";
+        $message .= "<p style='margin: 20px 0;'><a href='{$inviteLink}' style='display:inline-block; padding: 12px 24px; background-color: #727cf5; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;'>Accept Invitation & Get Started</a></p>";
+        $message .= "<p>Or copy and paste this link into your browser:</p>";
+        $message .= "<p><a href='{$inviteLink}'>{$inviteLink}</a></p>";
+        $message .= "<p>This invitation link is valid for 7 days.</p>";
+        $message .= "<p>Best regards,<br>The " . esc($siteName) . " Team</p>";
+
+        $email->setMessage($message);
+
+        if ($email->send()) {
+            return true;
+        }
+
+        log_message('error', 'Invite email failed to send to ' . $recipientEmail);
+        return false;
+    }
+}
+

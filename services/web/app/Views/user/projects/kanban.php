@@ -292,7 +292,7 @@ $currentUserId = (int)auth()->id();
                         <textarea name="description" class="form-control" rows="3" placeholder="Additional details or acceptance criteria..."></textarea>
                     </div>
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fw-semibold">Priority</label>
                             <select name="priority" class="form-select">
                                 <option value="low">Low</option>
@@ -301,7 +301,20 @@ $currentUserId = (int)auth()->id();
                                 <option value="critical">Critical</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Story Points</label>
+                            <select name="story_points" class="form-select">
+                                <option value="">None</option>
+                                <option value="1">1 pt</option>
+                                <option value="2">2 pts</option>
+                                <option value="3">3 pts</option>
+                                <option value="5">5 pts</option>
+                                <option value="8">8 pts</option>
+                                <option value="13">13 pts</option>
+                                <option value="21">21 pts</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label fw-semibold">Initial Status</label>
                             <select name="status" class="form-select">
                                 <option value="todo">To Do</option>
@@ -339,57 +352,144 @@ $currentUserId = (int)auth()->id();
     </div>
 </div>
 
-<!-- Edit Task Modal -->
+<!-- Task Details & Edit Modal (Tabs: Details, Comments, Attachments, Activity) -->
 <div class="modal fade" id="editTaskModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content shadow-lg border-0">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title text-white"><i class="mdi mdi-pencil me-1"></i> Edit Task</h5>
+            <div class="modal-header bg-primary text-white py-3">
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-white text-primary me-2 font-13" id="taskDetailBadge">#Task</span>
+                    <h5 class="modal-title text-white mb-0" id="taskDetailTitleHeader">Task Details</h5>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
-                <input type="hidden" id="editTaskId">
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Task Title <span class="text-danger">*</span></label>
-                    <input type="text" id="editTaskTitle" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Description</label>
-                    <textarea id="editTaskDescription" class="form-control" rows="3"></textarea>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Priority</label>
-                        <select id="editTaskPriority" class="form-select">
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                            <option value="critical">Critical</option>
-                        </select>
+            <div class="modal-body p-0">
+                <!-- Nav Tabs -->
+                <ul class="nav nav-tabs nav-bordered px-3 pt-2 bg-light border-bottom" id="taskDetailTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active py-2" id="tab-details-btn" data-bs-toggle="tab" data-bs-target="#tab-details" type="button" role="tab">
+                            <i class="mdi mdi-text-box-outline me-1"></i> Details
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link py-2" id="tab-comments-btn" data-bs-toggle="tab" data-bs-target="#tab-comments" type="button" role="tab">
+                            <i class="mdi mdi-comment-text-multiple-outline me-1"></i> Comments <span class="badge bg-secondary rounded-pill ms-1" id="commentsTabCount">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link py-2" id="tab-attachments-btn" data-bs-toggle="tab" data-bs-target="#tab-attachments" type="button" role="tab">
+                            <i class="mdi mdi-paperclip me-1"></i> Attachments <span class="badge bg-secondary rounded-pill ms-1" id="attachmentsTabCount">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link py-2" id="tab-activity-btn" data-bs-toggle="tab" data-bs-target="#tab-activity" type="button" role="tab">
+                            <i class="mdi mdi-history me-1"></i> Activity History
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Tab Content Panes -->
+                <div class="tab-content p-4" id="taskDetailTabContent">
+                    <!-- Tab 1: Details -->
+                    <div class="tab-pane fade show active" id="tab-details" role="tabpanel">
+                        <input type="hidden" id="editTaskId">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Task Title <span class="text-danger">*</span></label>
+                            <input type="text" id="editTaskTitle" class="form-control font-15 fw-bold" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Description</label>
+                            <textarea id="editTaskDescription" class="form-control" rows="3" placeholder="Add detailed notes or requirements..."></textarea>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Priority</label>
+                                <select id="editTaskPriority" class="form-select">
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="critical">Critical</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Story Points</label>
+                                <select id="editTaskStoryPoints" class="form-select">
+                                    <option value="">None</option>
+                                    <option value="1">1 pt</option>
+                                    <option value="2">2 pts</option>
+                                    <option value="3">3 pts</option>
+                                    <option value="5">5 pts</option>
+                                    <option value="8">8 pts</option>
+                                    <option value="13">13 pts</option>
+                                    <option value="21">21 pts</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Due Date</label>
+                                <input type="date" id="editTaskDueDate" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Assign To</label>
+                                <select id="editTaskAssignedTo" class="form-select">
+                                    <option value="">Unassigned</option>
+                                    <?php if (!empty($users)): ?>
+                                        <?php foreach ($users as $u): ?>
+                                            <option value="<?= $u->id ?>">
+                                                <?= esc(trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->username) ?> (<?= esc($u->username) ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Due Date</label>
-                        <input type="date" id="editTaskDueDate" class="form-control">
+
+                    <!-- Tab 2: Comments -->
+                    <div class="tab-pane fade" id="tab-comments" role="tabpanel">
+                        <div id="commentsList" class="mb-4" style="max-height: 320px; overflow-y: auto;">
+                            <!-- Dynamically loaded comments -->
+                        </div>
+                        <div class="border-top pt-3">
+                            <div class="mb-2">
+                                <label class="form-label fw-semibold font-13"><i class="mdi mdi-comment-plus-outline me-1"></i> Add Comment (Markdown & @mentions supported)</label>
+                                <textarea id="newCommentBody" class="form-control" rows="2" placeholder="Write a comment or note... Use @username to notify teammates"></textarea>
+                            </div>
+                            <div class="text-end">
+                                <button type="button" class="btn btn-sm btn-primary" id="postCommentBtn">
+                                    <i class="mdi mdi-send me-1"></i> Post Comment
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Assign To</label>
-                        <select id="editTaskAssignedTo" class="form-select">
-                            <option value="">Unassigned</option>
-                            <?php if (!empty($users)): ?>
-                                <?php foreach ($users as $u): ?>
-                                    <option value="<?= $u->id ?>">
-                                        <?= esc(trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->username) ?> (<?= esc($u->username) ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </select>
+
+                    <!-- Tab 3: Attachments -->
+                    <div class="tab-pane fade" id="tab-attachments" role="tabpanel">
+                        <div class="mb-3 p-3 bg-light rounded border border-dashed text-center">
+                            <i class="mdi mdi-cloud-upload font-28 text-primary d-block mb-1"></i>
+                            <div class="fw-semibold font-14">Upload Task Attachments</div>
+                            <div class="text-muted font-12 mb-2">Allowed: Images (JPEG, PNG, GIF, WEBP, SVG) & PDFs • Max 20MB</div>
+                            <input type="file" id="taskFileInput" class="form-control form-control-sm mx-auto" style="max-width: 320px;" accept="image/*,application/pdf">
+                            <button type="button" class="btn btn-sm btn-primary mt-2" id="uploadFileBtn">
+                                <i class="mdi mdi-upload me-1"></i> Upload File
+                            </button>
+                        </div>
+                        <div id="attachmentsList" class="mt-3">
+                            <!-- Dynamically loaded attachments -->
+                        </div>
+                    </div>
+
+                    <!-- Tab 4: Activity History -->
+                    <div class="tab-pane fade" id="tab-activity" role="tabpanel">
+                        <div id="activityTimeline" style="max-height: 360px; overflow-y: auto;">
+                            <!-- Dynamically loaded activities -->
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary" id="saveTaskEditBtn">Save Changes</button>
             </div>
         </div>
@@ -907,14 +1007,37 @@ $currentUserId = (int)auth()->id();
             </div>`;
         }
 
-        // 6. Edit Task Modal Handling
+        // 6. Edit & Detail Modal Handling (Comments, Attachments, Activity, Story Points)
         function openEditModal(card) {
-            $('#editTaskId').val(card.data('task-id'));
-            $('#editTaskTitle').val(card.data('title') || card.find('.task-title').text().trim());
-            $('#editTaskDescription').val(card.data('description') || '');
-            $('#editTaskPriority').val(card.data('priority') || 'medium');
-            $('#editTaskDueDate').val(card.data('due-date') || '');
-            $('#editTaskAssignedTo').val(card.data('assigned-to') || '');
+            const taskId = card.data('task-id');
+            const title = card.data('title') || card.find('.task-title').text().trim();
+            const desc = card.data('description') || '';
+            const priority = card.data('priority') || 'medium';
+            const storyPoints = card.data('story-points') || '';
+            const dueDate = card.data('due-date') || '';
+            const assignedTo = card.data('assigned-to') || '';
+
+            $('#editTaskId').val(taskId);
+            $('#taskDetailBadge').text('#' + taskId);
+            $('#taskDetailTitleHeader').text(title);
+            $('#editTaskTitle').val(title);
+            $('#editTaskDescription').val(desc);
+            $('#editTaskPriority').val(priority);
+            $('#editTaskStoryPoints').val(storyPoints);
+            $('#editTaskDueDate').val(dueDate);
+            $('#editTaskAssignedTo').val(assignedTo);
+
+            // Reset to Details tab
+            const detailsTab = document.getElementById('tab-details-btn');
+            if (detailsTab) {
+                const tab = new bootstrap.Tab(detailsTab);
+                tab.show();
+            }
+
+            // Load sub-resources
+            loadComments(taskId);
+            loadAttachments(taskId);
+            loadActivities(taskId);
 
             const modalEl = document.getElementById('editTaskModal');
             if (modalEl) {
@@ -922,6 +1045,230 @@ $currentUserId = (int)auth()->id();
                 modal.show();
             }
         }
+
+        async function loadComments(taskId) {
+            $('#commentsList').html('<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-1"></span> Loading comments...</div>');
+            try {
+                const res = await $.get('<?= site_url('api/tasks/') ?>' + taskId + '/comments');
+                if (res && res.status === 'success') {
+                    const comments = res.comments || [];
+                    $('#commentsTabCount').text(comments.length);
+                    if (!comments.length) {
+                        $('#commentsList').html('<div class="text-muted text-center py-3 font-13"><i class="mdi mdi-comment-outline font-20 d-block mb-1"></i> No comments yet. Start the conversation!</div>');
+                        return;
+                    }
+                    let html = '';
+                    comments.forEach(c => {
+                        const author = c.first_name ? `${c.first_name} ${c.last_name || ''}` : (c.username || 'User');
+                        const initials = (author || 'U').substring(0, 2).toUpperCase();
+                        const isOwner = (String(c.user_id) === '<?= $currentUserId ?>');
+                        html += `
+                        <div class="d-flex mb-3 p-2 rounded bg-light border-light" id="comment-item-${c.id}">
+                            <div class="task-avatar me-2 mt-1">${initials}</div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-semibold font-13">${$('<div>').text(author).html()}</span>
+                                    <small class="text-muted font-11">${c.created_at || ''}</small>
+                                </div>
+                                <div class="font-13 text-body mt-1">${$('<div>').text(c.body).html()}</div>
+                            </div>
+                            ${isOwner ? `<button type="button" class="btn btn-xs btn-link text-danger ms-2 delete-comment-btn" data-id="${c.id}"><i class="mdi mdi-trash-can-outline"></i></button>` : ''}
+                        </div>`;
+                    });
+                    $('#commentsList').html(html);
+                }
+            } catch (e) {
+                $('#commentsList').html('<div class="text-danger small py-2">Failed to load comments.</div>');
+            }
+        }
+
+        async function loadAttachments(taskId) {
+            $('#attachmentsList').html('<div class="text-center text-muted py-2"><span class="spinner-border spinner-border-sm me-1"></span> Loading attachments...</div>');
+            try {
+                const res = await $.get('<?= site_url('api/tasks/') ?>' + taskId + '/attachments');
+                if (res && res.status === 'success') {
+                    const attachments = res.attachments || [];
+                    $('#attachmentsTabCount').text(attachments.length);
+                    if (!attachments.length) {
+                        $('#attachmentsList').html('<div class="text-muted text-center py-2 font-13">No files attached to this task.</div>');
+                        return;
+                    }
+                    let html = '<div class="row g-2">';
+                    attachments.forEach(a => {
+                        const isImg = a.mime_type && a.mime_type.startsWith('image/');
+                        const downloadUrl = '<?= site_url('api/attachments/') ?>' + a.id + '/download';
+                        const isOwner = (String(a.user_id) === '<?= $currentUserId ?>');
+                        const sizeKb = Math.round((a.file_size || 0) / 1024);
+                        html += `
+                        <div class="col-md-6" id="attachment-item-${a.id}">
+                            <div class="card border shadow-none mb-0 p-2 d-flex flex-row align-items-center justify-content-between">
+                                <div class="d-flex align-items-center text-truncate me-2">
+                                    <i class="mdi ${isImg ? 'mdi-file-image text-primary' : 'mdi-file-pdf-box text-danger'} font-24 me-2"></i>
+                                    <div class="text-truncate">
+                                        <a href="${downloadUrl}" target="_blank" class="fw-semibold font-12 text-truncate d-block" title="${$('<div>').text(a.original_name).html()}">${$('<div>').text(a.original_name).html()}</a>
+                                        <span class="text-muted font-11">${sizeKb} KB</span>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <a href="${downloadUrl}" target="_blank" class="btn btn-xs btn-outline-primary" download><i class="mdi mdi-download"></i></a>
+                                    ${isOwner ? `<button type="button" class="btn btn-xs btn-outline-danger delete-attachment-btn" data-id="${a.id}"><i class="mdi mdi-trash-can-outline"></i></button>` : ''}
+                                </div>
+                            </div>
+                        </div>`;
+                    });
+                    html += '</div>';
+                    $('#attachmentsList').html(html);
+                }
+            } catch (e) {
+                $('#attachmentsList').html('<div class="text-danger small py-2">Failed to load attachments.</div>');
+            }
+        }
+
+        async function loadActivities(taskId) {
+            $('#activityTimeline').html('<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-1"></span> Loading activity trail...</div>');
+            try {
+                const res = await $.get('<?= site_url('api/tasks/') ?>' + taskId + '/activities');
+                if (res && res.status === 'success') {
+                    const activities = res.activities || [];
+                    if (!activities.length) {
+                        $('#activityTimeline').html('<div class="text-muted text-center py-3 font-13">No recorded activity history for this task.</div>');
+                        return;
+                    }
+                    let html = '<ul class="list-unstyled mb-0">';
+                    activities.forEach(act => {
+                        const author = act.first_name ? `${act.first_name} ${act.last_name || ''}` : (act.username || 'System');
+                        html += `
+                        <li class="d-flex align-items-start mb-3 border-bottom pb-2">
+                            <i class="mdi mdi-history text-primary font-18 me-2 mt-1"></i>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-semibold font-13">${$('<div>').text(author).html()}</span>
+                                    <small class="text-muted font-11">${act.created_at || ''}</small>
+                                </div>
+                                <div class="font-12 text-muted mt-1">${$('<div>').text(act.details || act.action).html()}</div>
+                            </div>
+                        </li>`;
+                    });
+                    html += '</ul>';
+                    $('#activityTimeline').html(html);
+                }
+            } catch (e) {
+                $('#activityTimeline').html('<div class="text-danger small py-2">Failed to load activity history.</div>');
+            }
+        }
+
+        // Post Comment
+        $('#postCommentBtn').on('click', async function() {
+            const taskId = $('#editTaskId').val();
+            const body = $('#newCommentBody').val().trim();
+            if (!body) return;
+
+            const btn = $(this);
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Posting...');
+
+            try {
+                const res = await $.post('<?= site_url('api/tasks/') ?>' + taskId + '/comments', {
+                    <?= csrf_token() ?>: '<?= csrf_hash() ?>',
+                    body: body
+                });
+                btn.prop('disabled', false).html('<i class="mdi mdi-send me-1"></i> Post Comment');
+                if (res && res.status === 'success') {
+                    $('#newCommentBody').val('');
+                    loadComments(taskId);
+                    loadActivities(taskId);
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Failed to post comment.' });
+                }
+            } catch (e) {
+                btn.prop('disabled', false).html('<i class="mdi mdi-send me-1"></i> Post Comment');
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Network request error.' });
+            }
+        });
+
+        // Delete Comment
+        $(document).on('click', '.delete-comment-btn', async function() {
+            const id = $(this).data('id');
+            const taskId = $('#editTaskId').val();
+            if (!confirm('Delete this comment?')) return;
+
+            try {
+                const res = await $.post('<?= site_url('api/comments/') ?>' + id + '/delete', {
+                    <?= csrf_token() ?>: '<?= csrf_hash() ?>'
+                });
+                if (res && res.status === 'success') {
+                    $(`#comment-item-${id}`).fadeOut(200, function() { $(this).remove(); });
+                    loadActivities(taskId);
+                }
+            } catch (e) {}
+        });
+
+        // Upload Attachment (20MB Limit + Client Image/PDF check)
+        $('#uploadFileBtn').on('click', async function() {
+            const taskId = $('#editTaskId').val();
+            const fileInput = document.getElementById('taskFileInput');
+            if (!fileInput || !fileInput.files.length) {
+                Swal.fire({ icon: 'warning', title: 'Notice', text: 'Please select a file to upload.' });
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const maxBytes = 20 * 1024 * 1024; // 20MB
+            if (file.size > maxBytes) {
+                Swal.fire({ icon: 'error', title: 'File Too Large', text: 'File exceeds 20MB maximum size limit.' });
+                return;
+            }
+
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'application/pdf'];
+            if (!allowedTypes.includes(file.type) && !file.name.match(/\.(jpe?g|png|gif|webp|svg|pdf)$/i)) {
+                Swal.fire({ icon: 'error', title: 'Invalid Format', text: 'Only Images (JPEG, PNG, GIF, WEBP, SVG) and PDF files are allowed.' });
+                return;
+            }
+
+            const btn = $(this);
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Uploading...');
+
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+
+            try {
+                const res = await fetch('<?= site_url('api/tasks/') ?>' + taskId + '/attachments', {
+                    method: 'POST',
+                    body: fd,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                }).then(r => r.json());
+
+                btn.prop('disabled', false).html('<i class="mdi mdi-upload me-1"></i> Upload File');
+                if (res && res.status === 'success') {
+                    fileInput.value = '';
+                    loadAttachments(taskId);
+                    loadActivities(taskId);
+                    Swal.fire({ icon: 'success', title: 'Uploaded!', text: res.message, timer: 1500, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Upload Failed', text: res.message || 'Failed to upload attachment.' });
+                }
+            } catch (e) {
+                btn.prop('disabled', false).html('<i class="mdi mdi-upload me-1"></i> Upload File');
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to upload file.' });
+            }
+        });
+
+        // Delete Attachment
+        $(document).on('click', '.delete-attachment-btn', async function() {
+            const id = $(this).data('id');
+            const taskId = $('#editTaskId').val();
+            if (!confirm('Remove this attachment?')) return;
+
+            try {
+                const res = await $.post('<?= site_url('api/attachments/') ?>' + id + '/delete', {
+                    <?= csrf_token() ?>: '<?= csrf_hash() ?>'
+                });
+                if (res && res.status === 'success') {
+                    $(`#attachment-item-${id}`).fadeOut(200, function() { $(this).remove(); });
+                    loadActivities(taskId);
+                }
+            } catch (e) {}
+        });
 
         $(document).on('click', '.edit-task-btn', function(e) {
             e.preventDefault();
@@ -937,6 +1284,7 @@ $currentUserId = (int)auth()->id();
             const title = $('#editTaskTitle').val().trim();
             const description = $('#editTaskDescription').val().trim();
             const priority = $('#editTaskPriority').val();
+            const storyPoints = $('#editTaskStoryPoints').val();
             const dueDate = $('#editTaskDueDate').val();
             const assignedTo = $('#editTaskAssignedTo').val();
             const assigneeName = $('#editTaskAssignedTo option:selected').text().trim();
@@ -945,6 +1293,7 @@ $currentUserId = (int)auth()->id();
                 title: title,
                 description: description,
                 priority: priority,
+                story_points: storyPoints,
                 due_date: dueDate,
                 assigned_to: assignedTo
             });
@@ -969,11 +1318,12 @@ $currentUserId = (int)auth()->id();
                     card.data('title', title);
                     card.data('description', description);
                     card.data('priority', priority);
+                    card.data('story-points', storyPoints);
                     card.data('due-date', dueDate);
                     card.data('assigned-to', assignedTo);
                     card.attr('data-assigned-to', assignedTo);
 
-                    // Update Left Border & Badge
+                    // Update Left Border & Priority Badge
                     const priorityBorders = { critical: '#fa5c7c', high: '#ffbc00', medium: '#727cf5', low: '#6c757d' };
                     const badgeClasses = { critical: 'bg-danger text-white', high: 'bg-warning text-dark', medium: 'bg-primary text-white', low: 'bg-secondary text-white' };
                     card.css('border-left', '4px solid ' + (priorityBorders[priority] || '#727cf5') + ' !important');
@@ -981,6 +1331,18 @@ $currentUserId = (int)auth()->id();
                         .removeClass('bg-danger bg-warning bg-primary bg-secondary text-white text-dark')
                         .addClass(badgeClasses[priority] || 'bg-primary text-white')
                         .text(priority.charAt(0).toUpperCase() + priority.slice(1));
+
+                    // Update Story Points badge in card
+                    let $ptsBadge = card.find('.task-meta .badge.bg-info-lighten');
+                    if (storyPoints && parseInt(storyPoints, 10) > 0) {
+                        if ($ptsBadge.length) {
+                            $ptsBadge.html(`<i class="mdi mdi-numeric-${storyPoints}-circle-outline me-1"></i>${storyPoints} pts`);
+                        } else {
+                            card.find('.task-meta').append(`<span class="badge bg-info-lighten text-info font-11 rounded-pill" title="${storyPoints} Story Points"><i class="mdi mdi-numeric-${storyPoints}-circle-outline me-1"></i>${storyPoints} pts</span>`);
+                        }
+                    } else if ($ptsBadge.length) {
+                        $ptsBadge.remove();
+                    }
 
                     // Update Assignee Avatar & Text
                     const initials = assignedTo ? assigneeName.substring(0, 2).toUpperCase() : 'UN';
