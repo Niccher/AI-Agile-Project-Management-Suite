@@ -40,11 +40,12 @@ class TaskModel extends Model
     /**
      * Get tasks grouped by status for a specific project
      */
-    public function getBoardData(int $projectId, int $userId)
+    public function getBoardData(int $projectId, ?int $userId = null)
     {
-        $tasks = $this->where('project_id', $projectId)
-                      ->where('user_id', $userId)
-                      ->orderBy('order_index', 'ASC')
+        $tasks = $this->select('tasks.*, users.username as assignee_username, users.first_name as assignee_first_name, users.last_name as assignee_last_name')
+                      ->join('users', 'users.id = tasks.assigned_to', 'left')
+                      ->where('tasks.project_id', $projectId)
+                      ->orderBy('tasks.order_index', 'ASC')
                       ->findAll();
 
         $board = [
@@ -55,6 +56,8 @@ class TaskModel extends Model
         ];
 
         foreach ($tasks as $task) {
+            $name = trim(($task['assignee_first_name'] ?? '') . ' ' . ($task['assignee_last_name'] ?? ''));
+            $task['assignee_name'] = $name ?: ($task['assignee_username'] ?? 'Unassigned');
             $status = $task['status'] ?? 'todo';
             if (isset($board[$status])) {
                 $board[$status][] = $task;

@@ -15,6 +15,9 @@ class TaskApiController extends BaseController
         $taskModel = new TaskModel();
         $userId = auth()->id();
 
+        $assignedTo = $this->request->getPost('assigned_to') ?: null;
+        $dueDate = $this->request->getPost('due_date') ?: null;
+
         $data = [
             'user_id'     => $userId,
             'project_id'  => $this->request->getPost('project_id'),
@@ -22,11 +25,36 @@ class TaskApiController extends BaseController
             'description' => $this->request->getPost('description'),
             'status'      => $this->request->getPost('status') ?? 'todo',
             'priority'    => $this->request->getPost('priority') ?? 'medium',
+            'assigned_to' => $assignedTo,
+            'assigned_by' => $assignedTo ? $userId : null,
+            'due_date'    => $dueDate,
             'order_index' => 0,
         ];
 
         $insertId = $taskModel->insert($data);
         $newTask = $taskModel->find($insertId);
+
+        if (!empty($assignedTo) && (int)$assignedTo !== (int)$userId) {
+            try {
+                $projectModel = new ProjectModel();
+                $project = $projectModel->find($data['project_id']);
+                $projectName = $project['name'] ?? 'Project';
+                $projectSlug = !empty($project['slug']) ? $project['slug'] : ($project['id'] ?? '');
+
+                NotificationService::send(
+                    (int)$assignedTo,
+                    'task_assigned',
+                    'New Task Assigned: ' . $data['title'],
+                    'You were assigned to task "' . $data['title'] . '" in ' . $projectName . '.',
+                    'projects/view/' . $projectSlug . '/kanban',
+                    [
+                        'task_title'   => $data['title'],
+                        'project_name' => $projectName,
+                        'new_status'   => $data['status']
+                    ]
+                );
+            } catch (\Throwable $e) {}
+        }
 
         if ($this->request->isAJAX() || $this->request->header('Accept')?->getValue() === 'application/json' || str_contains($this->request->header('Content-Type')?->getValue() ?? '', 'json')) {
             return $this->response->setJSON([
@@ -90,8 +118,33 @@ class TaskApiController extends BaseController
             return $this->response->setJSON(['status' => 'error', 'message' => 'No data provided']);
         }
 
+        $oldAssignedTo = $task['assigned_to'] ?? null;
+        $newAssignedTo = $data['assigned_to'] ?? null;
+
         $taskModel->update($id, $data);
         $updatedTask = $taskModel->find($id);
+
+        if (!empty($newAssignedTo) && (int)$newAssignedTo !== (int)$oldAssignedTo && (int)$newAssignedTo !== (int)$userId) {
+            try {
+                $projectModel = new ProjectModel();
+                $project = $projectModel->find($task['project_id']);
+                $projectName = $project['name'] ?? 'Project';
+                $projectSlug = !empty($project['slug']) ? $project['slug'] : ($project['id'] ?? '');
+
+                NotificationService::send(
+                    (int)$newAssignedTo,
+                    'task_assigned',
+                    'Task Assigned to You: ' . ($updatedTask['title'] ?? 'Task'),
+                    'You have been assigned to task "' . ($updatedTask['title'] ?? 'Task') . '" in ' . $projectName . '.',
+                    'projects/view/' . $projectSlug . '/kanban',
+                    [
+                        'task_title'   => $updatedTask['title'] ?? 'Task',
+                        'project_name' => $projectName,
+                        'new_status'   => $updatedTask['status'] ?? 'todo'
+                    ]
+                );
+            } catch (\Throwable $e) {}
+        }
 
         return $this->response->setJSON([
             'status'  => 'success',

@@ -41,10 +41,14 @@ class KanbanController extends BaseUserController
             ? $projectModel->orderBy('updated_at', 'DESC')->findAll()
             : $projectModel->where('user_id', $this->userId)->orderBy('updated_at', 'DESC')->findAll();
 
+        $userModel = new \App\Models\UserModel();
+        $usersList = $userModel->orderBy('username', 'ASC')->findAll();
+
         $data = [
             'user'       => $this->currentUser,
             'project'    => $project,
             'projects'   => $projectsList,
+            'users'      => $usersList,
             'categories' => $cats,
             'tech_stack' => $tech,
             'boardData'  => $taskModel->getBoardData($projectId, $this->userId)

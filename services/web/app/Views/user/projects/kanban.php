@@ -51,7 +51,7 @@ $currentUserId = (int)auth()->id();
             </button>
         </div>
         <span class="text-muted font-12 ms-auto d-none d-sm-inline">
-            <i class="mdi mdi-mouse me-1 text-primary"></i> Tip: <strong>Right-click</strong> any card for instant stage transitions & priority changes.
+            <i class="mdi mdi-mouse me-1 text-primary"></i> <strong>Right-click</strong> any card for quick stage moves, priority, or re-assignment.
         </span>
     </div>
 </div>
@@ -213,7 +213,7 @@ $currentUserId = (int)auth()->id();
 </div>
 
 <!-- Floating Desktop Right-Click Context Menu -->
-<div id="kanbanContextMenu" class="dropdown-menu shadow-lg py-1 border-0 rounded-3" style="display: none; position: absolute; z-index: 1060; min-width: 220px;">
+<div id="kanbanContextMenu" class="dropdown-menu shadow-lg py-1 border-0 rounded-3" style="display: none; position: absolute; z-index: 1060; min-width: 230px;">
     <div class="dropdown-header text-uppercase font-10 py-1 text-muted d-flex justify-content-between align-items-center">
         <span id="cmTaskLabel" class="text-truncate" style="max-width: 150px;">Task</span>
         <span class="badge bg-light text-dark font-10 border" id="cmTaskId">#</span>
@@ -246,6 +246,21 @@ $currentUserId = (int)auth()->id();
         <button type="button" class="btn btn-xs btn-outline-primary cm-priority-btn py-0 px-2 font-11" data-priority="medium" title="Medium">Med</button>
         <button type="button" class="btn btn-xs btn-outline-secondary cm-priority-btn py-0 px-2 font-11" data-priority="low" title="Low">Low</button>
     </div>
+
+    <div class="dropdown-divider my-1"></div>
+    <div class="dropdown-header text-uppercase font-10 py-1 text-muted">Assign To</div>
+    <div class="px-2 py-1">
+        <select class="form-select form-select-sm font-12" id="cmAssignSelect">
+            <option value="">Unassigned</option>
+            <?php if (!empty($users)): ?>
+                <?php foreach ($users as $u): ?>
+                    <option value="<?= $u->id ?>">
+                        <?= esc(trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->username) ?>
+                    </option>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </select>
+    </div>
     
     <div class="dropdown-divider my-1"></div>
     <a class="dropdown-item py-1 font-13" href="#" id="cmCopyLinkBtn">
@@ -276,7 +291,7 @@ $currentUserId = (int)auth()->id();
                         <label class="form-label fw-semibold">Description</label>
                         <textarea name="description" class="form-control" rows="3" placeholder="Additional details or acceptance criteria..."></textarea>
                     </div>
-                    <div class="row g-3">
+                    <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Priority</label>
                             <select name="priority" class="form-select">
@@ -293,6 +308,25 @@ $currentUserId = (int)auth()->id();
                                 <option value="in_progress">In Progress</option>
                                 <option value="review">In Review</option>
                             </select>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Assign To</label>
+                            <select name="assigned_to" class="form-select" id="createTaskAssignedTo">
+                                <option value="">Unassigned</option>
+                                <?php if (!empty($users)): ?>
+                                    <?php foreach ($users as $u): ?>
+                                        <option value="<?= $u->id ?>" <?= $u->id == auth()->id() ? 'selected' : '' ?>>
+                                            <?= esc(trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->username) ?> (<?= esc($u->username) ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Due Date</label>
+                            <input type="date" name="due_date" class="form-control">
                         </div>
                     </div>
                 </div>
@@ -323,7 +357,7 @@ $currentUserId = (int)auth()->id();
                     <label class="form-label fw-semibold">Description</label>
                     <textarea id="editTaskDescription" class="form-control" rows="3"></textarea>
                 </div>
-                <div class="row g-3">
+                <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Priority</label>
                         <select id="editTaskPriority" class="form-select">
@@ -336,6 +370,21 @@ $currentUserId = (int)auth()->id();
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Due Date</label>
                         <input type="date" id="editTaskDueDate" class="form-control">
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Assign To</label>
+                        <select id="editTaskAssignedTo" class="form-select">
+                            <option value="">Unassigned</option>
+                            <?php if (!empty($users)): ?>
+                                <?php foreach ($users as $u): ?>
+                                    <option value="<?= $u->id ?>">
+                                        <?= esc(trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->username) ?> (<?= esc($u->username) ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -363,8 +412,64 @@ $currentUserId = (int)auth()->id();
         const columns = ['todo', 'in_progress', 'review', 'done'];
         const $contextMenu = $('#kanbanContextMenu');
         let $activeCard = null;
+        let activeFilter = 'all';
 
-        // 1. Initialize SortableJS Drag & Drop
+        // Filter and Search Engine Defined at Top Scope
+        function applyFilters() {
+            const query = ($('#kanbanSearchInput').val() || '').toLowerCase().trim();
+            const userId = '<?= $currentUserId ?>';
+
+            $('.kanban-card').each(function() {
+                const card = $(this);
+                const title = (card.data('title') || card.find('.task-title').text() || '').toLowerCase();
+                const desc = (card.data('description') || '').toLowerCase();
+                const priority = (card.data('priority') || '').toLowerCase();
+                const assignedTo = String(card.data('assigned-to') || '');
+                const isOverdue = card.find('.text-danger').length > 0;
+
+                // Match Search Query
+                const matchesSearch = !query || title.includes(query) || desc.includes(query);
+
+                // Match Filter Pill
+                let matchesFilter = true;
+                if (activeFilter === 'my_tasks') {
+                    matchesFilter = (assignedTo === userId);
+                } else if (activeFilter === 'high_priority') {
+                    matchesFilter = (priority === 'high' || priority === 'critical');
+                } else if (activeFilter === 'overdue') {
+                    matchesFilter = isOverdue;
+                }
+
+                if (matchesSearch && matchesFilter) {
+                    card.show();
+                } else {
+                    card.hide();
+                }
+            });
+        }
+
+        // 1. Column Counts & WIP Limit Alerts
+        function updateColumnCounts() {
+            columns.forEach(status => {
+                const count = $(`#${status}-list .kanban-card`).length;
+                const $badge = $(`#count-${status}`);
+                $badge.text(count);
+
+                // WIP Limit Check
+                const limit = parseInt($badge.data('wip-limit') || 0, 10);
+                const $wipWarn = $(`#wip-warn-${status}`);
+                if (limit > 0 && count > limit) {
+                    $badge.removeClass('bg-info').addClass('bg-danger');
+                    $wipWarn.removeClass('d-none');
+                } else if (limit > 0) {
+                    $badge.removeClass('bg-danger').addClass('bg-info');
+                    $wipWarn.addClass('d-none');
+                }
+            });
+            applyFilters();
+        }
+
+        // 2. Initialize SortableJS Drag & Drop
         columns.forEach(status => {
             const el = document.getElementById(status + '-list');
             if (el) {
@@ -382,7 +487,6 @@ $currentUserId = (int)auth()->id();
                         const newStatus = colEl.dataset.status;
                         const order = Array.from(evt.to.children).indexOf(evt.item);
 
-                        // Update card data attribute
                         evt.item.dataset.status = newStatus;
 
                         $.post('<?= site_url('projects/task/move') ?>', {
@@ -408,29 +512,9 @@ $currentUserId = (int)auth()->id();
             }
         });
 
-        // 2. Column Counts & WIP Limit Alerts
-        function updateColumnCounts() {
-            columns.forEach(status => {
-                const count = $(`#${status}-list .kanban-card`).length;
-                const $badge = $(`#count-${status}`);
-                $badge.text(count);
-
-                // WIP Limit Check
-                const limit = parseInt($badge.data('wip-limit') || 0, 10);
-                const $wipWarn = $(`#wip-warn-${status}`);
-                if (limit > 0 && count > limit) {
-                    $badge.removeClass('bg-info').addClass('bg-danger');
-                    $wipWarn.removeClass('d-none');
-                } else if (limit > 0) {
-                    $badge.removeClass('bg-danger').addClass('bg-info');
-                    $wipWarn.addClass('d-none');
-                }
-            });
-            applyFilters();
-        }
         updateColumnCounts();
 
-        // 3. Right-Click Context Menu
+        // 3. Right-Click Context Menu Engine
         $(document).on('contextmenu', '.kanban-card', function(e) {
             e.preventDefault();
             $activeCard = $(this);
@@ -438,6 +522,7 @@ $currentUserId = (int)auth()->id();
             const taskTitle = $activeCard.data('title') || $activeCard.find('.task-title').text().trim();
             const currentStatus = $activeCard.data('status') || $activeCard.closest('.kanban-column').data('status');
             const currentPriority = $activeCard.data('priority') || 'medium';
+            const currentAssignedTo = $activeCard.data('assigned-to') || '';
 
             // Populate Context Menu Headers
             $('#cmTaskId').text('#' + taskId);
@@ -463,17 +548,20 @@ $currentUserId = (int)auth()->id();
                 }
             });
 
-            // Position Menu with boundary detection
+            // Configure Assignee select
+            $('#cmAssignSelect').val(currentAssignedTo);
+
+            // Position Menu with window boundary detection
             let posX = e.pageX;
             let posY = e.pageY;
-            const menuWidth = 220;
-            const menuHeight = 280;
+            const menuWidth = 230;
+            const menuHeight = 350;
 
             if (posX + menuWidth > $(window).width()) {
                 posX = $(window).width() - menuWidth - 15;
             }
             if (posY + menuHeight > $(document).height()) {
-                posY = posY - menuHeight;
+                posY = Math.max(10, posY - menuHeight);
             }
 
             $contextMenu.css({
@@ -483,7 +571,7 @@ $currentUserId = (int)auth()->id();
             });
         });
 
-        // Hide Context Menu on outside click or Esc
+        // Hide Context Menu
         function hideContextMenu() {
             $contextMenu.hide();
         }
@@ -510,7 +598,6 @@ $currentUserId = (int)auth()->id();
             const taskId = $activeCard.data('task-id');
             const $targetCol = $(`#${newStatus}-list`);
 
-            // Animate movement into target column
             $activeCard.fadeOut(150, function() {
                 $targetCol.prepend($activeCard);
                 $activeCard.data('status', newStatus);
@@ -553,22 +640,10 @@ $currentUserId = (int)auth()->id();
                 $activeCard.data('priority', newPriority);
                 $activeCard.attr('data-priority', newPriority);
 
-                // Update Left Border
-                const priorityBorders = {
-                    critical: '#fa5c7c',
-                    high: '#ffbc00',
-                    medium: '#727cf5',
-                    low: '#6c757d'
-                };
-                $activeCard.css('border-left', '4px solid ' + (priorityBorders[newPriority] || '#727cf5') + ' !important');
+                const priorityBorders = { critical: '#fa5c7c', high: '#ffbc00', medium: '#727cf5', low: '#6c757d' };
+                const badgeClasses = { critical: 'bg-danger text-white', high: 'bg-warning text-dark', medium: 'bg-primary text-white', low: 'bg-secondary text-white' };
 
-                // Update Badge
-                const badgeClasses = {
-                    critical: 'bg-danger text-white',
-                    high: 'bg-warning text-dark',
-                    medium: 'bg-primary text-white',
-                    low: 'bg-secondary text-white'
-                };
+                $activeCard.css('border-left', '4px solid ' + (priorityBorders[newPriority] || '#727cf5') + ' !important');
                 $activeCard.find('.priority-pill')
                     .removeClass('bg-danger bg-warning bg-primary bg-secondary text-white text-dark')
                     .addClass(badgeClasses[newPriority] || 'bg-primary text-white')
@@ -578,6 +653,35 @@ $currentUserId = (int)auth()->id();
                     Toast.fire({
                         icon: 'info',
                         title: 'Priority set to ' + newPriority.toUpperCase()
+                    });
+                }
+            }
+        });
+
+        // Context Menu Action: Quick Reassign
+        $('#cmAssignSelect').on('change', async function() {
+            if (!$activeCard) return;
+            const newAssigneeId = $(this).val();
+            const newAssigneeName = $(this).find('option:selected').text().trim();
+            const taskId = $activeCard.data('task-id');
+            hideContextMenu();
+
+            const res = await dispatchAsyncAction('<?= site_url('projects/task/update/') ?>' + taskId, {
+                assigned_to: newAssigneeId
+            });
+
+            if (res && (res.success || res.status === 'success')) {
+                $activeCard.data('assigned-to', newAssigneeId);
+                $activeCard.attr('data-assigned-to', newAssigneeId);
+
+                const initials = newAssigneeId ? newAssigneeName.substring(0, 2).toUpperCase() : 'UN';
+                $activeCard.find('.task-avatar').text(initials);
+                $activeCard.find('.task-assignee span').text(newAssigneeId ? newAssigneeName : 'Unassigned');
+
+                if (typeof Toast !== 'undefined') {
+                    Toast.fire({
+                        icon: 'success',
+                        title: 'Assigned to ' + (newAssigneeId ? newAssigneeName : 'Unassigned')
                     });
                 }
             }
@@ -685,7 +789,7 @@ $currentUserId = (int)auth()->id();
 
             if (res && (res.success || res.status === 'success')) {
                 const taskId = (res.task && res.task.id) ? res.task.id : Date.now();
-                const newCardHtml = createCardHtml(taskId, title, '', 'medium', status, '', '<?= auth()->user()->username ?? 'You' ?>');
+                const newCardHtml = createCardHtml(taskId, title, '', 'medium', status, '', '<?= auth()->user()->username ?? 'You' ?>', '<?= $currentUserId ?>');
                 $(`#${status}-list`).prepend(newCardHtml);
                 $input.val('');
                 $form.addClass('d-none');
@@ -719,6 +823,9 @@ $currentUserId = (int)auth()->id();
             const title = formData.get('title') || '';
             const priority = formData.get('priority') || 'medium';
             const description = formData.get('description') || '';
+            const assignedTo = formData.get('assigned_to') || '';
+            const dueDate = formData.get('due_date') || '';
+            const assigneeName = $('#createTaskAssignedTo option:selected').text().trim();
 
             const res = await dispatchAsyncAction(form.action, formData);
             submitBtn.prop('disabled', false);
@@ -732,7 +839,7 @@ $currentUserId = (int)auth()->id();
                 form.reset();
 
                 const taskId = (res.task && res.task.id) ? res.task.id : Date.now();
-                const newCardHtml = createCardHtml(taskId, title, description, priority, status, '', '<?= auth()->user()->username ?? 'You' ?>');
+                const newCardHtml = createCardHtml(taskId, title, description, priority, status, dueDate, assignedTo ? assigneeName : 'Unassigned', assignedTo);
                 $(`#${status}-list`).prepend(newCardHtml);
                 updateColumnCounts();
 
@@ -742,17 +849,17 @@ $currentUserId = (int)auth()->id();
             }
         });
 
-        function createCardHtml(id, title, desc, priority, status, dueDate, assigneeName) {
+        function createCardHtml(id, title, desc, priority, status, dueDate, assigneeName, assignedTo) {
             const p = (priority || 'medium').toLowerCase();
             const priorityBorders = { critical: '#fa5c7c', high: '#ffbc00', medium: '#727cf5', low: '#6c757d' };
             const badgeClasses = { critical: 'bg-danger text-white', high: 'bg-warning text-dark', medium: 'bg-primary text-white', low: 'bg-secondary text-white' };
-            const initials = assigneeName ? assigneeName.substring(0, 2).toUpperCase() : 'ME';
+            const initials = assigneeName && assigneeName !== 'Unassigned' ? assigneeName.substring(0, 2).toUpperCase() : 'UN';
 
             return `
             <div class="kanban-card card shadow-sm mb-2" id="task-card-${id}"
                  data-task-id="${id}" data-title="${$('<div>').text(title).html()}"
                  data-description="${$('<div>').text(desc).html()}" data-priority="${p}"
-                 data-due-date="${dueDate}" data-status="${status}" data-assigned-to="<?= $currentUserId ?>"
+                 data-due-date="${dueDate || ''}" data-status="${status}" data-assigned-to="${assignedTo || ''}"
                  draggable="true" style="border-left: 4px solid ${priorityBorders[p] || '#727cf5'} !important;">
                 <div class="kanban-card-header pb-1">
                     <div class="d-flex justify-content-between align-items-start gap-1">
@@ -784,14 +891,14 @@ $currentUserId = (int)auth()->id();
                             <span class="badge ${badgeClasses[p] || 'bg-primary text-white'} font-11 rounded-pill priority-pill">${p.charAt(0).toUpperCase() + p.slice(1)}</span>
                         </div>
                         <div class="task-date font-11 text-muted">
-                            <i class="mdi mdi-calendar-clock me-1"></i> Today
+                            <i class="mdi mdi-calendar-clock me-1"></i> ${dueDate || 'Today'}
                         </div>
                     </div>
                 </div>
                 <div class="kanban-card-footer pt-2 mt-1 border-top border-light d-flex justify-content-between align-items-center">
-                    <div class="task-assignee d-flex align-items-center">
+                    <div class="task-assignee d-flex align-items-center" title="Assignee: ${assigneeName || 'Unassigned'}">
                         <div class="task-avatar">${initials}</div>
-                        <span class="font-11 text-muted ms-1 text-truncate" style="max-width: 110px;">${assigneeName || 'You'}</span>
+                        <span class="font-11 text-muted ms-1 text-truncate" style="max-width: 110px;">${assigneeName || 'Unassigned'}</span>
                     </div>
                     <div class="task-hints font-11 text-muted" title="Right-click for quick actions">
                         <i class="mdi mdi-cursor-default-click-outline opacity-50"></i>
@@ -807,6 +914,8 @@ $currentUserId = (int)auth()->id();
             $('#editTaskDescription').val(card.data('description') || '');
             $('#editTaskPriority').val(card.data('priority') || 'medium');
             $('#editTaskDueDate').val(card.data('due-date') || '');
+            $('#editTaskAssignedTo').val(card.data('assigned-to') || '');
+
             const modalEl = document.getElementById('editTaskModal');
             if (modalEl) {
                 const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
@@ -829,12 +938,15 @@ $currentUserId = (int)auth()->id();
             const description = $('#editTaskDescription').val().trim();
             const priority = $('#editTaskPriority').val();
             const dueDate = $('#editTaskDueDate').val();
+            const assignedTo = $('#editTaskAssignedTo').val();
+            const assigneeName = $('#editTaskAssignedTo option:selected').text().trim();
 
             const res = await dispatchAsyncAction('<?= site_url('projects/task/update/') ?>' + id, {
                 title: title,
                 description: description,
                 priority: priority,
-                due_date: dueDate
+                due_date: dueDate,
+                assigned_to: assignedTo
             });
 
             btn.prop('disabled', false).text('Save Changes');
@@ -858,6 +970,8 @@ $currentUserId = (int)auth()->id();
                     card.data('description', description);
                     card.data('priority', priority);
                     card.data('due-date', dueDate);
+                    card.data('assigned-to', assignedTo);
+                    card.attr('data-assigned-to', assignedTo);
 
                     // Update Left Border & Badge
                     const priorityBorders = { critical: '#fa5c7c', high: '#ffbc00', medium: '#727cf5', low: '#6c757d' };
@@ -867,6 +981,11 @@ $currentUserId = (int)auth()->id();
                         .removeClass('bg-danger bg-warning bg-primary bg-secondary text-white text-dark')
                         .addClass(badgeClasses[priority] || 'bg-primary text-white')
                         .text(priority.charAt(0).toUpperCase() + priority.slice(1));
+
+                    // Update Assignee Avatar & Text
+                    const initials = assignedTo ? assigneeName.substring(0, 2).toUpperCase() : 'UN';
+                    card.find('.task-avatar').text(initials);
+                    card.find('.task-assignee span').text(assignedTo ? assigneeName : 'Unassigned');
                 }
 
                 const modalEl = document.getElementById('editTaskModal');
@@ -911,9 +1030,7 @@ $currentUserId = (int)auth()->id();
             triggerDeleteTask(card);
         });
 
-        // 8. Live Search & Filter Bar Logic
-        let activeFilter = 'all';
-
+        // 8. Filter Pills Click Listeners
         $('#filterPills button').on('click', function() {
             $('#filterPills button').removeClass('active');
             $(this).addClass('active');
@@ -924,39 +1041,6 @@ $currentUserId = (int)auth()->id();
         $('#kanbanSearchInput').on('input', function() {
             applyFilters();
         });
-
-        function applyFilters() {
-            const query = $('#kanbanSearchInput').val().toLowerCase().trim();
-            const userId = '<?= $currentUserId ?>';
-
-            $('.kanban-card').each(function() {
-                const card = $(this);
-                const title = (card.data('title') || card.find('.task-title').text() || '').toLowerCase();
-                const desc = (card.data('description') || '').toLowerCase();
-                const priority = (card.data('priority') || '').toLowerCase();
-                const assignedTo = String(card.data('assigned-to') || '');
-                const isOverdue = card.find('.text-danger').length > 0;
-
-                // Match Search Query
-                const matchesSearch = !query || title.includes(query) || desc.includes(query);
-
-                // Match Filter Pill
-                let matchesFilter = true;
-                if (activeFilter === 'my_tasks') {
-                    matchesFilter = (assignedTo === userId);
-                } else if (activeFilter === 'high_priority') {
-                    matchesFilter = (priority === 'high' || priority === 'critical');
-                } else if (activeFilter === 'overdue') {
-                    matchesFilter = isOverdue;
-                }
-
-                if (matchesSearch && matchesFilter) {
-                    card.show();
-                } else {
-                    card.hide();
-                }
-            });
-        }
     }
 
     if (document.readyState === 'loading') {
