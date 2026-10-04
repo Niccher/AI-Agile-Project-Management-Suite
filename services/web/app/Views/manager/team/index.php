@@ -34,6 +34,84 @@
         </div>
     </div>
 
+    <!-- Projects & Team Roster Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-folder-open text-primary me-2"></i> Project Teams & Assigned Members</h5>
+                    <span class="badge bg-primary-lighten text-primary font-12"><?= count($projectsWithMembers ?? []) ?> Active Projects</span>
+                </div>
+                <div class="card-body">
+                    <?php if (empty($projectsWithMembers)): ?>
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-project-diagram fa-3x mb-3"></i>
+                            <p>No active project team rosters found.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="row g-4">
+                            <?php foreach ($projectsWithMembers as $proj): ?>
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="card border h-100 shadow-none">
+                                        <div class="card-body">
+                                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                                <span class="badge" style="background-color: <?= esc($proj['color'] ?? '#727cf5') ?>; color: #fff;">
+                                                    <?= esc(strtoupper($proj['status'] ?? 'Active')) ?>
+                                                </span>
+                                                <small class="text-muted"><i class="fas fa-user-shield me-1"></i> Lead: <?= esc($proj['owner_name'] ?: 'Manager') ?></small>
+                                            </div>
+                                            <h5 class="card-title fw-bold text-truncate mb-2">
+                                                <a href="<?= site_url('projects/view/' . ($proj['slug'] ?: $proj['id'])) ?>" class="text-dark">
+                                                    <?= esc($proj['name']) ?>
+                                                </a>
+                                            </h5>
+                                            
+                                            <!-- Progress Bar -->
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between font-12 text-muted mb-1">
+                                                    <span>Completion</span>
+                                                    <span><?= $proj['done_tasks'] ?> / <?= $proj['total_tasks'] ?> tasks (<?= $proj['progress_pct'] ?>%)</span>
+                                                </div>
+                                                <div class="progress" style="height: 6px;">
+                                                    <div class="progress-bar rounded" style="width: <?= $proj['progress_pct'] ?>%; background-color: <?= esc($proj['color'] ?? '#727cf5') ?>;"></div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Assigned Users Roster -->
+                                            <h6 class="font-12 text-muted text-uppercase fw-bold mb-2">Assigned Team Members</h6>
+                                            <?php if (empty($proj['members'])): ?>
+                                                <p class="font-12 text-muted mb-0">No assigned members yet.</p>
+                                            <?php else: ?>
+                                                <div class="d-flex flex-column gap-2">
+                                                    <?php foreach ($proj['members'] as $member): ?>
+                                                        <div class="d-flex align-items-center justify-content-between p-2 rounded bg-light">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="avatar-xs bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px; font-size: 11px;">
+                                                                    <?= strtoupper(substr($member['username'] ?? 'U', 0, 1)) ?>
+                                                                </div>
+                                                                <div>
+                                                                    <div class="font-13 fw-semibold text-body"><?= esc($member['display_name']) ?></div>
+                                                                    <small class="text-muted font-11">@<?= esc($member['username']) ?></small>
+                                                                </div>
+                                                            </div>
+                                                            <span class="badge bg-secondary-lighten text-secondary font-11">
+                                                                <?= $member['completed_task_count'] ?> / <?= $member['task_count'] ?> Tasks
+                                                            </span>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Performance Leaderboard -->
     <div class="row">
         <div class="col-md-8">
@@ -76,8 +154,8 @@
                                                         <?= strtoupper(substr($user['username'] ?? 'U', 0, 1)) ?>
                                                     </div>
                                                     <div>
-                                                        <h6 class="mb-0"><?= esc($user['username'] ?? 'Team Member') ?></h6>
-                                                        <small class="text-muted">User ID: <?= $user['user_id'] ?></small>
+                                                        <h6 class="mb-0"><?= esc($user['display_name'] ?? $user['username'] ?? 'Team Member') ?></h6>
+                                                        <small class="text-muted">@<?= esc($user['username']) ?></small>
                                                     </div>
                                                 </div>
                                             </td>

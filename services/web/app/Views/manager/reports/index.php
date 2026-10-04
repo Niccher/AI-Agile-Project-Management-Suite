@@ -34,11 +34,11 @@
                             <label class="form-label text-muted small fw-bold">DATE RANGE</label>
                             <div class="row g-2">
                                 <div class="col">
-                                    <input type="date" name="period_start" class="form-control form-control-sm" required>
+                                    <input type="date" name="period_start" class="form-control form-control-sm">
                                 </div>
                                 <div class="col-auto d-flex align-items-center text-muted">to</div>
                                 <div class="col">
-                                    <input type="date" name="period_end" class="form-control form-control-sm" required>
+                                    <input type="date" name="period_end" class="form-control form-control-sm">
                                 </div>
                             </div>
                         </div>
@@ -106,8 +106,8 @@
                                             </td>
                                             <td>
                                                 <small>
-                                                    <?= date('M j, Y', strtotime($report['period_start'])) ?> - 
-                                                    <?= date('M j, Y', strtotime($report['period_end'])) ?>
+                                                    <?= (!empty($report['period_start']) && strtotime((string)$report['period_start'])) ? date('M j, Y', strtotime((string)$report['period_start'])) : 'All Time' ?> - 
+                                                    <?= (!empty($report['period_end']) && strtotime((string)$report['period_end'])) ? date('M j, Y', strtotime((string)$report['period_end'])) : 'Present' ?>
                                                 </small>
                                             </td>
                                             <td class="text-muted small">

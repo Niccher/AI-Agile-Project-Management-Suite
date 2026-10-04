@@ -68,7 +68,7 @@
     <div class="header">
         <h1><?= esc(setting('App.siteName')) ?> - Team Performance Report</h1>
         <div class="meta-info">
-            Period: <?= date('F j, Y', strtotime($start)) ?> to <?= date('F j, Y', strtotime($end)) ?><br>
+            Period: <?= (!empty($start) && strtotime((string)$start)) ? date('F j, Y', strtotime((string)$start)) : 'All Time' ?> to <?= (!empty($end) && strtotime((string)$end)) ? date('F j, Y', strtotime((string)$end)) : 'Present' ?><br>
             Generated on: <?= date('F j, Y, g:i a') ?>
         </div>
     </div>

@@ -18,7 +18,7 @@
                     <a href="<?= site_url('admin/ai/settings') ?>" class="btn btn-sm btn-outline-primary rounded-pill me-2">
                         <i class="mdi mdi-tune-vertical me-1"></i> AI Settings
                     </a>
-                    <button class="btn btn-sm btn-primary rounded-pill shadow-sm" onclick="window.location.reload();">
+                    <button id="refreshTelemetryBtn" class="btn btn-sm btn-primary rounded-pill shadow-sm">
                         <i class="mdi mdi-refresh me-1"></i> Refresh Metrics
                     </button>
                 </div>
@@ -354,5 +354,53 @@ function triggerTelemetryModelAction(action, modelKey) {
         });
     });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const refreshBtn = document.getElementById('refreshTelemetryBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            const btn = this;
+            const origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Refreshing...';
+
+            fetch('<?= site_url('admin/ai/telemetry') ?>', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(res => {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+
+                if (res.isOnline) {
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 2000,
+                        timerProgressBar: true
+                    });
+                    Toast.fire({ icon: 'success', title: 'Metrics updated cleanly!' });
+                    setTimeout(() => window.location.reload(), 600);
+                } else {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'AI Microservice Offline / Unreachable',
+                        text: res.errorMsg || 'Could not communicate with ML microservice.'
+                    });
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Refresh Error',
+                    text: err.message
+                });
+            });
+        });
+    }
+});
 </script>
 <?= $this->endSection() ?>

@@ -46,7 +46,9 @@
                             <?php foreach ($tasks as $task): ?>
                                 <tr id="task-row-<?= $task['id'] ?>">
                                     <td>
-                                        <div class="fw-bold"><?= esc($task['title']) ?></div>
+                                        <div class="fw-bold text-primary cursor-pointer btn-view-approval-detail" data-bs-toggle="modal" data-bs-target="#taskDetailModal<?= $task['id'] ?>" style="cursor: pointer;">
+                                            <i class="fas fa-eye me-1"></i> <?= esc($task['title']) ?>
+                                        </div>
                                         <div class="text-muted small text-truncate" style="max-width: 300px;">
                                             <?= esc($task['description']) ?>
                                         </div>
@@ -71,6 +73,9 @@
                                         ?><?= ($ts !== false) ? date('M j, Y g:i A', $ts) : 'N/A' ?>
                                     </td>
                                     <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-info me-1" data-bs-toggle="modal" data-bs-target="#taskDetailModal<?= $task['id'] ?>">
+                                            <i class="fas fa-eye"></i> Details
+                                        </button>
                                         <form action="<?= site_url('manager/approvals/'.$task['id'].'/approve') ?>" method="POST" class="d-inline form-approve-task" data-id="<?= $task['id'] ?>" data-title="<?= esc($task['title']) ?>">
                                             <?= csrf_field() ?>
                                             <button type="button" class="btn btn-sm btn-success btn-approve-action">
@@ -82,6 +87,77 @@
                                         </button>
                                     </td>
                                 </tr>
+
+                                <!-- Task Detail Modal -->
+                                <div class="modal fade" id="taskDetailModal<?= $task['id'] ?>" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-light">
+                                                <h5 class="modal-title font-16 fw-bold">
+                                                    <i class="fas fa-tasks me-2 text-primary"></i> <?= esc($task['title']) ?>
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body p-4">
+                                                <div class="row g-3 mb-4">
+                                                    <div class="col-md-6">
+                                                        <span class="text-muted font-12 text-uppercase fw-bold d-block mb-1">Project</span>
+                                                        <span class="badge bg-primary-lighten text-primary fs-6"><?= esc($task['project_name'] ?? 'Workspace') ?></span>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <span class="text-muted font-12 text-uppercase fw-bold d-block mb-1">Priority & Points</span>
+                                                        <span class="badge bg-warning text-dark me-2"><?= esc(ucfirst($task['priority'] ?? 'Medium')) ?> Priority</span>
+                                                        <span class="badge bg-secondary"><?= (int)($task['story_points'] ?? 1) ?> Story Points</span>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-3 mb-4">
+                                                    <div class="col-md-6">
+                                                        <span class="text-muted font-12 text-uppercase fw-bold d-block mb-1">Submitted By (Assignee)</span>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="avatar avatar-sm bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                                                <?= strtoupper(substr($task['first_name'] ?? $task['username'] ?? 'U', 0, 1)) ?>
+                                                            </div>
+                                                            <div>
+                                                                <h6 class="mb-0 font-14"><?= esc(trim(($task['first_name'] ?? '') . ' ' . ($task['last_name'] ?? '')) ?: ($task['username'] ?? 'Team Member')) ?></h6>
+                                                                <small class="text-muted">@<?= esc($task['username'] ?? 'user') ?></small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <span class="text-muted font-12 text-uppercase fw-bold d-block mb-1">Logged Time</span>
+                                                        <h5 class="my-0 text-success"><i class="fas fa-clock me-1"></i> <?= esc($task['logged_hours'] ?? '0.0') ?> hrs</h5>
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-4">
+                                                    <span class="text-muted font-12 text-uppercase fw-bold d-block mb-1">Task Description & Deliverables</span>
+                                                    <div class="p-3 bg-light rounded border font-14">
+                                                        <?= nl2br(esc($task['description'] ?: 'No description provided for this task.')) ?>
+                                                    </div>
+                                                </div>
+
+                                                <?php if (!empty($task['due_date'])): ?>
+                                                    <div class="mb-2 text-muted font-13">
+                                                        <i class="fas fa-calendar-alt me-1 text-danger"></i> Target Due Date: <strong><?= date('F j, Y', strtotime($task['due_date'])) ?></strong>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="modal-footer bg-light">
+                                                <form action="<?= site_url('manager/approvals/'.$task['id'].'/approve') ?>" method="POST" class="d-inline form-approve-task" data-id="<?= $task['id'] ?>" data-title="<?= esc($task['title']) ?>">
+                                                    <?= csrf_field() ?>
+                                                    <button type="button" class="btn btn-success btn-approve-action" data-bs-dismiss="modal">
+                                                        <i class="fas fa-check me-1"></i> Approve Work
+                                                    </button>
+                                                </form>
+                                                <button type="button" class="btn btn-outline-danger ms-2" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#rejectModal<?= $task['id'] ?>">
+                                                    <i class="fas fa-times me-1"></i> Reject Work
+                                                </button>
+                                                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <!-- Reject Modal -->
                                 <div class="modal fade" id="rejectModal<?= $task['id'] ?>" tabindex="-1" aria-hidden="true">

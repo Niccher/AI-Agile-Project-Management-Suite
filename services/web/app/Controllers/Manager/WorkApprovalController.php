@@ -10,9 +10,20 @@ class WorkApprovalController extends BaseController
     public function index()
     {
         $taskModel = new TaskModel();
-        $currentUser = auth()->user();
-        $managerId = ($currentUser && $currentUser->inGroup('admin')) ? null : auth()->id();
-        $tasks = $taskModel->getPendingReviews($managerId);
+        $tasks = $taskModel->getPendingReviews();
+
+        $db = \Config\Database::connect();
+        foreach ($tasks as &$task) {
+            $timeLog = $db->table('time_logs')
+                ->select('COALESCE(SUM(duration), 0) as total_duration')
+                ->where('project_id', $task['project_id'])
+                ->where('task_name', $task['title'])
+                ->get()->getRowArray();
+            
+            $sec = (int)($timeLog['total_duration'] ?? 0);
+            $task['logged_hours'] = number_format($sec / 3600, 1);
+        }
+        unset($task);
 
         return view('manager/approvals/index', ['tasks' => $tasks]);
     }

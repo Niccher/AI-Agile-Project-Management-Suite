@@ -32,13 +32,16 @@ class ReportService
         
         file_put_contents($filepath, $dompdf->output());
 
+        $periodStart = !empty($params['start']) ? $params['start'] : null;
+        $periodEnd = !empty($params['end']) ? $params['end'] : null;
+
         // Log to database
         $reportModel = new ReportModel();
         $reportModel->insert([
             'generated_by' => $generatedBy,
             'type'         => 'pdf',
-            'period_start' => $params['start'] ?? null,
-            'period_end'   => $params['end'] ?? null,
+            'period_start' => $periodStart,
+            'period_end'   => $periodEnd,
             'file_path'    => $filename,
             'params'       => json_encode($params),
         ]);
@@ -60,13 +63,16 @@ class ReportService
         $csv->insertOne($headers);
         $csv->insertAll($data);
 
+        $periodStart = !empty($params['start']) ? $params['start'] : null;
+        $periodEnd = !empty($params['end']) ? $params['end'] : null;
+
         // Log to database
         $reportModel = new ReportModel();
         $reportModel->insert([
             'generated_by' => $generatedBy,
             'type'         => 'csv',
-            'period_start' => $params['start'] ?? null,
-            'period_end'   => $params['end'] ?? null,
+            'period_start' => $periodStart,
+            'period_end'   => $periodEnd,
             'file_path'    => $filename,
             'params'       => json_encode($params),
         ]);

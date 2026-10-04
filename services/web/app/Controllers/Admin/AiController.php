@@ -22,6 +22,16 @@ class AiController extends BaseController
         $telemetryData = $this->llm->getTelemetry();
         $modelsData    = $this->llm->getModels();
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status'    => !empty($telemetryData['success']) ? 'success' : 'error',
+                'isOnline'  => $telemetryData['success'] ?? false,
+                'telemetry' => $telemetryData['data'] ?? [],
+                'models'    => $modelsData['data']['models'] ?? $this->getDefaultModelsCatalog(),
+                'errorMsg'  => $telemetryData['error']['message'] ?? null,
+            ]);
+        }
+
         return view('admin/ai/telemetry', [
             'telemetry' => $telemetryData['data'] ?? [],
             'models'    => $modelsData['data']['models'] ?? $this->getDefaultModelsCatalog(),

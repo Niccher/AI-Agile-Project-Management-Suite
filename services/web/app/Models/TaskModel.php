@@ -171,13 +171,6 @@ class TaskModel extends Model
         }
 
         $query->where('tasks.status', 'review');
-                      
-        if ($managerId !== null && in_array('assigned_by', $taskFields, true)) {
-            $query->groupStart()
-                  ->where('tasks.assigned_by', $managerId)
-                  ->orWhere('tasks.assigned_by IS NULL', null, false)
-                  ->groupEnd();
-        }
 
         if (in_array('updated_at', $taskFields, true)) {
             $query->orderBy('tasks.updated_at', 'ASC');

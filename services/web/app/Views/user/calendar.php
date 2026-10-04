@@ -349,6 +349,56 @@
 <!-- Toast Container -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
 
+<style>
+.fc {
+    font-family: inherit;
+}
+.fc .fc-toolbar-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #313a46;
+}
+.fc .fc-button-primary {
+    background-color: #727cf5;
+    border-color: #727cf5;
+    border-radius: 0.25rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    text-transform: capitalize;
+    padding: 0.375rem 0.75rem;
+    box-shadow: none;
+}
+.fc .fc-button-primary:hover, .fc .fc-button-primary:focus {
+    background-color: #5b65dc;
+    border-color: #5b65dc;
+}
+.fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active {
+    background-color: #4a54c6;
+    border-color: #4a54c6;
+}
+.fc .fc-daygrid-day.fc-day-today {
+    background-color: rgba(114, 124, 245, 0.08) !important;
+}
+.fc-theme-bootstrap5 a {
+    color: #313a46;
+    text-decoration: none;
+}
+.fc-event {
+    border-radius: 4px !important;
+    border: none !important;
+    padding: 2px 4px !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+}
+.fc-event:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+}
+</style>
+
 <!-- FullCalendar v6 CDN -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 
@@ -360,7 +410,7 @@ $(document).ready(function() {
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
         },
         themeSystem: 'bootstrap5',
         events: '<?= site_url('calendar/events') ?>',
