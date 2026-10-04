@@ -155,7 +155,7 @@ class DemoSeeder extends Seeder
 
             foreach ($invites as $inv) {
                 if ($db->table('user_invites')->where('email', $inv['email'])->countAllResults() === 0) {
-                    $db->table('user_invites')->insert($inv);
+                    $db->table('user_invites')->insert($this->filterToExistingColumns('user_invites', $inv));
                 }
             }
         }
@@ -392,10 +392,10 @@ class DemoSeeder extends Seeder
         foreach ($seedProjects as $pData) {
             $existing = $db->table('projects')->where('slug', $pData['slug'])->get()->getRowArray();
             if ($existing) {
-                $db->table('projects')->where('id', $existing['id'])->update($pData);
+                $db->table('projects')->where('id', $existing['id'])->update($this->filterToExistingColumns('projects', $pData));
                 $projectMap[$pData['slug']] = (int)$existing['id'];
             } else {
-                $db->table('projects')->insert($pData);
+                $db->table('projects')->insert($this->filterToExistingColumns('projects', $pData));
                 $projectMap[$pData['slug']] = (int)$db->insertID();
             }
         }
@@ -436,7 +436,7 @@ class DemoSeeder extends Seeder
             ];
             foreach ($portalTokens as $pt) {
                 if ($db->table('project_portal_tokens')->where('token', $pt['token'])->countAllResults() === 0) {
-                    $db->table('project_portal_tokens')->insert($pt);
+                    $db->table('project_portal_tokens')->insert($this->filterToExistingColumns('project_portal_tokens', $pt));
                 }
             }
         }
@@ -504,10 +504,10 @@ class DemoSeeder extends Seeder
                 ->get()->getRowArray();
 
             if ($existingSprint) {
-                $db->table('sprints')->where('id', $existingSprint['id'])->update($sData);
+                $db->table('sprints')->where('id', $existingSprint['id'])->update($this->filterToExistingColumns('sprints', $sData));
                 $sprintMap[$sData['project_id'] . ':' . $sData['name']] = (int)$existingSprint['id'];
             } else {
-                $db->table('sprints')->insert($sData);
+                $db->table('sprints')->insert($this->filterToExistingColumns('sprints', $sData));
                 $sprintMap[$sData['project_id'] . ':' . $sData['name']] = (int)$db->insertID();
             }
         }
@@ -841,10 +841,10 @@ class DemoSeeder extends Seeder
             ];
 
             if ($existingTask) {
-                $db->table('tasks')->where('id', $existingTask['id'])->update($insertPayload);
+                $db->table('tasks')->where('id', $existingTask['id'])->update($this->filterToExistingColumns('tasks', $insertPayload));
                 $taskMap[$tData['title']] = (int)$existingTask['id'];
             } else {
-                $db->table('tasks')->insert($insertPayload);
+                $db->table('tasks')->insert($this->filterToExistingColumns('tasks', $insertPayload));
                 $taskMap[$tData['title']] = (int)$db->insertID();
             }
         }
@@ -895,7 +895,7 @@ class DemoSeeder extends Seeder
                     ->where('body', $c['body'])
                     ->countAllResults();
                 if ($exists === 0) {
-                    $db->table('task_comments')->insert($c);
+                    $db->table('task_comments')->insert($this->filterToExistingColumns('task_comments', $c));
                 }
             }
         }
@@ -1014,7 +1014,7 @@ class DemoSeeder extends Seeder
                 ->where('start_time', $tl['start_time'])
                 ->countAllResults();
             if ($exists === 0) {
-                $db->table('time_logs')->insert($tl);
+                $db->table('time_logs')->insert($this->filterToExistingColumns('time_logs', $tl));
             }
         }
 
@@ -1057,7 +1057,7 @@ class DemoSeeder extends Seeder
                     ->where('slug', $wp['slug'])
                     ->countAllResults();
                 if ($exists === 0) {
-                    $db->table('project_wiki_pages')->insert($wp);
+                    $db->table('project_wiki_pages')->insert($this->filterToExistingColumns('project_wiki_pages', $wp));
                 }
             }
         }
@@ -1102,7 +1102,7 @@ class DemoSeeder extends Seeder
                     ->where('name', $ms['name'])
                     ->countAllResults();
                 if ($exists === 0) {
-                    $db->table('project_milestones')->insert($ms);
+                    $db->table('project_milestones')->insert($this->filterToExistingColumns('project_milestones', $ms));
                 }
             }
         }
@@ -1153,7 +1153,7 @@ class DemoSeeder extends Seeder
                     ->where('title', $ev['title'])
                     ->countAllResults();
                 if ($exists === 0) {
-                    $db->table('calendar_events')->insert($ev);
+                    $db->table('calendar_events')->insert($this->filterToExistingColumns('calendar_events', $ev));
                 }
             }
         }
@@ -1174,7 +1174,7 @@ class DemoSeeder extends Seeder
                 'created_at'   => $now,
             ];
             if ($db->table('ai_sprint_summaries')->where('sprint_id', $activeMobileSprintId)->countAllResults() === 0) {
-                $db->table('ai_sprint_summaries')->insert($aiSummary);
+                $db->table('ai_sprint_summaries')->insert($this->filterToExistingColumns('ai_sprint_summaries', $aiSummary));
             }
         }
 
@@ -1221,7 +1221,7 @@ class DemoSeeder extends Seeder
                     ->where('title', $n['title'])
                     ->countAllResults();
                 if ($exists === 0) {
-                    $db->table('notifications')->insert($n);
+                    $db->table('notifications')->insert($this->filterToExistingColumns('notifications', $n));
                 }
             }
         }
@@ -1254,7 +1254,7 @@ class DemoSeeder extends Seeder
                     ->where('action', $al['action'])
                     ->countAllResults();
                 if ($exists === 0) {
-                    $db->table('audit_logs')->insert($al);
+                    $db->table('audit_logs')->insert($this->filterToExistingColumns('audit_logs', $al));
                 }
             }
         }
@@ -1269,5 +1269,20 @@ class DemoSeeder extends Seeder
         echo " - Developer: elena@chegejira.local (Elena Rostova - DevOps / QA)\n";
         echo "======================================================================\n\n";
     }
+    /**
+     * Dynamically filters payload to only columns that physically exist in the target table.
+     * Prevents database exceptions on partially-migrated or legacy schemas.
+     */
+    private function filterToExistingColumns(string $table, array $data): array
+    {
+        static $columnsCache = [];
+        if (!isset($columnsCache[$table])) {
+            try {
+                $columnsCache[$table] = $this->db->getFieldNames($table);
+            } catch (\Throwable $e) {
+                return $data;
+            }
+        }
+        return array_intersect_key($data, array_flip($columnsCache[$table]));
+    }
 }
-
