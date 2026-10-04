@@ -390,9 +390,12 @@
                                     $durationFormatted = ($hrs > 0 ? "{$hrs}h " : "") . "{$mins}m";
                                     if ($durationSec < 60) $durationFormatted = "< 1m";
                                     $isBillable = isset($log['is_billable']) ? (int)$log['is_billable'] : 1;
-                                    $logUser = $log['user_display_name'] ?? ($log['user_username'] ?? 'User');
+                                    $logUid = (int)($log['user_id'] ?? 0);
+                                    $userObj = $userMap[$logUid] ?? null;
+                                    $logUser = $userObj ? $userObj['user_display_name'] : ($log['user_display_name'] ?? ('User #' . $logUid));
+                                    $logUsername = $userObj ? $userObj['username'] : ($log['user_username'] ?? ('user' . $logUid));
                                 ?>
-                                <tr class="time-log-row" data-id="<?= $log['id'] ?>" data-project="<?= strtolower(esc($pName)) ?>" data-task="<?= strtolower(esc($log['task_name'])) ?>" data-user="<?= strtolower(esc($logUser)) ?>">
+                                <tr class="time-log-row" data-id="<?= $log['id'] ?>" data-project="<?= strtolower(esc($pName)) ?>" data-task="<?= strtolower(esc($log['task_name'])) ?>" data-user="<?= strtolower(esc($logUser . ' ' . $logUsername)) ?>">
                                     <td class="ps-4 font-13">
                                         <span class="fw-semibold text-dark d-block"><?= date('M d, Y', strtotime($log['start_time'])) ?></span>
                                         <small class="text-muted font-11">
@@ -402,10 +405,13 @@
                                     <?php if ($isManager): ?>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <div class="avatar-xs bg-primary-lighten text-primary rounded-circle d-flex align-items-center justify-content-center me-2 font-11 fw-bold" style="width: 24px; height: 24px;">
+                                                <div class="avatar-xs bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 font-11 fw-bold" style="width: 26px; height: 26px;">
                                                     <?= strtoupper(substr($logUser, 0, 1)) ?>
                                                 </div>
-                                                <span class="font-12 fw-semibold text-dark"><?= esc($logUser) ?></span>
+                                                <div>
+                                                    <span class="font-12 fw-semibold text-dark d-block"><?= esc($logUser) ?></span>
+                                                    <small class="text-muted font-10">@<?= esc($logUsername) ?></small>
+                                                </div>
                                             </div>
                                         </td>
                                     <?php endif; ?>

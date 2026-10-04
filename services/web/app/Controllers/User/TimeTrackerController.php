@@ -48,19 +48,32 @@ class TimeTrackerController extends BaseUserController
         $data['selectedUserId'] = $selectedUserId;
 
         // Fetch team members for manager filtering
-        $hasFirstName = $db->fieldExists('first_name', 'users');
-        $userNameSelect = $hasFirstName 
-            ? "COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''), u.username, 'User') as user_display_name"
-            : "COALESCE(u.username, 'User') as user_display_name";
-
+        $userModel = new \App\Models\UserModel();
         $teamMembers = [];
+        $userMap = [];
         try {
-            $teamMembers = $db->table('users u')
-                ->select("u.id, u.username, {$userNameSelect}, u.email")
-                ->orderBy('user_display_name', 'ASC')
-                ->get()->getResultArray();
-        } catch (\Throwable $e) {}
+            $userRows = $userModel->findAll();
+            foreach ($userRows as $ur) {
+                $uId = is_array($ur) ? ($ur['id'] ?? 0) : ($ur->id ?? 0);
+                $uUsername = is_array($ur) ? ($ur['username'] ?? '') : ($ur->username ?? '');
+                $uFirst = is_array($ur) ? ($ur['first_name'] ?? '') : ($ur->first_name ?? '');
+                $uLast = is_array($ur) ? ($ur['last_name'] ?? '') : ($ur->last_name ?? '');
+                $uEmail = is_array($ur) ? ($ur['email'] ?? '') : ($ur->email ?? '');
+                $dName = trim($uFirst . ' ' . $uLast) ?: $uUsername;
+                $memberData = [
+                    'id'                => (int)$uId,
+                    'username'          => $uUsername,
+                    'user_display_name' => $dName ?: ('User #' . $uId),
+                    'email'             => $uEmail
+                ];
+                $teamMembers[] = $memberData;
+                $userMap[(int)$uId] = $memberData;
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'TeamMembers fetch error: ' . $e->getMessage());
+        }
         $data['teamMembers'] = $teamMembers;
+        $data['userMap'] = $userMap;
 
         // Helper closure to apply user filtering to query builders
         $applyUserFilter = function($query, $userCol = 'user_id') use ($scope, $selectedUserId, $isManager) {
@@ -73,9 +86,8 @@ class TimeTrackerController extends BaseUserController
         };
 
         // Base time log builder
-        $logsQuery = $timeModel->select("time_logs.*, {$userNameSelect}, u.username as user_username, projects.name as project_name, projects.slug as project_slug, projects.color as project_color")
-            ->join('projects', 'projects.id = time_logs.project_id', 'left')
-            ->join('users u', 'u.id = time_logs.user_id', 'left');
+        $logsQuery = $timeModel->select('time_logs.*, projects.name as project_name, projects.slug as project_slug, projects.color as project_color')
+            ->join('projects', 'projects.id = time_logs.project_id', 'left');
 
         $applyUserFilter($logsQuery, 'time_logs.user_id');
 
@@ -216,22 +228,29 @@ class TimeTrackerController extends BaseUserController
         $userBreakdowns = [];
         if ($isManager) {
             try {
-                $userBreakdownQuery = $db->table('time_logs')
-                    ->select("time_logs.user_id, {$userNameSelect}, u.username, SUM(time_logs.duration) as total_duration, COUNT(time_logs.id) as sessions_count")
-                    ->join('users u', 'u.id = time_logs.user_id', 'left');
+                $userLogs = $db->table('time_logs')
+                    ->select('time_logs.user_id, SUM(time_logs.duration) as total_duration, COUNT(time_logs.id) as sessions_count');
                 if ($projectId) {
-                    $userBreakdownQuery->where('time_logs.project_id', $projectId);
+                    $userLogs->where('time_logs.project_id', $projectId);
                 }
-                $userBreakdowns = $userBreakdownQuery->groupBy('time_logs.user_id')
-                    ->orderBy('total_duration', 'DESC')
-                    ->get()->getResultArray();
+                $userLogsGrouped = $userLogs->groupBy('time_logs.user_id')->orderBy('total_duration', 'DESC')->get()->getResultArray();
 
-                foreach ($userBreakdowns as &$ub) {
-                    $ubSecs = (int)($ub['total_duration'] ?? 0);
-                    $ub['hours'] = round($ubSecs / 3600, 1);
+                foreach ($userLogsGrouped as $ulg) {
+                    $uid = (int)($ulg['user_id'] ?? 0);
+                    $tmInfo = $userMap[$uid] ?? null;
+                    $secs = (int)($ulg['total_duration'] ?? 0);
+                    $userBreakdowns[] = [
+                        'user_id'           => $uid,
+                        'user_display_name' => $tmInfo ? $tmInfo['user_display_name'] : ('User #' . $uid),
+                        'username'          => $tmInfo ? $tmInfo['username'] : ('user' . $uid),
+                        'total_duration'    => $secs,
+                        'sessions_count'    => (int)($ulg['sessions_count'] ?? 0),
+                        'hours'             => round($secs / 3600, 1)
+                    ];
                 }
-                unset($ub);
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+                log_message('error', 'Time user breakdown error: ' . $e->getMessage());
+            }
         }
         $data['user_breakdown'] = $userBreakdowns;
 

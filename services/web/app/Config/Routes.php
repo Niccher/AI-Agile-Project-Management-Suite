@@ -169,6 +169,8 @@ $managerRouteHandler = function($routes) {
     $routes->get('reports/download/(:any)', 'Manager\ReportController::download/$1');
     $routes->post('reports/delete/(:any)', 'Manager\ReportController::delete/$1');
     $routes->get('reports/delete/(:any)', 'Manager\ReportController::delete/$1');
+    $routes->get('time', 'User\TimeTrackerController::index');
+    $routes->get('time/(:segment)', 'User\TimeTrackerController::index/$1');
 };
 
 $routes->group('manage', ['filter' => ['session', 'manager']], $managerRouteHandler);
