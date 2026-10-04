@@ -52,8 +52,8 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge badge-default">
-                                            <?= esc($task['project_name']) ?>
+                                        <span class="badge bg-light text-dark border">
+                                            <?= esc($task['project_name'] ?? 'Project') ?>
                                         </span>
                                     </td>
                                     <td>
@@ -68,7 +68,7 @@
                                         <?= date('M j, Y g:i A', strtotime($task['updated_at'] ?? $task['created_at'] ?? 'now')) ?>
                                     </td>
                                     <td class="text-end">
-                                        <form action="<?= site_url('manage/approvals/'.$task['id'].'/approve') ?>" method="POST" class="d-inline form-approve-task" data-id="<?= $task['id'] ?>" data-title="<?= esc($task['title']) ?>">
+                                        <form action="<?= site_url('manager/approvals/'.$task['id'].'/approve') ?>" method="POST" class="d-inline form-approve-task" data-id="<?= $task['id'] ?>" data-title="<?= esc($task['title']) ?>">
                                             <?= csrf_field() ?>
                                             <button type="button" class="btn btn-sm btn-success btn-approve-action">
                                                 <i class="fas fa-check"></i> Approve
@@ -84,7 +84,7 @@
                                 <div class="modal fade" id="rejectModal<?= $task['id'] ?>" tabindex="-1" aria-hidden="true">
                                     <div class="modal-dialog">
                                         <div class="modal-content">
-                                            <form action="<?= site_url('manage/approvals/'.$task['id'].'/reject') ?>" method="POST" class="form-reject-task" data-id="<?= $task['id'] ?>" data-modal-id="rejectModal<?= $task['id'] ?>">
+                                            <form action="<?= site_url('manager/approvals/'.$task['id'].'/reject') ?>" method="POST" class="form-reject-task" data-id="<?= $task['id'] ?>" data-modal-id="rejectModal<?= $task['id'] ?>">
                                                 <?= csrf_field() ?>
                                                 <div class="modal-header bg-danger text-white">
                                                     <h5 class="modal-title">Reject Task: <?= esc($task['title']) ?></h5>

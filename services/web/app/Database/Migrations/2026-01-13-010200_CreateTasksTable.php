@@ -42,7 +42,7 @@ class CreateTasksTable extends Migration
                 ],
                 'status' => [
                     'type'       => 'ENUM',
-                    'constraint' => ['todo', 'in_progress', 'review', 'done', 'blocked'],
+                    'constraint' => ['todo', 'in_progress', 'review', 'done', 'blocked', 'approved', 'rejected'],
                     'default'    => 'todo',
                 ],
                 'priority' => [

@@ -29,11 +29,14 @@ class WorkApprovalController extends BaseController
             return redirect()->back()->with('error', 'Task not found.');
         }
         
+        $db = \Config\Database::connect();
+        $taskFields = $db->getFieldNames('tasks') ?? [];
         $data = [
             'status'      => 'approved',
             'approved_by' => auth()->id(),
             'approved_at' => date('Y-m-d H:i:s')
         ];
+        $data = array_intersect_key($data, array_flip($taskFields));
 
         if ($taskModel->update($id, $data)) {
             \App\Services\AuditService::record('approve_task', 'tasks', $id, ['status' => $task['status']], ['status' => 'approved']);
@@ -72,11 +75,14 @@ class WorkApprovalController extends BaseController
         }
         
         $reason = $this->request->getPost('rejected_reason');
+        $db = \Config\Database::connect();
+        $taskFields = $db->getFieldNames('tasks') ?? [];
         $data = [
             'status'          => 'rejected',
             'rejected_by'     => auth()->id(),
             'rejected_reason' => $reason
         ];
+        $data = array_intersect_key($data, array_flip($taskFields));
 
         if ($taskModel->update($id, $data)) {
             \App\Services\AuditService::record('reject_task', 'tasks', $id, ['status' => $task['status']], ['status' => 'rejected', 'reason' => $reason]);

@@ -42,11 +42,35 @@ class TaskModel extends Model
      */
     public function getBoardData(int $projectId, ?int $userId = null)
     {
-        $tasks = $this->select('tasks.*, users.username as assignee_username, users.first_name as assignee_first_name, users.last_name as assignee_last_name')
-                      ->join('users', 'users.id = tasks.assigned_to', 'left')
-                      ->where('tasks.project_id', $projectId)
-                      ->orderBy('tasks.order_index', 'ASC')
-                      ->findAll();
+        $db = $this->db;
+        $taskFields = $db->getFieldNames('tasks') ?? [];
+        $userFields = $db->getFieldNames('users') ?? [];
+
+        $selects = ['tasks.*'];
+        if (in_array('username', $userFields, true)) {
+            $selects[] = 'users.username as assignee_username';
+        }
+        if (in_array('first_name', $userFields, true)) {
+            $selects[] = 'users.first_name as assignee_first_name';
+        }
+        if (in_array('last_name', $userFields, true)) {
+            $selects[] = 'users.last_name as assignee_last_name';
+        }
+
+        $query = $this->select(implode(', ', $selects));
+
+        if (in_array('assigned_to', $taskFields, true)) {
+            $query->join('users', 'users.id = tasks.assigned_to', 'left');
+        } elseif ($db->tableExists('users')) {
+            $query->join('users', 'users.id = tasks.user_id', 'left');
+        }
+
+        $query->where('tasks.project_id', $projectId);
+        if (in_array('order_index', $taskFields, true)) {
+            $query->orderBy('tasks.order_index', 'ASC');
+        }
+
+        $tasks = $query->findAll();
 
         $board = [
             'todo'        => [],
@@ -74,12 +98,37 @@ class TaskModel extends Model
      */
     public function getAssignedToUser(int $userId)
     {
-        return $this->select('tasks.*, projects.name as project_name, projects.color as project_color')
-                    ->join('projects', 'projects.id = tasks.project_id', 'left')
-                    ->where('assigned_to', $userId)
-                    ->orderBy('tasks.priority', 'DESC')
-                    ->orderBy('tasks.created_at', 'DESC')
-                    ->findAll();
+        $db = $this->db;
+        $projectFields = $db->tableExists('projects') ? ($db->getFieldNames('projects') ?? []) : [];
+        $taskFields = $db->getFieldNames('tasks') ?? [];
+
+        $selects = ['tasks.*'];
+        if (in_array('name', $projectFields, true)) {
+            $selects[] = 'projects.name as project_name';
+        }
+        if (in_array('color', $projectFields, true)) {
+            $selects[] = 'projects.color as project_color';
+        }
+
+        $query = $this->select(implode(', ', $selects));
+        if ($db->tableExists('projects')) {
+            $query->join('projects', 'projects.id = tasks.project_id', 'left');
+        }
+
+        if (in_array('assigned_to', $taskFields, true)) {
+            $query->where('tasks.assigned_to', $userId);
+        } else {
+            $query->where('tasks.user_id', $userId);
+        }
+
+        if (in_array('priority', $taskFields, true)) {
+            $query->orderBy('tasks.priority', 'DESC');
+        }
+        if (in_array('created_at', $taskFields, true)) {
+            $query->orderBy('tasks.created_at', 'DESC');
+        }
+
+        return $query->findAll();
     }
 
     /**
@@ -87,19 +136,53 @@ class TaskModel extends Model
      */
     public function getPendingReviews(?int $managerId = null)
     {
-        $query = $this->select('tasks.*, projects.name as project_name, users.first_name, users.last_name, users.username')
-                      ->join('projects', 'projects.id = tasks.project_id', 'left')
-                      ->join('users', 'users.id = tasks.assigned_to', 'left')
-                      ->where('tasks.status', 'review');
+        $db = $this->db;
+        $taskFields = $db->getFieldNames('tasks') ?? [];
+        $userFields = $db->getFieldNames('users') ?? [];
+        $projectFields = $db->tableExists('projects') ? ($db->getFieldNames('projects') ?? []) : [];
+
+        $selects = ['tasks.*'];
+        if (in_array('name', $projectFields, true)) {
+            $selects[] = 'projects.name as project_name';
+        }
+        if (in_array('username', $userFields, true)) {
+            $selects[] = 'users.username';
+        }
+        if (in_array('first_name', $userFields, true)) {
+            $selects[] = 'users.first_name';
+        }
+        if (in_array('last_name', $userFields, true)) {
+            $selects[] = 'users.last_name';
+        }
+
+        $query = $this->select(implode(', ', $selects));
+
+        if ($db->tableExists('projects')) {
+            $query->join('projects', 'projects.id = tasks.project_id', 'left');
+        }
+
+        if (in_array('assigned_to', $taskFields, true)) {
+            $query->join('users', 'users.id = tasks.assigned_to', 'left');
+        } elseif ($db->tableExists('users')) {
+            $query->join('users', 'users.id = tasks.user_id', 'left');
+        }
+
+        $query->where('tasks.status', 'review');
                       
-        if ($managerId !== null) {
+        if ($managerId !== null && in_array('assigned_by', $taskFields, true)) {
             $query->groupStart()
                   ->where('tasks.assigned_by', $managerId)
-                  ->orWhere('tasks.assigned_by IS NULL')
+                  ->orWhere('tasks.assigned_by', null)
                   ->groupEnd();
         }
 
-        return $query->orderBy('tasks.updated_at', 'ASC')->findAll();
+        if (in_array('updated_at', $taskFields, true)) {
+            $query->orderBy('tasks.updated_at', 'ASC');
+        } elseif (in_array('created_at', $taskFields, true)) {
+            $query->orderBy('tasks.created_at', 'ASC');
+        }
+
+        return $query->findAll();
     }
 
     /**
@@ -107,13 +190,34 @@ class TaskModel extends Model
      */
     public function getBacklogTasks(int $projectId)
     {
-        return $this->select('tasks.*, users.username as assignee_name')
-                    ->join('users', 'users.id = tasks.assigned_to', 'left')
-                    ->where('tasks.project_id', $projectId)
-                    ->where('tasks.sprint_id', null)
-                    ->orderBy('tasks.order_index', 'ASC')
-                    ->orderBy('tasks.created_at', 'DESC')
-                    ->findAll();
+        $db = $this->db;
+        $taskFields = $db->getFieldNames('tasks') ?? [];
+        $userFields = $db->getFieldNames('users') ?? [];
+
+        $selects = ['tasks.*'];
+        if (in_array('username', $userFields, true)) {
+            $selects[] = 'users.username as assignee_name';
+        }
+
+        $query = $this->select(implode(', ', $selects));
+        if (in_array('assigned_to', $taskFields, true)) {
+            $query->join('users', 'users.id = tasks.assigned_to', 'left');
+        } elseif ($db->tableExists('users')) {
+            $query->join('users', 'users.id = tasks.user_id', 'left');
+        }
+
+        $query->where('tasks.project_id', $projectId);
+        if (in_array('sprint_id', $taskFields, true)) {
+            $query->where('tasks.sprint_id', null);
+        }
+        if (in_array('order_index', $taskFields, true)) {
+            $query->orderBy('tasks.order_index', 'ASC');
+        }
+        if (in_array('created_at', $taskFields, true)) {
+            $query->orderBy('tasks.created_at', 'DESC');
+        }
+
+        return $query->findAll();
     }
 
     /**
@@ -121,11 +225,32 @@ class TaskModel extends Model
      */
     public function getSprintTasks(int $sprintId)
     {
-        return $this->select('tasks.*, users.username as assignee_name')
-                    ->join('users', 'users.id = tasks.assigned_to', 'left')
-                    ->where('tasks.sprint_id', $sprintId)
-                    ->orderBy('tasks.order_index', 'ASC')
-                    ->orderBy('tasks.created_at', 'DESC')
-                    ->findAll();
+        $db = $this->db;
+        $taskFields = $db->getFieldNames('tasks') ?? [];
+        $userFields = $db->getFieldNames('users') ?? [];
+
+        $selects = ['tasks.*'];
+        if (in_array('username', $userFields, true)) {
+            $selects[] = 'users.username as assignee_name';
+        }
+
+        $query = $this->select(implode(', ', $selects));
+        if (in_array('assigned_to', $taskFields, true)) {
+            $query->join('users', 'users.id = tasks.assigned_to', 'left');
+        } elseif ($db->tableExists('users')) {
+            $query->join('users', 'users.id = tasks.user_id', 'left');
+        }
+
+        if (in_array('sprint_id', $taskFields, true)) {
+            $query->where('tasks.sprint_id', $sprintId);
+        }
+        if (in_array('order_index', $taskFields, true)) {
+            $query->orderBy('tasks.order_index', 'ASC');
+        }
+        if (in_array('created_at', $taskFields, true)) {
+            $query->orderBy('tasks.created_at', 'DESC');
+        }
+
+        return $query->findAll();
     }
 }
