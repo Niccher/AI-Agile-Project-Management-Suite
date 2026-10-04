@@ -154,6 +154,12 @@ class UserManagementController extends BaseController
             
             // Prevent Admin self-demotion
             if ($id == auth()->id() && $role !== 'admin') {
+                if ($this->request->isAJAX()) {
+                    return $this->response->setJSON([
+                        'status'  => 'error',
+                        'message' => 'You cannot demote your own administrator account.',
+                    ]);
+                }
                 return redirect()->back()->with('error', 'You cannot demote your own administrator account.');
             }
             
@@ -167,9 +173,21 @@ class UserManagementController extends BaseController
                 $user->addGroup($role);
             }
             
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'  => 'success',
+                    'message' => 'Role updated successfully to ' . ucfirst($role) . '.',
+                ]);
+            }
             return redirect()->back()->with('message', 'Role updated successfully.');
         }
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status'  => 'error',
+                'message' => 'User not found.',
+            ]);
+        }
         return redirect()->back()->with('error', 'User not found.');
     }
 
@@ -181,18 +199,77 @@ class UserManagementController extends BaseController
         if ($user) {
             // Prevent Admin self-deactivation
             if ($id == auth()->id()) {
+                if ($this->request->isAJAX()) {
+                    return $this->response->setJSON([
+                        'status'  => 'error',
+                        'message' => 'You cannot deactivate your own account.',
+                    ]);
+                }
                 return redirect()->back()->with('error', 'You cannot deactivate your own account.');
             }
 
             if ($user->isBanned()) {
                 $user->unBan();
-                return redirect()->back()->with('message', 'User activated successfully.');
+                $msg = 'User activated successfully.';
+                $active = 1;
             } else {
                 $user->ban('Deactivated by admin');
-                return redirect()->back()->with('message', 'User deactivated successfully.');
+                $msg = 'User deactivated successfully.';
+                $active = 0;
             }
+
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'  => 'success',
+                    'message' => $msg,
+                    'active'  => $active,
+                ]);
+            }
+            return redirect()->back()->with('message', $msg);
         }
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status'  => 'error',
+                'message' => 'User not found.',
+            ]);
+        }
+        return redirect()->back()->with('error', 'User not found.');
+    }
+
+    public function delete($id)
+    {
+        $users = auth()->getProvider();
+        $user = $users->findById($id);
+
+        if ($user) {
+            if ($id == auth()->id()) {
+                if ($this->request->isAJAX()) {
+                    return $this->response->setJSON([
+                        'status'  => 'error',
+                        'message' => 'You cannot delete your own account.',
+                    ]);
+                }
+                return redirect()->back()->with('error', 'You cannot delete your own account.');
+            }
+
+            $users->delete($id, true);
+
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'  => 'success',
+                    'message' => 'User account permanently deleted.',
+                ]);
+            }
+            return redirect()->back()->with('message', 'User account permanently deleted.');
+        }
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status'  => 'error',
+                'message' => 'User not found.',
+            ]);
+        }
         return redirect()->back()->with('error', 'User not found.');
     }
 }

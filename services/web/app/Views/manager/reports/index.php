@@ -479,59 +479,107 @@ document.addEventListener('DOMContentLoaded', function() {
         const reportId = deleteBtn.getAttribute('data-id');
         if (!reportId) return;
 
-        if (!confirm('Are you sure you want to permanently delete this report?')) {
-            return;
-        }
+        const executeDelete = () => {
+            const tr = deleteBtn.closest('tr');
+            const origContent = deleteBtn.innerHTML;
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
 
-        const tr = deleteBtn.closest('tr');
-        const origContent = deleteBtn.innerHTML;
-        deleteBtn.disabled = true;
-        deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+            const deleteUrl = '<?= site_url('manage/reports/delete/') ?>' + encodeURIComponent(reportId);
+            const headers = {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            };
+            const csrfToken = getCsrfToken();
+            const csrfHeader = getCsrfHeader();
+            if (csrfToken) {
+                headers[csrfHeader] = csrfToken;
+            }
 
-        const deleteUrl = '<?= site_url('manage/reports/delete/') ?>' + encodeURIComponent(reportId);
-        const headers = {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        };
-        const csrfToken = getCsrfToken();
-        const csrfHeader = getCsrfHeader();
-        if (csrfToken) {
-            headers[csrfHeader] = csrfToken;
-        }
-
-        fetch(deleteUrl, {
-            method: 'POST',
-            headers: headers
-        })
-        .then(res => res.json())
-        .then(res => {
-            if (res.status === 'success') {
-                if (tr) {
-                    tr.style.transition = 'opacity 0.3s ease';
-                    tr.style.opacity = '0';
-                    setTimeout(() => {
-                        tr.remove();
-                        if (tableBody && tableBody.querySelectorAll('tr').length === 0) {
-                            if (tableContainer) tableContainer.classList.add('d-none');
-                            if (placeholder) placeholder.classList.remove('d-none');
-                        }
-                    }, 300);
+            fetch(deleteUrl, {
+                method: 'POST',
+                headers: headers
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    if (tr) {
+                        tr.style.transition = 'all 0.3s ease';
+                        tr.style.opacity = '0';
+                        tr.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            tr.remove();
+                            if (tableBody && tableBody.querySelectorAll('tr').length === 0) {
+                                if (tableContainer) tableContainer.classList.add('d-none');
+                                if (placeholder) placeholder.classList.remove('d-none');
+                            }
+                        }, 300);
+                    }
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: res.message || 'Report permanently deleted.',
+                            showConfirmButton: false,
+                            timer: 2500,
+                            timerProgressBar: true
+                        });
+                    } else {
+                        showAlert('success', 'Report permanently deleted.');
+                    }
+                    if (statTotal && parseInt(statTotal.innerText || '0') > 0) {
+                        statTotal.innerText = parseInt(statTotal.innerText) - 1;
+                    }
+                } else {
+                    deleteBtn.disabled = false;
+                    deleteBtn.innerHTML = origContent;
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: res.message || 'Failed to delete report.'
+                        });
+                    } else {
+                        showAlert('danger', res.message || 'Failed to delete report.');
+                    }
                 }
-                showAlert('success', 'Report permanently deleted.');
-                if (statTotal && parseInt(statTotal.innerText || '0') > 0) {
-                    statTotal.innerText = parseInt(statTotal.innerText) - 1;
-                }
-            } else {
+            })
+            .catch(err => {
                 deleteBtn.disabled = false;
                 deleteBtn.innerHTML = origContent;
-                showAlert('danger', res.message || 'Failed to delete report.');
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: err.message || 'An error occurred while deleting the report.'
+                    });
+                } else {
+                    showAlert('danger', err.message || 'An error occurred while deleting the report.');
+                }
+            });
+        };
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Delete Report?',
+                text: 'Are you sure you want to permanently delete this report file? This action cannot be undone.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#fa5c7c',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="mdi mdi-trash-can me-1"></i> Yes, delete it',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    executeDelete();
+                }
+            });
+        } else {
+            if (confirm('Are you sure you want to permanently delete this report?')) {
+                executeDelete();
             }
-        })
-        .catch(err => {
-            deleteBtn.disabled = false;
-            deleteBtn.innerHTML = origContent;
-            showAlert('danger', err.message || 'An error occurred while deleting the report.');
-        });
+        }
     });
 });
 </script>

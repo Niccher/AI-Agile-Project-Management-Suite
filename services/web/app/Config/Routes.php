@@ -180,6 +180,7 @@ $routes->group('admin', ['filter' => ['session', 'admin']], function($routes) {
     $routes->post('users/provision', 'Admin\UserManagementController::provision');
     $routes->post('users/(:num)/role', 'Admin\UserManagementController::assignRole/$1');
     $routes->post('users/(:num)/deactivate', 'Admin\UserManagementController::deactivate/$1');
+    $routes->post('users/(:num)/delete', 'Admin\UserManagementController::delete/$1');
     $routes->get('audit-log', 'Admin\AuditLogController::index');
     $routes->get('telemetry', 'Admin\TelemetryController::index');
     $routes->get('settings', 'Admin\SystemSettingsController::index');
