@@ -39,8 +39,12 @@ class TaskCommentApiController extends BaseController
         $body = trim((string)$this->request->getPost('body'));
 
         if (empty($body)) {
-            $json = $this->request->getJSON(true);
-            $body = trim((string)($json['body'] ?? ''));
+            try {
+                $json = $this->request->getJSON(true) ?: [];
+                $body = trim((string)($json['body'] ?? ''));
+            } catch (\Throwable $e) {
+                $body = '';
+            }
         }
 
         if (empty($body)) {

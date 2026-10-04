@@ -126,7 +126,14 @@ class TimeTrackerController extends BaseUserController
 
     public function logManual()
     {
-        $input = $this->request->getJSON(true) ?: $this->request->getPost();
+        $input = $this->request->getPost();
+        if (empty($input)) {
+            try {
+                $input = $this->request->getJSON(true) ?: [];
+            } catch (\Throwable $e) {
+                $input = [];
+            }
+        }
         
         $projectId = !empty($input['project_id']) ? (int)$input['project_id'] : ($this->request->getVar('project_id') ? (int)$this->request->getVar('project_id') : null);
         $taskName = trim($input['task_name'] ?? $this->request->getVar('task_name') ?? 'Work session');

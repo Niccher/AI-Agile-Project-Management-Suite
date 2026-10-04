@@ -111,7 +111,12 @@ class TaskApiController extends BaseController
             return $this->response->setJSON(['status' => 'error', 'message' => 'Permission denied']);
         }
 
-        $json = $this->request->getJSON(true);
+        $json = [];
+        try {
+            $json = $this->request->getJSON(true) ?: [];
+        } catch (\Throwable $e) {
+            $json = [];
+        }
         $allowedFields = ['title', 'description', 'priority', 'due_date', 'status', 'assigned_to', 'story_points'];
         $data = [];
         foreach ($allowedFields as $field) {
