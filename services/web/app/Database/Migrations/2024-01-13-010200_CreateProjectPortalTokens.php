@@ -4,11 +4,11 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateProjectMilestonesTable extends Migration
+class CreateProjectPortalTokens extends Migration
 {
     public function up()
     {
-        if (!$this->db->tableExists('project_milestones')) {
+        if (!$this->db->tableExists('project_portal_tokens')) {
             $this->forge->addField([
                 'id' => [
                     'type'           => 'INT',
@@ -21,27 +21,28 @@ class CreateProjectMilestonesTable extends Migration
                     'constraint' => 11,
                     'unsigned'   => true,
                 ],
-                'name' => [
+                'token' => [
                     'type'       => 'VARCHAR',
-                    'constraint' => '255',
+                    'constraint' => 64,
                 ],
-                'description' => [
-                    'type' => 'TEXT',
+                'label' => [
+                    'type'       => 'VARCHAR',
+                    'constraint' => 120,
+                    'null'       => true,
+                ],
+                'expires_at' => [
+                    'type' => 'DATETIME',
                     'null' => true,
                 ],
-                'due_date' => [
-                    'type' => 'DATE',
-                    'null' => true,
+                'is_active' => [
+                    'type'       => 'TINYINT',
+                    'constraint' => 1,
+                    'default'    => 1,
                 ],
-                'status' => [
-                    'type'       => 'ENUM',
-                    'constraint' => ['pending', 'in_progress', 'completed'],
-                    'default'    => 'pending',
-                ],
-                'order' => [
+                'created_by' => [
                     'type'       => 'INT',
                     'constraint' => 11,
-                    'default'    => 0,
+                    'unsigned'   => true,
                 ],
                 'created_at' => [
                     'type' => 'DATETIME',
@@ -54,14 +55,16 @@ class CreateProjectMilestonesTable extends Migration
             ]);
 
             $this->forge->addKey('id', true);
+            $this->forge->addUniqueKey('token');
             $this->forge->addKey('project_id');
+            $this->forge->addKey('is_active');
             $this->forge->addForeignKey('project_id', 'projects', 'id', 'CASCADE', 'CASCADE');
-            $this->forge->createTable('project_milestones', true);
+            $this->forge->createTable('project_portal_tokens', true);
         }
     }
 
     public function down()
     {
-        $this->forge->dropTable('project_milestones', true);
+        $this->forge->dropTable('project_portal_tokens', true);
     }
 }

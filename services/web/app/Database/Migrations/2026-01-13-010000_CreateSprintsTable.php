@@ -4,11 +4,11 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateProjectMilestonesTable extends Migration
+class CreateSprintsTable extends Migration
 {
     public function up()
     {
-        if (!$this->db->tableExists('project_milestones')) {
+        if (!$this->db->tableExists('sprints')) {
             $this->forge->addField([
                 'id' => [
                     'type'           => 'INT',
@@ -23,22 +23,31 @@ class CreateProjectMilestonesTable extends Migration
                 ],
                 'name' => [
                     'type'       => 'VARCHAR',
-                    'constraint' => '255',
+                    'constraint' => 120,
                 ],
-                'description' => [
+                'goal' => [
                     'type' => 'TEXT',
-                    'null' => true,
-                ],
-                'due_date' => [
-                    'type' => 'DATE',
                     'null' => true,
                 ],
                 'status' => [
                     'type'       => 'ENUM',
-                    'constraint' => ['pending', 'in_progress', 'completed'],
-                    'default'    => 'pending',
+                    'constraint' => ['planning', 'active', 'closed'],
+                    'default'    => 'planning',
                 ],
-                'order' => [
+                'start_date' => [
+                    'type' => 'DATE',
+                    'null' => true,
+                ],
+                'end_date' => [
+                    'type' => 'DATE',
+                    'null' => true,
+                ],
+                'total_points' => [
+                    'type'       => 'INT',
+                    'constraint' => 11,
+                    'default'    => 0,
+                ],
+                'completed_points' => [
                     'type'       => 'INT',
                     'constraint' => 11,
                     'default'    => 0,
@@ -55,13 +64,14 @@ class CreateProjectMilestonesTable extends Migration
 
             $this->forge->addKey('id', true);
             $this->forge->addKey('project_id');
+            $this->forge->addKey('status');
             $this->forge->addForeignKey('project_id', 'projects', 'id', 'CASCADE', 'CASCADE');
-            $this->forge->createTable('project_milestones', true);
+            $this->forge->createTable('sprints', true);
         }
     }
 
     public function down()
     {
-        $this->forge->dropTable('project_milestones', true);
+        $this->forge->dropTable('sprints', true);
     }
 }

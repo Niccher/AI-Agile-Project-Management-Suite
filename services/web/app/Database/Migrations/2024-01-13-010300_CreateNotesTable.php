@@ -4,11 +4,11 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateProjectMilestonesTable extends Migration
+class CreateNotesTable extends Migration
 {
     public function up()
     {
-        if (!$this->db->tableExists('project_milestones')) {
+        if (!$this->db->tableExists('notes')) {
             $this->forge->addField([
                 'id' => [
                     'type'           => 'INT',
@@ -16,27 +16,39 @@ class CreateProjectMilestonesTable extends Migration
                     'unsigned'       => true,
                     'auto_increment' => true,
                 ],
-                'project_id' => [
+                'user_id' => [
                     'type'       => 'INT',
                     'constraint' => 11,
                     'unsigned'   => true,
                 ],
-                'name' => [
+                'project_id' => [
+                    'type'       => 'INT',
+                    'constraint' => 11,
+                    'unsigned'   => true,
+                    'null'       => true,
+                ],
+                'title' => [
                     'type'       => 'VARCHAR',
                     'constraint' => '255',
                 ],
-                'description' => [
+                'content' => [
                     'type' => 'TEXT',
                     'null' => true,
                 ],
-                'due_date' => [
-                    'type' => 'DATE',
-                    'null' => true,
+                'color' => [
+                    'type'       => 'VARCHAR',
+                    'constraint' => '7',
+                    'default'    => '#fef3c7',
                 ],
-                'status' => [
-                    'type'       => 'ENUM',
-                    'constraint' => ['pending', 'in_progress', 'completed'],
-                    'default'    => 'pending',
+                'is_pinned' => [
+                    'type'       => 'TINYINT',
+                    'constraint' => 1,
+                    'default'    => 0,
+                ],
+                'is_completed' => [
+                    'type'       => 'TINYINT',
+                    'constraint' => 1,
+                    'default'    => 0,
                 ],
                 'order' => [
                     'type'       => 'INT',
@@ -54,14 +66,15 @@ class CreateProjectMilestonesTable extends Migration
             ]);
 
             $this->forge->addKey('id', true);
+            $this->forge->addKey('user_id');
             $this->forge->addKey('project_id');
-            $this->forge->addForeignKey('project_id', 'projects', 'id', 'CASCADE', 'CASCADE');
-            $this->forge->createTable('project_milestones', true);
+            $this->forge->addForeignKey('user_id', 'users', 'id', 'CASCADE', 'CASCADE');
+            $this->forge->createTable('notes', true);
         }
     }
 
     public function down()
     {
-        $this->forge->dropTable('project_milestones', true);
+        $this->forge->dropTable('notes', true);
     }
 }

@@ -4,11 +4,11 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateProjectMilestonesTable extends Migration
+class CreateNotificationsTable extends Migration
 {
     public function up()
     {
-        if (!$this->db->tableExists('project_milestones')) {
+        if (!$this->db->tableExists('notifications')) {
             $this->forge->addField([
                 'id' => [
                     'type'           => 'INT',
@@ -16,52 +16,50 @@ class CreateProjectMilestonesTable extends Migration
                     'unsigned'       => true,
                     'auto_increment' => true,
                 ],
-                'project_id' => [
+                'user_id' => [
                     'type'       => 'INT',
                     'constraint' => 11,
                     'unsigned'   => true,
                 ],
-                'name' => [
+                'type' => [
+                    'type'       => 'VARCHAR',
+                    'constraint' => '50',
+                ],
+                'title' => [
                     'type'       => 'VARCHAR',
                     'constraint' => '255',
                 ],
-                'description' => [
+                'body' => [
                     'type' => 'TEXT',
-                    'null' => true,
                 ],
-                'due_date' => [
-                    'type' => 'DATE',
-                    'null' => true,
+                'action_url' => [
+                    'type'       => 'VARCHAR',
+                    'constraint' => '255',
+                    'null'       => true,
                 ],
-                'status' => [
-                    'type'       => 'ENUM',
-                    'constraint' => ['pending', 'in_progress', 'completed'],
-                    'default'    => 'pending',
-                ],
-                'order' => [
-                    'type'       => 'INT',
-                    'constraint' => 11,
+                'is_read' => [
+                    'type'       => 'TINYINT',
+                    'constraint' => 1,
                     'default'    => 0,
                 ],
                 'created_at' => [
                     'type' => 'DATETIME',
-                    'null' => true,
                 ],
                 'updated_at' => [
                     'type' => 'DATETIME',
-                    'null' => true,
                 ],
             ]);
-
+            
             $this->forge->addKey('id', true);
-            $this->forge->addKey('project_id');
-            $this->forge->addForeignKey('project_id', 'projects', 'id', 'CASCADE', 'CASCADE');
-            $this->forge->createTable('project_milestones', true);
+            $this->forge->addKey('user_id');
+            $this->forge->addKey('is_read');
+            $this->forge->addForeignKey('user_id', 'users', 'id', 'CASCADE', 'CASCADE');
+            $this->forge->createTable('notifications', true);
         }
     }
 
     public function down()
     {
-        $this->forge->dropTable('project_milestones', true);
+        $this->forge->dropTable('notifications', true);
     }
 }

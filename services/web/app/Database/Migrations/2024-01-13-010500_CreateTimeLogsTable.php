@@ -4,11 +4,11 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateProjectMilestonesTable extends Migration
+class CreateTimeLogsTable extends Migration
 {
     public function up()
     {
-        if (!$this->db->tableExists('project_milestones')) {
+        if (!$this->db->tableExists('time_logs')) {
             $this->forge->addField([
                 'id' => [
                     'type'           => 'INT',
@@ -16,32 +16,43 @@ class CreateProjectMilestonesTable extends Migration
                     'unsigned'       => true,
                     'auto_increment' => true,
                 ],
-                'project_id' => [
+                'user_id' => [
                     'type'       => 'INT',
                     'constraint' => 11,
                     'unsigned'   => true,
                 ],
-                'name' => [
+                'project_id' => [
+                    'type'       => 'INT',
+                    'constraint' => 11,
+                    'unsigned'   => true,
+                    'null'       => true,
+                ],
+                'task_name' => [
                     'type'       => 'VARCHAR',
                     'constraint' => '255',
                 ],
-                'description' => [
+                'start_time' => [
+                    'type' => 'DATETIME',
+                ],
+                'end_time' => [
+                    'type' => 'DATETIME',
+                    'null' => true,
+                ],
+                'duration' => [
+                    'type'       => 'INT',
+                    'constraint' => 11,
+                    'unsigned'   => true,
+                    'null'       => true,
+                    'comment'    => 'Duration in seconds',
+                ],
+                'notes' => [
                     'type' => 'TEXT',
                     'null' => true,
                 ],
-                'due_date' => [
-                    'type' => 'DATE',
-                    'null' => true,
-                ],
-                'status' => [
-                    'type'       => 'ENUM',
-                    'constraint' => ['pending', 'in_progress', 'completed'],
-                    'default'    => 'pending',
-                ],
-                'order' => [
-                    'type'       => 'INT',
-                    'constraint' => 11,
-                    'default'    => 0,
+                'is_billable' => [
+                    'type'       => 'TINYINT',
+                    'constraint' => 1,
+                    'default'    => 1,
                 ],
                 'created_at' => [
                     'type' => 'DATETIME',
@@ -52,16 +63,16 @@ class CreateProjectMilestonesTable extends Migration
                     'null' => true,
                 ],
             ]);
-
             $this->forge->addKey('id', true);
+            $this->forge->addKey('user_id');
             $this->forge->addKey('project_id');
-            $this->forge->addForeignKey('project_id', 'projects', 'id', 'CASCADE', 'CASCADE');
-            $this->forge->createTable('project_milestones', true);
+            $this->forge->addForeignKey('user_id', 'users', 'id', 'CASCADE', 'CASCADE');
+            $this->forge->createTable('time_logs', true);
         }
     }
 
     public function down()
     {
-        $this->forge->dropTable('project_milestones', true);
+        $this->forge->dropTable('time_logs', true);
     }
 }
