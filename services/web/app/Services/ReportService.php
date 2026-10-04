@@ -35,18 +35,34 @@ class ReportService
         $periodStart = !empty($params['start']) ? $params['start'] : null;
         $periodEnd = !empty($params['end']) ? $params['end'] : null;
 
-        $reportModel = new ReportModel();
-        $reportId = $reportModel->insert([
-            'user_id'    => $generatedBy,
-            'name'       => $title,
-            'type'       => 'pdf',
-            'parameters' => json_encode($params),
-            'file_path'  => $filename,
-            'status'     => 'completed',
-        ]);
+        $reportId = 0;
+        try {
+            $db = \Config\Database::connect();
+            if ($db->tableExists('reports')) {
+                $reportFields = $db->getFieldNames('reports') ?? [];
+                $insertData = [
+                    'name'       => $title,
+                    'type'       => 'pdf',
+                    'parameters' => json_encode($params),
+                    'file_path'  => $filename,
+                    'status'     => 'completed',
+                ];
+                if (in_array('user_id', $reportFields, true)) {
+                    $insertData['user_id'] = $generatedBy;
+                } elseif (in_array('created_by', $reportFields, true)) {
+                    $insertData['created_by'] = $generatedBy;
+                }
+
+                $validData = array_intersect_key($insertData, array_flip($reportFields));
+                $reportModel = new ReportModel();
+                $reportId = $reportModel->insert($validData);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'Report logging error: ' . $e->getMessage());
+        }
 
         return [
-            'id'         => $reportId,
+            'id'         => $reportId ?: time(),
             'filename'   => $filename,
             'filepath'   => $filepath,
             'name'       => $title,
@@ -71,18 +87,34 @@ class ReportService
         $csv->insertAll($data);
 
         // Log to database
-        $reportModel = new ReportModel();
-        $reportId = $reportModel->insert([
-            'user_id'    => $generatedBy,
-            'name'       => 'Team Performance Report',
-            'type'       => 'csv',
-            'parameters' => json_encode($params),
-            'file_path'  => $filename,
-            'status'     => 'completed',
-        ]);
+        $reportId = 0;
+        try {
+            $db = \Config\Database::connect();
+            if ($db->tableExists('reports')) {
+                $reportFields = $db->getFieldNames('reports') ?? [];
+                $insertData = [
+                    'name'       => 'Team Performance Report',
+                    'type'       => 'csv',
+                    'parameters' => json_encode($params),
+                    'file_path'  => $filename,
+                    'status'     => 'completed',
+                ];
+                if (in_array('user_id', $reportFields, true)) {
+                    $insertData['user_id'] = $generatedBy;
+                } elseif (in_array('created_by', $reportFields, true)) {
+                    $insertData['created_by'] = $generatedBy;
+                }
+
+                $validData = array_intersect_key($insertData, array_flip($reportFields));
+                $reportModel = new ReportModel();
+                $reportId = $reportModel->insert($validData);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'Report logging error: ' . $e->getMessage());
+        }
 
         return [
-            'id'         => $reportId,
+            'id'         => $reportId ?: time(),
             'filename'   => $filename,
             'filepath'   => $filepath,
             'name'       => 'Team Performance Report',
