@@ -106,6 +106,64 @@ class ProjectModel extends Model
     }
 
     /**
+     * Build query for projects accessible by user (All projects for Admin/Manager, created OR assigned projects for Staff)
+     */
+    public function getAccessibleProjectsQuery(int $userId, bool $isAdmin)
+    {
+        $db = \Config\Database::connect();
+        $userFields = $db->tableExists('users') ? $db->getFieldNames('users') : [];
+
+        $selects = ['projects.*'];
+        if (in_array('username', $userFields, true)) {
+            $selects[] = 'u.username as owner_username';
+        }
+        if (in_array('first_name', $userFields, true)) {
+            $selects[] = 'u.first_name as owner_first_name';
+        }
+        if (in_array('last_name', $userFields, true)) {
+            $selects[] = 'u.last_name as owner_last_name';
+        }
+
+        $builder = $this->select(implode(', ', $selects))
+                        ->join('users u', 'u.id = projects.user_id', 'left')
+                        ->where('projects.deleted_at', null);
+
+        if (!$isAdmin) {
+            $builder->groupStart()
+                    ->where('projects.user_id', $userId)
+                    ->orWhere("EXISTS (SELECT 1 FROM tasks WHERE tasks.project_id = projects.id AND tasks.assigned_to = {$userId})", null, false)
+                    ->groupEnd();
+        }
+
+        return $builder;
+    }
+
+    /**
+     * Get accessible projects list with formatted owner_name
+     */
+    public function getAccessibleProjects(int $userId, bool $isAdmin): array
+    {
+        $projects = $this->getAccessibleProjectsQuery($userId, $isAdmin)
+                         ->orderBy('projects.updated_at', 'DESC')
+                         ->findAll();
+
+        $this->formatOwnerName($projects);
+
+        return $projects;
+    }
+
+    /**
+     * Helper to compute owner_name for an array of project records
+     */
+    public function formatOwnerName(array &$projects): void
+    {
+        foreach ($projects as &$p) {
+            $fullName = trim(($p['owner_first_name'] ?? '') . ' ' . ($p['owner_last_name'] ?? ''));
+            $p['owner_name'] = $fullName ?: ($p['owner_username'] ?? 'Owner');
+        }
+    }
+
+    /**
      * Flexible project resolver supporting:
      * 1. Full hybrid slug (e.g. mobile-app-redesign-8f9c1b)
      * 2. Short code (e.g. 8f9c1b or old-title-8f9c1b)
@@ -117,10 +175,24 @@ class ProjectModel extends Model
             return null;
         }
 
-        $query = $this;
+        $db = \Config\Database::connect();
+        $userFields = $db->tableExists('users') ? $db->getFieldNames('users') : [];
+        $selects = ['projects.*'];
+        if (in_array('username', $userFields, true)) {
+            $selects[] = 'u.username as owner_username';
+        }
+        if (in_array('first_name', $userFields, true)) {
+            $selects[] = 'u.first_name as owner_first_name';
+        }
+        if (in_array('last_name', $userFields, true)) {
+            $selects[] = 'u.last_name as owner_last_name';
+        }
+
+        $query = $this->select(implode(', ', $selects))
+                      ->join('users u', 'u.id = projects.user_id', 'left');
 
         // 1. Try exact slug match
-        $project = (clone $query)->where('slug', (string)$identifier)->first();
+        $project = (clone $query)->where('projects.slug', (string)$identifier)->first();
 
         // 2. Extract trailing short code or direct short code match
         if (!$project) {
@@ -132,24 +204,27 @@ class ProjectModel extends Model
             }
 
             if ($shortCode) {
-                $project = (clone $query)->where('short_code', $shortCode)->first();
+                $project = (clone $query)->where('projects.short_code', $shortCode)->first();
             }
         }
 
         // 3. Fallback to numeric ID for legacy backward compatibility
         if (!$project && is_numeric($identifier)) {
-            $project = (clone $query)->where('id', (int)$identifier)->first();
+            $project = (clone $query)->where('projects.id', (int)$identifier)->first();
         }
 
         if (!$project) {
             return null;
         }
 
+        // Compute owner_name
+        $fullName = trim(($project['owner_first_name'] ?? '') . ' ' . ($project['owner_last_name'] ?? ''));
+        $project['owner_name'] = $fullName ?: ($project['owner_username'] ?? 'Owner');
+
         // Authorization check if userId is provided
         if ($userId !== null && !$isAdmin) {
             if ((int)$project['user_id'] !== (int)$userId) {
                 // Check if user is assigned any tasks in this project
-                $db = \Config\Database::connect();
                 $isAssigned = $db->table('tasks')
                     ->where('project_id', $project['id'])
                     ->where('assigned_to', $userId)
@@ -177,29 +252,31 @@ class ProjectModel extends Model
     }
 
     /**
-     * Get statistics for projects
+     * Get statistics for accessible projects
      */
-    public function getStats(int $userId)
+    public function getStats(int $userId, bool $isAdmin = false)
     {
+        $base = $this->getAccessibleProjectsQuery($userId, $isAdmin);
+
         return [
-            'total'    => $this->where('user_id', $userId)->countAllResults(),
-            'active'   => $this->where('user_id', $userId)->where('status', 'in_progress')->countAllResults(),
-            'pending'   => $this->where('user_id', $userId)->whereIn('status', ['planning', 'on_hold'])->countAllResults(),
-            'completed' => $this->where('user_id', $userId)->where('status', 'completed')->countAllResults(),
-            'archived'  => $this->where('user_id', $userId)->where('is_archived', 1)->countAllResults(),
+            'total'     => (clone $base)->countAllResults(false),
+            'active'    => (clone $base)->where('projects.status', 'in_progress')->countAllResults(false),
+            'pending'   => (clone $base)->whereIn('projects.status', ['planning', 'on_hold'])->countAllResults(false),
+            'completed' => (clone $base)->where('projects.status', 'completed')->countAllResults(false),
+            'archived'  => (clone $base)->where('projects.is_archived', 1)->countAllResults(false),
         ];
     }
 
     /**
-     * Get tag/category statistics
+     * Get tag/category statistics for accessible projects
      */
-    public function getTagStats(int $userId)
+    public function getTagStats(int $userId, bool $isAdmin = false)
     {
-        $projects = $this->where('user_id', $userId)->findAll();
+        $projects = $this->getAccessibleProjects($userId, $isAdmin);
         $tagStats = [];
 
         foreach ($projects as $project) {
-            $categories = json_decode($project['categories'], true);
+            $categories = json_decode($project['categories'] ?? '', true);
             if (is_array($categories)) {
                 foreach ($categories as $cat) {
                     if (!isset($tagStats[$cat])) {
@@ -504,13 +581,7 @@ class ProjectModel extends Model
      */
     public function getProjectsWithHealth(int $userId, bool $isAdmin, ?string $healthFilter = null): array
     {
-        $db = \Config\Database::connect();
-        
-        $builder = $this->select('projects.*');
-        if (!$isAdmin) {
-            $builder->where('projects.user_id', $userId);
-        }
-        $projects = $builder->orderBy('projects.updated_at', 'DESC')->findAll();
+        $projects = $this->getAccessibleProjects($userId, $isAdmin);
 
         if (empty($projects)) {
             return [];

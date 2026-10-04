@@ -180,6 +180,7 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Project Name</th>
+                                <th>Owner</th>
                                 <th>Status</th>
                                 <th style="width: 20%;">Progress</th>
                                 <th>Priority</th>
@@ -190,7 +191,7 @@
                         <tbody>
                             <?php if (empty($projects)): ?>
                                 <tr>
-                                    <td colspan="6" class="text-center py-5 text-muted">
+                                    <td colspan="7" class="text-center py-5 text-muted">
                                         <i class="mdi mdi-folder-open-outline font-28 d-block mb-2"></i>
                                         <h5><?= esc($emptyMessage) ?></h5>
                                         <p class="font-14 mb-3">Organize tasks and sprints with a new project workspace.</p>
@@ -217,6 +218,11 @@
                                                     </span>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border font-12 shadow-xs" title="Project Owner">
+                                                <i class="mdi mdi-account-star-outline text-primary me-1"></i><?= esc($project['owner_name'] ?? 'Owner') ?>
+                                            </span>
                                         </td>
                                         <td>
                                             <span class="badge <?= $status_classes[$project['status']] ?? 'bg-secondary' ?>">

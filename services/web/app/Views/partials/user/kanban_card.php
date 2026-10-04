@@ -102,17 +102,19 @@ $initials = !empty($task['assignee_name']) ? strtoupper(substr($task['assignee_n
         </div>
     </div>
     
-    <div class="kanban-card-footer pt-2 mt-1 border-top border-light d-flex justify-content-between align-items-center">
-        <div class="task-assignee d-flex align-items-center" title="Assignee: <?= esc($task['assignee_name'] ?? 'Team Member') ?>">
+    <div class="kanban-card-footer pt-2 mt-1 border-top border-light d-flex justify-content-between align-items-center flex-wrap gap-1">
+        <div class="task-owner d-flex align-items-center" title="Task Owner / Created by: <?= esc($task['creator_name'] ?? 'Task Owner') ?>">
+            <span class="badge bg-light text-muted border font-10">
+                <i class="mdi mdi-account-star-outline text-primary me-1"></i>By: <?= esc($task['creator_name'] ?? 'Owner') ?>
+            </span>
+        </div>
+        <div class="task-assignee d-flex align-items-center" title="Assignee: <?= esc($task['assignee_name'] ?? 'Unassigned') ?>">
             <div class="task-avatar">
                 <?= $initials ?>
             </div>
-            <span class="font-11 text-muted ms-1 text-truncate" style="max-width: 110px;">
-                <?= esc($task['assignee_name'] ?? 'Team Member') ?>
+            <span class="font-11 text-muted ms-1 text-truncate" style="max-width: 90px;">
+                <?= esc($task['assignee_name'] ?? 'Unassigned') ?>
             </span>
-        </div>
-        <div class="task-hints font-11 text-muted" title="Right-click for quick actions">
-            <i class="mdi mdi-cursor-default-click-outline opacity-50"></i>
         </div>
     </div>
 </div>

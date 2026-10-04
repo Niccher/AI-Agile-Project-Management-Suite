@@ -99,6 +99,9 @@ $projectSlug = !empty($project['slug']) ? $project['slug'] : $project['id'];
                                 <span class="badge <?= $priorityClass ?> font-12">
                                     <?= ucfirst($project['priority'] ?? 'medium') ?> Priority
                                 </span>
+                                <span class="badge bg-light text-dark border font-12" title="Project Owner">
+                                    <i class="mdi mdi-account-star-outline text-primary me-1"></i>Owner: <?= esc($project['owner_name'] ?? 'Project Lead') ?>
+                                </span>
                                 <?php if (!empty($health)): ?>
                                     <a href="<?= site_url('projects/health') ?>" class="badge <?= $health['badge_class'] ?> font-12 text-decoration-none" title="View workspace health audit">
                                         <i class="mdi <?= $health['icon'] ?> me-1"></i> Health: <?= $health['score'] ?>/100 (<?= $health['label'] ?>)

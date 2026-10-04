@@ -9,17 +9,33 @@ class ProjectController extends BaseUserController
     public function index()
     {
         $projectModel = new ProjectModel();
+        $user = auth()->user();
+        $isAdmin = $user && ($user->inGroup('admin') || $user->inGroup('manager'));
+
+        $base = $projectModel->getAccessibleProjectsQuery($this->userId, $isAdmin);
+
+        $allProjects       = (clone $base)->paginate(10, 'all');
+        $activeProjects    = (clone $base)->where('projects.status', 'in_progress')->paginate(10, 'active');
+        $pendingProjects   = (clone $base)->whereIn('projects.status', ['planning', 'on_hold'])->paginate(10, 'pending');
+        $completedProjects = (clone $base)->where('projects.status', 'completed')->paginate(10, 'completed');
+        $archivedProjects  = (clone $base)->where('projects.is_archived', 1)->paginate(10, 'archived');
+
+        $projectModel->formatOwnerName($allProjects);
+        $projectModel->formatOwnerName($activeProjects);
+        $projectModel->formatOwnerName($pendingProjects);
+        $projectModel->formatOwnerName($completedProjects);
+        $projectModel->formatOwnerName($archivedProjects);
 
         $data = [
             'user'               => $this->currentUser,
-            'all_projects'       => $projectModel->where('user_id', $this->userId)->paginate(10, 'all'),
-            'active_projects'    => $projectModel->where('user_id', $this->userId)->where('status', 'in_progress')->paginate(10, 'active'),
-            'pending_projects'   => $projectModel->where('user_id', $this->userId)->whereIn('status', ['planning', 'on_hold'])->paginate(10, 'pending'),
-            'completed_projects' => $projectModel->where('user_id', $this->userId)->where('status', 'completed')->paginate(10, 'completed'),
-            'archived_projects'  => $projectModel->where('user_id', $this->userId)->where('is_archived', 1)->paginate(10, 'archived'),
+            'all_projects'       => $allProjects,
+            'active_projects'    => $activeProjects,
+            'pending_projects'   => $pendingProjects,
+            'completed_projects' => $completedProjects,
+            'archived_projects'  => $archivedProjects,
             'pager'              => $projectModel->pager,
-            'stats'              => $projectModel->getStats($this->userId),
-            'tagStats'           => $projectModel->getTagStats($this->userId),
+            'stats'              => $projectModel->getStats($this->userId, $isAdmin),
+            'tagStats'           => $projectModel->getTagStats($this->userId, $isAdmin),
         ];
 
         return view('user/projects/index', $data);

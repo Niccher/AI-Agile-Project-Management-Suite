@@ -18,14 +18,7 @@ class TimeTrackerController extends BaseUserController
         $isManager = $currentUser && ($currentUser->inGroup('manager') || $isAdmin);
 
         // Fetch accessible projects
-        if ($isManager) {
-            $data['projects'] = $projectModel->where('deleted_at', null)->orderBy('name', 'ASC')->findAll();
-        } else {
-            $data['projects'] = $projectModel->where('user_id', $this->userId)
-                                              ->where('deleted_at', null)
-                                              ->orderBy('name', 'ASC')
-                                              ->findAll();
-        }
+        $data['projects'] = $projectModel->getAccessibleProjects($this->userId, $isManager);
 
         $projectId = null;
         $activeProject = null;

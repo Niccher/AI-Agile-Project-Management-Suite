@@ -43,29 +43,28 @@ class TaskModel extends Model
     public function getBoardData(int $projectId, ?int $userId = null)
     {
         $db = $this->db;
-        $taskFields = $db->getFieldNames('tasks') ?? [];
-        $userFields = $db->getFieldNames('users') ?? [];
+        $userFields = $db->tableExists('users') ? $db->getFieldNames('users') : [];
 
         $selects = ['tasks.*'];
         if (in_array('username', $userFields, true)) {
-            $selects[] = 'users.username as assignee_username';
+            $selects[] = 'uc.username as creator_username';
+            $selects[] = 'ua.username as assignee_username';
         }
         if (in_array('first_name', $userFields, true)) {
-            $selects[] = 'users.first_name as assignee_first_name';
+            $selects[] = 'uc.first_name as creator_first_name';
+            $selects[] = 'ua.first_name as assignee_first_name';
         }
         if (in_array('last_name', $userFields, true)) {
-            $selects[] = 'users.last_name as assignee_last_name';
+            $selects[] = 'uc.last_name as creator_last_name';
+            $selects[] = 'ua.last_name as assignee_last_name';
         }
 
-        $query = $this->select(implode(', ', $selects));
+        $query = $this->select(implode(', ', $selects))
+                      ->join('users uc', 'uc.id = tasks.user_id', 'left')
+                      ->join('users ua', 'ua.id = tasks.assigned_to', 'left')
+                      ->where('tasks.project_id', $projectId);
 
-        if (in_array('assigned_to', $taskFields, true)) {
-            $query->join('users', 'users.id = tasks.assigned_to', 'left');
-        } elseif ($db->tableExists('users')) {
-            $query->join('users', 'users.id = tasks.user_id', 'left');
-        }
-
-        $query->where('tasks.project_id', $projectId);
+        $taskFields = $db->getFieldNames('tasks') ?? [];
         if (in_array('order_index', $taskFields, true)) {
             $query->orderBy('tasks.order_index', 'ASC');
         }
@@ -80,8 +79,12 @@ class TaskModel extends Model
         ];
 
         foreach ($tasks as $task) {
-            $name = trim(($task['assignee_first_name'] ?? '') . ' ' . ($task['assignee_last_name'] ?? ''));
-            $task['assignee_name'] = $name ?: ($task['assignee_username'] ?? 'Unassigned');
+            $assigneeName = trim(($task['assignee_first_name'] ?? '') . ' ' . ($task['assignee_last_name'] ?? ''));
+            $task['assignee_name'] = $assigneeName ?: ($task['assignee_username'] ?? 'Unassigned');
+
+            $creatorName = trim(($task['creator_first_name'] ?? '') . ' ' . ($task['creator_last_name'] ?? ''));
+            $task['creator_name'] = $creatorName ?: ($task['creator_username'] ?? 'Task Owner');
+
             $status = $task['status'] ?? 'todo';
             if (isset($board[$status])) {
                 $board[$status][] = $task;

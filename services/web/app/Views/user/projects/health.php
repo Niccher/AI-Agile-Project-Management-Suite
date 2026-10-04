@@ -163,6 +163,9 @@
                                                             <i class="mdi mdi-calendar-clock me-1"></i>Target: <?= date('M j, Y', strtotime($p['due_date'])) ?>
                                                         </small>
                                                     <?php endif; ?>
+                                                    <small class="text-muted font-11 d-block">
+                                                        <i class="mdi mdi-account-star-outline text-primary me-1"></i>Owner: <?= esc($p['owner_name'] ?? 'Owner') ?>
+                                                    </small>
                                                 </div>
                                             </div>
                                         </td>

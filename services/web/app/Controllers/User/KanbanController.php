@@ -14,11 +14,9 @@ class KanbanController extends BaseUserController
         $isAdmin = auth()->user() && auth()->user()->inGroup('admin', 'manager');
 
         if ($identifier === null) {
-            $latestProjectQuery = $isAdmin 
-                ? $projectModel->orderBy('updated_at', 'DESC')
-                : $projectModel->where('user_id', $this->userId)->orderBy('updated_at', 'DESC');
+            $accessible = $projectModel->getAccessibleProjects($this->userId, $isAdmin);
+            $latestProject = !empty($accessible) ? reset($accessible) : null;
                 
-            $latestProject = $latestProjectQuery->first();
             if ($latestProject) {
                 $target = $latestProject['slug'] ?? $latestProject['id'];
                 return redirect()->to('projects/kanban/' . $target);
@@ -37,9 +35,7 @@ class KanbanController extends BaseUserController
         $cats = $projectModel->getCategoriesByProjectId($projectId);
         $tech = $projectModel->getTechStackByProjectId($projectId);
 
-        $projectsList = $isAdmin
-            ? $projectModel->orderBy('updated_at', 'DESC')->findAll()
-            : $projectModel->where('user_id', $this->userId)->orderBy('updated_at', 'DESC')->findAll();
+        $projectsList = $projectModel->getAccessibleProjects($this->userId, $isAdmin);
 
         $userModel = new \App\Models\UserModel();
         $usersList = $userModel->orderBy('username', 'ASC')->findAll();
