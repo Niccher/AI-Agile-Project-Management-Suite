@@ -172,67 +172,60 @@ class LlmService
         return $this->request('POST', '/api/v1/qa', $payload);
     }
 
+    public function getBaseUrl(): string
+    {
+        return $this->baseUrl;
+    }
+
     /**
      * Generic HTTP dispatcher using CI4 curlrequest service
      */
     protected function request(string $method, string $path, array $data = []): array
     {
-        $candidateUrls = array_unique([
-            $this->baseUrl,
-            'http://127.0.0.1:8000',
-            'http://localhost:8000'
+        $url = rtrim($this->baseUrl, '/') . $path;
+        $client = \Config\Services::curlrequest([
+            'timeout'     => 180, // CPU LLM inference can take time
+            'http_errors' => false,
         ]);
 
-        $lastError = 'Could not communicate with ML microservice.';
-
-        foreach ($candidateUrls as $candidateBase) {
-            $url = rtrim($candidateBase, '/') . $path;
-            $client = \Config\Services::curlrequest([
-                'timeout'     => 180, // CPU LLM inference can take time
-                'http_errors' => false,
-            ]);
-
-            $options = [
-                'headers' => [
-                    'X-API-Key'    => $this->apiKey,
-                    'Content-Type' => 'application/json',
-                    'Accept'       => 'application/json',
-                ],
-            ];
-
-            if (in_array(strtoupper($method), ['POST', 'PATCH', 'PUT']) && !empty($data)) {
-                $options['body'] = json_encode($data);
-            }
-
-            try {
-                $response = $client->request($method, $url, $options);
-                $rawBody = (string)$response->getBody();
-                $decoded = json_decode($rawBody, true);
-
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    $this->baseUrl = rtrim($candidateBase, '/');
-                    return $decoded;
-                }
-
-                return [
-                    'success' => false,
-                    'error'   => [
-                        'code'    => 'invalid_json_response',
-                        'message' => 'ML backend did not return valid JSON: ' . substr($rawBody, 0, 200),
-                    ],
-                ];
-            } catch (\Throwable $e) {
-                $lastError = $e->getMessage();
-                log_message('warning', "LlmService candidate {$candidateBase} failed on {$method} {$path}: " . $lastError);
-            }
-        }
-
-        return [
-            'success' => false,
-            'error'   => [
-                'code'    => 'service_unreachable',
-                'message' => 'Could not communicate with ML microservice: ' . $lastError,
+        $options = [
+            'headers' => [
+                'X-API-Key'    => $this->apiKey,
+                'Content-Type' => 'application/json',
+                'Accept'       => 'application/json',
             ],
         ];
+
+        if (in_array(strtoupper($method), ['POST', 'PATCH', 'PUT']) && !empty($data)) {
+            $options['body'] = json_encode($data);
+        }
+
+        try {
+            $response = $client->request($method, $url, $options);
+            $rawBody = (string)$response->getBody();
+            $decoded = json_decode($rawBody, true);
+
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $decoded;
+            }
+
+            return [
+                'success' => false,
+                'error'   => [
+                    'code'    => 'invalid_json_response',
+                    'message' => 'ML backend did not return valid JSON: ' . substr($rawBody, 0, 200),
+                ],
+            ];
+        } catch (\Throwable $e) {
+            $errorMsg = $e->getMessage();
+            log_message('warning', "LlmService request failed on {$method} {$url}: " . $errorMsg);
+            return [
+                'success' => false,
+                'error'   => [
+                    'code'    => 'service_unreachable',
+                    'message' => "Could not communicate with ML microservice at {$this->baseUrl}: " . $errorMsg,
+                ],
+            ];
+        }
     }
 }

@@ -10,8 +10,23 @@ class WorkApprovalController extends BaseController
     public function index()
     {
         $taskModel = new TaskModel();
-        $tasks = $taskModel->getPendingReviews();
+        $pendingTasks  = $taskModel->getTasksByStatus('review');
+        $approvedTasks = $taskModel->getTasksByStatus('approved');
+        $rejectedTasks = $taskModel->getTasksByStatus('rejected');
 
+        $this->attachLoggedHours($pendingTasks);
+        $this->attachLoggedHours($approvedTasks);
+        $this->attachLoggedHours($rejectedTasks);
+
+        return view('manager/approvals/index', [
+            'pendingTasks'  => $pendingTasks,
+            'approvedTasks' => $approvedTasks,
+            'rejectedTasks' => $rejectedTasks,
+        ]);
+    }
+
+    private function attachLoggedHours(array &$tasks): void
+    {
         $db = \Config\Database::connect();
         foreach ($tasks as &$task) {
             $timeLog = $db->table('time_logs')
@@ -24,8 +39,6 @@ class WorkApprovalController extends BaseController
             $task['logged_hours'] = number_format($sec / 3600, 1);
         }
         unset($task);
-
-        return view('manager/approvals/index', ['tasks' => $tasks]);
     }
 
     public function approve($id)
@@ -62,7 +75,16 @@ class WorkApprovalController extends BaseController
             }
             
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['status' => 'success', 'message' => 'Task approved successfully.', 'id' => $id]);
+                $approver = auth()->user();
+                $approverName = trim(($approver->first_name ?? '') . ' ' . ($approver->last_name ?? '')) ?: ($approver->username ?? 'Manager');
+
+                return $this->response->setJSON([
+                    'status'        => 'success',
+                    'message'       => 'Task approved successfully.',
+                    'id'            => $id,
+                    'approved_at'   => date('M j, Y g:i A'),
+                    'approver_name' => $approverName
+                ]);
             }
             return redirect()->back()->with('message', 'Task approved successfully.');
         }
@@ -108,7 +130,17 @@ class WorkApprovalController extends BaseController
             }
             
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['status' => 'success', 'message' => 'Task rejected.', 'id' => $id]);
+                $rejecter = auth()->user();
+                $rejecterName = trim(($rejecter->first_name ?? '') . ' ' . ($rejecter->last_name ?? '')) ?: ($rejecter->username ?? 'Manager');
+
+                return $this->response->setJSON([
+                    'status'          => 'success',
+                    'message'         => 'Task rejected and returned for rework.',
+                    'id'              => $id,
+                    'rejected_at'     => date('M j, Y g:i A'),
+                    'rejecter_name'   => $rejecterName,
+                    'rejected_reason' => $reason
+                ]);
             }
             return redirect()->back()->with('message', 'Task rejected.');
         }

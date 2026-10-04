@@ -13,7 +13,14 @@ class ReportModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'generated_by', 'type', 'period_start', 'period_end', 'file_path', 'params', 'created_at', 'updated_at'
+        'user_id',
+        'name',
+        'type',
+        'parameters',
+        'file_path',
+        'status',
+        'created_at',
+        'updated_at'
     ];
 
     protected $useTimestamps = true;

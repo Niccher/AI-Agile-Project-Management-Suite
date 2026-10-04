@@ -106,13 +106,11 @@
             </h5>
             <select id="projectCalendarFilter" class="form-select form-select-sm ms-2" style="width: 180px;">
                 <option value="">All Projects</option>
-                <?php 
-                    $pModel = new \App\Models\ProjectModel();
-                    $userProjs = $pModel->where('user_id', auth()->id())->findAll();
-                    foreach ($userProjs as $up): 
-                ?>
-                    <option value="<?= $up['id'] ?>"><?= esc($up['name']) ?></option>
-                <?php endforeach; ?>
+                <?php if (!empty($projects)): ?>
+                    <?php foreach ($projects as $up): ?>
+                        <option value="<?= $up['id'] ?>"><?= esc($up['name']) ?></option>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </select>
         </div>
         <!-- Activity Legend -->

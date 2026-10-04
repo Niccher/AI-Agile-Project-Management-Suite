@@ -40,22 +40,21 @@
         </div>
     <?php endif; ?>
 
-    <?php if (!$isOnline): ?>
-        <div class="alert alert-warning border-0 shadow-sm mb-4">
-            <div class="d-flex align-items-center">
-                <div class="avatar-sm bg-warning-lighten text-warning rounded d-flex align-items-center justify-content-center me-3">
-                    <i class="mdi mdi-power-plug-off font-22"></i>
-                </div>
-                <div>
-                    <h5 class="my-0 text-warning fw-bold">AI Microservice Offline / Unreachable</h5>
-                    <p class="mb-0 text-muted font-13">
-                        Could not connect to FastAPI container at <code><?= esc(setting('Ml.serviceUrl') ?? env('ML_SERVICE_URL', 'http://ml-chege-jira:8000')) ?></code>. 
-                        Error: <?= esc($errorMsg ?? 'Connection refused') ?>. Ensure the <code>ml-chege-jira</code> container is running and verify its URL in <a href="<?= site_url('admin/ai/settings') ?>" class="fw-bold text-warning text-decoration-underline">AI Settings</a>.
-                    </p>
-                </div>
+    <!-- Offline Alert Banner -->
+    <div id="ai-offline-banner" class="alert alert-warning border-0 shadow-sm mb-4 <?= $isOnline ? 'd-none' : '' ?>">
+        <div class="d-flex align-items-center">
+            <div class="avatar-sm bg-warning-lighten text-warning rounded d-flex align-items-center justify-content-center me-3">
+                <i class="mdi mdi-power-plug-off font-22"></i>
+            </div>
+            <div>
+                <h5 class="my-0 text-warning fw-bold">AI Microservice Offline / Unreachable</h5>
+                <p class="mb-0 text-muted font-13">
+                    Could not connect to FastAPI container at <code id="ai-banner-service-url"><?= esc(setting('Ml.serviceUrl') ?? env('ML_SERVICE_URL', 'http://ml-chege-jira:8000')) ?></code>. 
+                    Error: <span id="ai-banner-error-msg"><?= esc($errorMsg ?? 'Connection refused') ?></span>. Ensure the <code>ml-chege-jira</code> container is running and verify its URL in <a href="<?= site_url('admin/ai/settings') ?>" class="fw-bold text-warning text-decoration-underline">AI Settings</a>.
+                </p>
             </div>
         </div>
-    <?php endif; ?>
+    </div>
 
     <?php 
         $container = $telemetry['container'] ?? [];
@@ -85,15 +84,15 @@
                         </div>
                     </div>
                     <div class="d-flex align-items-baseline mb-2">
-                        <h3 class="my-0 me-2 <?= ($container['cpu_percent'] ?? 0) > 80 ? 'text-danger' : 'text-primary' ?>">
+                        <h3 id="stat-cpu-percent" class="my-0 me-2 <?= ($container['cpu_percent'] ?? 0) > 80 ? 'text-danger' : 'text-primary' ?>">
                             <?= $container['cpu_percent'] ?? '0' ?>%
                         </h3>
-                        <span class="text-muted font-13"><?= $container['cpu_count'] ?? 1 ?> Core(s)</span>
+                        <span id="stat-cpu-cores" class="text-muted font-13"><?= $container['cpu_count'] ?? 1 ?> Core(s)</span>
                     </div>
                     <div class="progress mb-2" style="height: 6px;">
-                        <div class="progress-bar bg-primary" role="progressbar" style="width: <?= min(100, $container['cpu_percent'] ?? 0) ?>%"></div>
+                        <div id="stat-cpu-bar" class="progress-bar bg-primary" role="progressbar" style="width: <?= min(100, $container['cpu_percent'] ?? 0) ?>%"></div>
                     </div>
-                    <span class="text-muted font-12">Threads configured: <strong><?= $llmRuntime['n_threads'] ?? 4 ?></strong></span>
+                    <span class="text-muted font-12">Threads configured: <strong id="stat-threads"><?= $llmRuntime['n_threads'] ?? 4 ?></strong></span>
                 </div>
             </div>
         </div>
@@ -109,13 +108,13 @@
                         </div>
                     </div>
                     <div class="d-flex align-items-baseline mb-2">
-                        <h3 class="my-0 me-2 text-success"><?= $formatMemHuman($container['ram_used_mb'] ?? 0) ?></h3>
-                        <span class="text-muted font-13">/ <?= $formatMemHuman($container['ram_total_mb'] ?? 0) ?></span>
+                        <h3 id="stat-ram-used" class="my-0 me-2 text-success"><?= $formatMemHuman($container['ram_used_mb'] ?? 0) ?></h3>
+                        <span id="stat-ram-total" class="text-muted font-13">/ <?= $formatMemHuman($container['ram_total_mb'] ?? 0) ?></span>
                     </div>
                     <div class="progress mb-2" style="height: 6px;">
-                        <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $container['ram_percent'] ?? 0) ?>%"></div>
+                        <div id="stat-ram-bar" class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $container['ram_percent'] ?? 0) ?>%"></div>
                     </div>
-                    <span class="text-muted font-12">Pressure: <strong><?= $container['ram_percent'] ?? 0 ?>%</strong></span>
+                    <span class="text-muted font-12">Pressure: <strong id="stat-ram-percent"><?= $container['ram_percent'] ?? 0 ?>%</strong></span>
                 </div>
             </div>
         </div>
@@ -130,11 +129,11 @@
                             <i class="mdi mdi-chip font-18"></i>
                         </div>
                     </div>
-                    <h3 class="my-0 text-warning"><?= esc($llmRuntime['compute_mode'] ?? 'CPU') ?></h3>
+                    <h3 id="stat-compute-mode" class="my-0 text-warning"><?= esc($llmRuntime['compute_mode'] ?? 'CPU') ?></h3>
                     <p class="text-muted font-13 my-1">
-                        GPU Layers: <strong><?= esc($llmRuntime['n_gpu_layers'] ?? 0) ?></strong>
+                        GPU Layers: <strong id="stat-gpu-layers"><?= esc($llmRuntime['n_gpu_layers'] ?? 0) ?></strong>
                     </p>
-                    <span class="badge bg-soft-warning text-warning">Default: <?= esc($llmRuntime['default_model'] ?? 'mistral-7b') ?></span>
+                    <span id="stat-default-model-badge" class="badge bg-soft-warning text-warning">Default: <?= esc($llmRuntime['default_model'] ?? 'mistral-7b') ?></span>
                 </div>
             </div>
         </div>
@@ -149,9 +148,9 @@
                             <i class="mdi mdi-code-tags font-18"></i>
                         </div>
                     </div>
-                    <p class="font-13 mb-1">llama.cpp: <strong><?= esc($llmRuntime['llama_cpp_version'] ?? 'N/A') ?></strong></p>
-                    <p class="font-13 mb-1">FastAPI: <strong><?= esc($llmRuntime['fastapi_version'] ?? 'N/A') ?></strong></p>
-                    <p class="font-13 mb-0">Python: <strong><?= esc($container['python_version'] ?? 'N/A') ?></strong></p>
+                    <p class="font-13 mb-1">llama.cpp: <strong id="stat-llamacpp-ver"><?= esc($llmRuntime['llama_cpp_version'] ?? 'N/A') ?></strong></p>
+                    <p class="font-13 mb-1">FastAPI: <strong id="stat-fastapi-ver"><?= esc($llmRuntime['fastapi_version'] ?? 'N/A') ?></strong></p>
+                    <p class="font-13 mb-0">Python: <strong id="stat-python-ver"><?= esc($container['python_version'] ?? 'N/A') ?></strong></p>
                 </div>
             </div>
         </div>
@@ -184,7 +183,7 @@
                                     <th class="text-end">Model Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="telemetry-models-tbody">
                                 <?php if (empty($modelsList)): ?>
                                     <tr>
                                         <td colspan="8" class="text-center py-4 text-muted">
@@ -193,7 +192,7 @@
                                     </tr>
                                 <?php else: ?>
                                     <?php foreach ($modelsList as $mKey => $m): ?>
-                                        <tr>
+                                        <tr id="model-row-<?= esc($mKey) ?>">
                                             <td class="fw-bold text-body">
                                                 <code><?= esc($mKey) ?></code>
                                                 <?php if (($llmRuntime['default_model'] ?? '') === $mKey): ?>
@@ -201,7 +200,7 @@
                                                 <?php endif; ?>
                                             </td>
                                             <td class="font-13 text-muted"><?= esc($m['file'] ?? '') ?></td>
-                                            <td>
+                                            <td id="telemetry-disk-status-<?= esc($mKey) ?>">
                                                 <?php if (!empty($m['exists_on_disk'])): ?>
                                                     <span class="badge bg-success-lighten text-success"><i class="mdi mdi-check me-1"></i>Present on Disk</span>
                                                 <?php elseif (($m['download_status'] ?? '') === 'downloading'): ?>
@@ -218,8 +217,8 @@
                                                     <span class="badge bg-light text-muted">Uncached</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td class="font-13"><?= esc($m['total_requests'] ?? 0) ?></td>
-                                            <td class="font-13">
+                                            <td class="font-13" id="telemetry-requests-<?= esc($mKey) ?>"><?= esc($m['total_requests'] ?? 0) ?></td>
+                                            <td class="font-13" id="telemetry-latency-<?= esc($mKey) ?>">
                                                 <?= !empty($m['avg_duration_ms']) ? esc($m['avg_duration_ms']) . ' ms' : '-' ?>
                                             </td>
                                             <td class="text-end" id="telemetry-actions-<?= esc($mKey) ?>">
@@ -257,6 +256,12 @@
 </div>
 
 <script>
+function formatMemHuman(mb) {
+    if (!mb || mb <= 0) return '0 MB';
+    if (mb >= 1024) return (mb / 1024).toFixed(2) + ' GB';
+    return Number(mb).toFixed(1) + ' MB';
+}
+
 function triggerTelemetryModelAction(action, modelKey) {
     let confirmTitle = 'Confirm Action';
     let confirmText = `Are you sure you want to perform "${action}" on ${modelKey}?`;
@@ -306,7 +311,6 @@ function triggerTelemetryModelAction(action, modelKey) {
         formData.append('action', action);
         formData.append('model_key', modelKey);
         formData.append('redirect', 'telemetry');
-        if (window.csrfToken) formData.append(window.csrfToken, window.csrfHash);
 
         fetch('<?= site_url('admin/ai/cache-action') ?>', {
             method: 'POST',
@@ -365,14 +369,70 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Refreshing...';
 
             fetch('<?= site_url('admin/ai/telemetry') ?>', {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                headers: { 
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
             })
             .then(r => r.json())
             .then(res => {
                 btn.disabled = false;
                 btn.innerHTML = origHtml;
 
-                if (res.isOnline) {
+                const offlineBanner = document.getElementById('ai-offline-banner');
+                const errMsgSpan = document.getElementById('ai-banner-error-msg');
+
+                if (res.isOnline && res.telemetry) {
+                    if (offlineBanner) offlineBanner.classList.add('d-none');
+
+                    const t = res.telemetry || {};
+                    const container = t.container || {};
+                    const llm = t.llm_runtime || {};
+
+                    // Update CPU
+                    const cpuPercent = container.cpu_percent || 0;
+                    const cpuEl = document.getElementById('stat-cpu-percent');
+                    if (cpuEl) {
+                        cpuEl.textContent = cpuPercent + '%';
+                        cpuEl.className = 'my-0 me-2 ' + (cpuPercent > 80 ? 'text-danger' : 'text-primary');
+                    }
+                    const cpuCoresEl = document.getElementById('stat-cpu-cores');
+                    if (cpuCoresEl) cpuCoresEl.textContent = (container.cpu_count || 1) + ' Core(s)';
+                    const cpuBar = document.getElementById('stat-cpu-bar');
+                    if (cpuBar) cpuBar.style.width = Math.min(100, cpuPercent) + '%';
+                    const threadsEl = document.getElementById('stat-threads');
+                    if (threadsEl) threadsEl.textContent = llm.n_threads || 4;
+
+                    // Update RAM
+                    const ramUsed = container.ram_used_mb || 0;
+                    const ramTotal = container.ram_total_mb || 0;
+                    const ramPercent = container.ram_percent || 0;
+                    const ramUsedEl = document.getElementById('stat-ram-used');
+                    if (ramUsedEl) ramUsedEl.textContent = formatMemHuman(ramUsed);
+                    const ramTotalEl = document.getElementById('stat-ram-total');
+                    if (ramTotalEl) ramTotalEl.textContent = '/ ' + formatMemHuman(ramTotal);
+                    const ramBar = document.getElementById('stat-ram-bar');
+                    if (ramBar) ramBar.style.width = Math.min(100, ramPercent) + '%';
+                    const ramPercentEl = document.getElementById('stat-ram-percent');
+                    if (ramPercentEl) ramPercentEl.textContent = ramPercent + '%';
+
+                    // Update Compute Mode
+                    const computeModeEl = document.getElementById('stat-compute-mode');
+                    if (computeModeEl) computeModeEl.textContent = llm.compute_mode || 'CPU';
+                    const gpuLayersEl = document.getElementById('stat-gpu-layers');
+                    if (gpuLayersEl) gpuLayersEl.textContent = llm.n_gpu_layers || 0;
+                    const defaultModelBadge = document.getElementById('stat-default-model-badge');
+                    if (defaultModelBadge) defaultModelBadge.textContent = 'Default: ' + (llm.default_model || 'mistral-7b');
+
+                    // Update Engine Specs
+                    const llamacppEl = document.getElementById('stat-llamacpp-ver');
+                    if (llamacppEl) llamacppEl.textContent = llm.llama_cpp_version || 'N/A';
+                    const fastapiEl = document.getElementById('stat-fastapi-ver');
+                    if (fastapiEl) fastapiEl.textContent = llm.fastapi_version || 'N/A';
+                    const pythonEl = document.getElementById('stat-python-ver');
+                    if (pythonEl) pythonEl.textContent = container.python_version || 'N/A';
+
+                    // Toast
                     const Toast = Swal.mixin({
                         toast: true,
                         position: 'top-end',
@@ -380,14 +440,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         timer: 2000,
                         timerProgressBar: true
                     });
-                    Toast.fire({ icon: 'success', title: 'Metrics updated cleanly!' });
-                    setTimeout(() => window.location.reload(), 600);
+                    Toast.fire({ icon: 'success', title: 'Metrics refreshed successfully' });
                 } else {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'AI Microservice Offline / Unreachable',
-                        text: res.errorMsg || 'Could not communicate with ML microservice.'
+                    if (offlineBanner) offlineBanner.classList.remove('d-none');
+                    if (errMsgSpan) errMsgSpan.textContent = res.errorMsg || 'Could not communicate with ML microservice.';
+
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3500,
+                        timerProgressBar: true
                     });
+                    Toast.fire({ icon: 'warning', title: 'AI Microservice is currently offline' });
                 }
             })
             .catch(err => {

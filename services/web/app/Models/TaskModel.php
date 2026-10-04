@@ -139,6 +139,14 @@ class TaskModel extends Model
      */
     public function getPendingReviews(?int $managerId = null)
     {
+        return $this->getTasksByStatus('review');
+    }
+
+    /**
+     * Get tasks by status with project, assignee, and reviewer info
+     */
+    public function getTasksByStatus(string $status)
+    {
         $db = $this->db;
         $taskFields = $db->getFieldNames('tasks') ?? [];
         $userFields = $db->getFieldNames('users') ?? [];
@@ -150,12 +158,18 @@ class TaskModel extends Model
         }
         if (in_array('username', $userFields, true)) {
             $selects[] = 'users.username';
+            $selects[] = 'u_app.username as approver_username';
+            $selects[] = 'u_rej.username as rejecter_username';
         }
         if (in_array('first_name', $userFields, true)) {
             $selects[] = 'users.first_name';
+            $selects[] = 'u_app.first_name as approver_first_name';
+            $selects[] = 'u_rej.first_name as rejecter_first_name';
         }
         if (in_array('last_name', $userFields, true)) {
             $selects[] = 'users.last_name';
+            $selects[] = 'u_app.last_name as approver_last_name';
+            $selects[] = 'u_rej.last_name as rejecter_last_name';
         }
 
         $query = (new static())->select(implode(', ', $selects));
@@ -170,12 +184,19 @@ class TaskModel extends Model
             $query->join('users', 'users.id = tasks.user_id', 'left');
         }
 
-        $query->where('tasks.status', 'review');
+        if (in_array('approved_by', $taskFields, true)) {
+            $query->join('users u_app', 'u_app.id = tasks.approved_by', 'left');
+        }
+        if (in_array('rejected_by', $taskFields, true)) {
+            $query->join('users u_rej', 'u_rej.id = tasks.rejected_by', 'left');
+        }
+
+        $query->where('tasks.status', $status);
 
         if (in_array('updated_at', $taskFields, true)) {
-            $query->orderBy('tasks.updated_at', 'ASC');
+            $query->orderBy('tasks.updated_at', 'DESC');
         } elseif (in_array('created_at', $taskFields, true)) {
-            $query->orderBy('tasks.created_at', 'ASC');
+            $query->orderBy('tasks.created_at', 'DESC');
         }
 
         return $query->findAll();

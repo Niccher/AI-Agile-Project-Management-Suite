@@ -203,8 +203,104 @@ class AnalyticsController extends BaseUserController
             $recentDone[] = esc($dn['title']);
         }
 
+        // Team Work & Staff Performance Roster (For Admin & Manager Viewers)
+        $teamRoster = [];
+        if ($isAdmin) {
+            try {
+                $users = $db->table('users')
+                    ->select('users.id, users.username, users.first_name, users.last_name, users.active')
+                    ->get()->getResultArray();
+
+                $thirtyDaysAgo = date('Y-m-d H:i:s', strtotime('-30 days'));
+
+                foreach ($users as $u) {
+                    $uId = (int)$u['id'];
+
+                    // Tasks stats
+                    $totalAssigned = (int)$db->table('tasks')->where('assigned_to', $uId)->countAllResults();
+                    $completedTasks = (int)$db->table('tasks')->where('assigned_to', $uId)->whereIn('status', ['approved', 'done'])->countAllResults();
+                    $inProgressTasks = (int)$db->table('tasks')->where('assigned_to', $uId)->where('status', 'in_progress')->countAllResults();
+                    $reviewTasks = (int)$db->table('tasks')->where('assigned_to', $uId)->where('status', 'review')->countAllResults();
+                    $overdueTasks = (int)$db->table('tasks')
+                        ->where('assigned_to', $uId)
+                        ->where('due_date <', date('Y-m-d'))
+                        ->whereNotIn('status', ['approved', 'done'])
+                        ->countAllResults();
+
+                    // Time logs
+                    $timeLog30d = $db->table('time_logs')
+                        ->select('COALESCE(SUM(duration), 0) as total_sec')
+                        ->where('user_id', $uId)
+                        ->where('start_time >=', $thirtyDaysAgo)
+                        ->get()->getRowArray();
+                    $loggedHours30d = round(((int)($timeLog30d['total_sec'] ?? 0)) / 3600, 1);
+
+                    $timeLogAll = $db->table('time_logs')
+                        ->select('COALESCE(SUM(duration), 0) as total_sec')
+                        ->where('user_id', $uId)
+                        ->get()->getRowArray();
+                    $loggedHoursAll = round(((int)($timeLogAll['total_sec'] ?? 0)) / 3600, 1);
+
+                    // User Group / Role
+                    $groupRow = $db->table('auth_groups_users')->where('user_id', $uId)->get()->getRowArray();
+                    $groupName = $groupRow['group'] ?? 'user';
+
+                    // Exclude idle admins/managers who have 0 tasks and 0 logged hours
+                    $isManagerOrAdmin = in_array($groupName, ['admin', 'manager', 'superadmin'], true);
+                    $hasWork = ($totalAssigned > 0 || $loggedHoursAll > 0 || $inProgressTasks > 0);
+
+                    if ($isManagerOrAdmin && !$hasWork) {
+                        continue; // Skip idle admin / manager without work
+                    }
+
+                    // Active projects worked on
+                    $activeProjects = $db->table('tasks')
+                        ->select('projects.name')
+                        ->join('projects', 'projects.id = tasks.project_id', 'left')
+                        ->where('tasks.assigned_to', $uId)
+                        ->distinct()
+                        ->limit(3)
+                        ->get()->getResultArray();
+                    $projectNames = array_filter(array_column($activeProjects, 'name'));
+
+                    $displayName = trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? '')) ?: ($u['username'] ?? 'User');
+                    $compPct = $totalAssigned > 0 ? round(($completedTasks / $totalAssigned) * 100) : ($loggedHours30d > 0 ? 100 : 0);
+
+                    $teamRoster[] = [
+                        'user_id'           => $uId,
+                        'display_name'      => $displayName,
+                        'username'          => $u['username'],
+                        'role'              => ucfirst($groupName),
+                        'is_manager'        => $isManagerOrAdmin,
+                        'total_assigned'    => $totalAssigned,
+                        'completed_tasks'   => $completedTasks,
+                        'in_progress_tasks' => $inProgressTasks,
+                        'review_tasks'      => $reviewTasks,
+                        'overdue_tasks'     => $overdueTasks,
+                        'logged_hours_30d'  => $loggedHours30d,
+                        'logged_hours_all'  => $loggedHoursAll,
+                        'project_names'     => $projectNames,
+                        'completion_rate'   => $compPct,
+                    ];
+                }
+
+                // Sort by logged_hours_30d DESC or completed_tasks DESC
+                usort($teamRoster, function($a, $b) {
+                    if ($b['logged_hours_30d'] === $a['logged_hours_30d']) {
+                        return $b['completed_tasks'] <=> $a['completed_tasks'];
+                    }
+                    return ($b['logged_hours_30d'] > $a['logged_hours_30d']) ? 1 : -1;
+                });
+            } catch (\Throwable $e) {
+                log_message('error', 'Team roster analytics query error: ' . $e->getMessage());
+            }
+        }
+
         $data = [
             'user'              => $this->currentUser,
+            'isAdmin'           => $isAdmin,
+            'isTeamView'        => $isAdmin,
+            'teamRoster'        => $teamRoster,
             'totalProjects'     => $totalProjects,
             'completionRate'    => $completionRate,
             'totalHours'        => $totalHours,

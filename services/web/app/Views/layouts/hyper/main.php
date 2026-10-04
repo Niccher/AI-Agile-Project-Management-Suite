@@ -265,6 +265,9 @@
         }
     </style>
 
+    <!-- vendor bundle (jQuery + Bootstrap) -->
+    <script src="<?= base_url('assets/hyper/js/vendor.min.js') ?>"></script>
+
     <?= $this->renderSection('head') ?>
 </head>
 
@@ -697,7 +700,6 @@
     </div>
 
     <!-- bundle -->
-    <script src="<?= base_url('assets/hyper/js/vendor.min.js') ?>"></script>
     <script src="<?= base_url('assets/hyper/js/app.min.js') ?>"></script>
 
     <!-- SweetAlert2 & Zero-Reload Async UX Engine -->

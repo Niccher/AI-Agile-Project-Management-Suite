@@ -35,18 +35,25 @@ class ReportService
         $periodStart = !empty($params['start']) ? $params['start'] : null;
         $periodEnd = !empty($params['end']) ? $params['end'] : null;
 
-        // Log to database
         $reportModel = new ReportModel();
-        $reportModel->insert([
-            'generated_by' => $generatedBy,
-            'type'         => 'pdf',
-            'period_start' => $periodStart,
-            'period_end'   => $periodEnd,
-            'file_path'    => $filename,
-            'params'       => json_encode($params),
+        $reportId = $reportModel->insert([
+            'user_id'    => $generatedBy,
+            'name'       => $title,
+            'type'       => 'pdf',
+            'parameters' => json_encode($params),
+            'file_path'  => $filename,
+            'status'     => 'completed',
         ]);
 
-        return $filepath;
+        return [
+            'id'         => $reportId,
+            'filename'   => $filename,
+            'filepath'   => $filepath,
+            'name'       => $title,
+            'type'       => 'pdf',
+            'parameters' => $params,
+            'created_at' => date('Y-m-d H:i:s'),
+        ];
     }
 
     public static function generateCsv(array $headers, array $data, int $generatedBy, array $params = [])
@@ -63,20 +70,25 @@ class ReportService
         $csv->insertOne($headers);
         $csv->insertAll($data);
 
-        $periodStart = !empty($params['start']) ? $params['start'] : null;
-        $periodEnd = !empty($params['end']) ? $params['end'] : null;
-
         // Log to database
         $reportModel = new ReportModel();
-        $reportModel->insert([
-            'generated_by' => $generatedBy,
-            'type'         => 'csv',
-            'period_start' => $periodStart,
-            'period_end'   => $periodEnd,
-            'file_path'    => $filename,
-            'params'       => json_encode($params),
+        $reportId = $reportModel->insert([
+            'user_id'    => $generatedBy,
+            'name'       => 'Team Performance Report',
+            'type'       => 'csv',
+            'parameters' => json_encode($params),
+            'file_path'  => $filename,
+            'status'     => 'completed',
         ]);
 
-        return $filepath;
+        return [
+            'id'         => $reportId,
+            'filename'   => $filename,
+            'filepath'   => $filepath,
+            'name'       => 'Team Performance Report',
+            'type'       => 'csv',
+            'parameters' => $params,
+            'created_at' => date('Y-m-d H:i:s'),
+        ];
     }
 }

@@ -286,6 +286,118 @@
     </div>
 </div>
 
+<?php if (!empty($isTeamView)): ?>
+<!-- Team Workload & Staff Performance (Admin / Manager View) -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
+                <div>
+                    <h5 class="header-title mb-0">
+                        <i class="mdi mdi-account-group me-1 text-primary"></i> Team Workload & Staff Productivity
+                    </h5>
+                    <span class="text-muted font-12">Performance metrics for active team members and working managers</span>
+                </div>
+                <span class="badge bg-primary-lighten text-primary"><?= count($teamRoster ?? []) ?> Active Workers</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light font-12 text-uppercase text-muted">
+                            <tr>
+                                <th class="ps-3">Team Member</th>
+                                <th>Role</th>
+                                <th>Active Projects</th>
+                                <th>Assigned Tasks</th>
+                                <th>In Progress / Review</th>
+                                <th>Completed</th>
+                                <th>Overdue</th>
+                                <th>Logged Hours (30d)</th>
+                                <th class="pe-3">Completion Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($teamRoster)): ?>
+                                <tr>
+                                    <td colspan="9" class="text-center py-4 text-muted">
+                                        No active staff or developer tasks found.
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($teamRoster as $worker): ?>
+                                    <tr>
+                                        <td class="ps-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar avatar-sm bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 13px;">
+                                                    <?= strtoupper(substr($worker['display_name'] ?? 'U', 0, 1)) ?>
+                                                </div>
+                                                <div>
+                                                    <span class="fw-semibold text-body font-13 d-block"><?= esc($worker['display_name']) ?></span>
+                                                    <small class="text-muted">@<?= esc($worker['username']) ?></small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <?php if ($worker['is_manager']): ?>
+                                                <span class="badge bg-warning text-dark">Working Manager</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-info-lighten text-info"><?= esc($worker['role']) ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($worker['project_names'])): ?>
+                                                <?php foreach ($worker['project_names'] as $pName): ?>
+                                                    <span class="badge bg-light text-dark border me-1 font-11"><?= esc($pName) ?></span>
+                                                <?php endforeach; ?>
+                                            <?php else: ?>
+                                                <span class="text-muted font-12">Unassigned</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="fw-bold font-13"><?= esc($worker['total_assigned']) ?></td>
+                                        <td>
+                                            <span class="badge bg-warning-lighten text-warning me-1"><?= esc($worker['in_progress_tasks']) ?> in progress</span>
+                                            <?php if ($worker['review_tasks'] > 0): ?>
+                                                <span class="badge bg-primary-lighten text-primary"><?= esc($worker['review_tasks']) ?> in review</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success-lighten text-success fw-bold font-12">
+                                                <i class="fas fa-check me-1"></i><?= esc($worker['completed_tasks']) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <?php if ($worker['overdue_tasks'] > 0): ?>
+                                                <span class="badge bg-danger-lighten text-danger font-12">
+                                                    <i class="fas fa-exclamation-circle me-1"></i><?= esc($worker['overdue_tasks']) ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="text-muted font-12">0</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span class="fw-bold text-success font-13"><i class="fas fa-clock me-1"></i><?= esc($worker['logged_hours_30d']) ?> hrs</span>
+                                            <small class="text-muted d-block font-11"><?= esc($worker['logged_hours_all']) ?> hrs total</small>
+                                        </td>
+                                        <td class="pe-3" style="min-width: 130px;">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-grow-1" style="height: 6px;">
+                                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $worker['completion_rate']) ?>%"></div>
+                                                </div>
+                                                <span class="font-12 fw-bold"><?= $worker['completion_rate'] ?>%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Insights & Recommendations -->
 <div class="row">
     <div class="col-12">
@@ -294,9 +406,6 @@
                 <h5 class="header-title mb-0">
                     <i class="uil-lightbulb-alt me-1 text-warning"></i> Insights & Recommendations
                 </h5>
-                <button class="btn btn-sm btn-outline-secondary" onclick="window.location.reload();">
-                    <i class="mdi mdi-refresh me-1"></i> Refresh
-                </button>
             </div>
             <div class="card-body">
                 <?php if (!empty($insights)): ?>
@@ -326,7 +435,7 @@
                                 <?php foreach ($completedThisMonth as $item): ?>
                                 <li class="mb-2 d-flex align-items-center">
                                     <i class="mdi mdi-check-bold text-success me-2"></i>
-                                    <span class="text-body"><?= esc($item) ?></span>
+                                    <span class="text-body"><?= esc(is_array($item) ? ($item['name'] ?? 'Project') : $item) ?></span>
                                 </li>
                                 <?php endforeach; ?>
                                 <?php else: ?>
@@ -346,7 +455,7 @@
                                 <?php foreach ($stalledTasks as $item): ?>
                                 <li class="mb-2 d-flex align-items-center">
                                     <i class="mdi mdi-circle text-danger me-2" style="font-size: 8px;"></i>
-                                    <span class="text-body"><?= esc($item) ?></span>
+                                    <span class="text-body"><?= esc(is_array($item) ? ($item['name'] ?? 'Project') : $item) ?></span>
                                 </li>
                                 <?php endforeach; ?>
                                 <?php else: ?>
@@ -362,7 +471,7 @@
                                 <?php foreach ($recentDone as $item): ?>
                                 <li class="mb-2 d-flex align-items-center">
                                     <i class="mdi mdi-check-circle text-info me-2"></i>
-                                    <span class="text-body"><?= esc($item) ?></span>
+                                    <span class="text-body"><?= esc(is_array($item) ? ($item['name'] ?? 'Project') : $item) ?></span>
                                 </li>
                                 <?php endforeach; ?>
                             </ul>

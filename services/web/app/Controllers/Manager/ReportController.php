@@ -64,8 +64,7 @@ class ReportController extends BaseController
             $userId = (int)auth()->id();
 
             if ($type === 'csv') {
-                $filepath = \App\Services\ReportService::generateCsv($headers, $data, $userId, ['start' => $start, 'end' => $end]);
-                return $this->response->download($filepath, null)->setFileName('report_'.date('Ymd').'.csv');
+                $result = \App\Services\ReportService::generateCsv($headers, $data, $userId, ['start' => $start, 'end' => $end]);
             } else {
                 // Generate HTML for PDF
                 $html = view('manager/reports/templates/pdf_report', [
@@ -75,11 +74,27 @@ class ReportController extends BaseController
                     'end'     => $end
                 ]);
                 
-                $filepath = \App\Services\ReportService::generatePdf('Team Performance Report', $html, $userId, ['start' => $start, 'end' => $end]);
-                return $this->response->download($filepath, null)->setFileName('report_'.date('Ymd').'.pdf');
+                $result = \App\Services\ReportService::generatePdf('Team Performance Report', $html, $userId, ['start' => $start, 'end' => $end]);
             }
+
+            if ($this->request->isAJAX() || $this->request->getHeaderLine('accept') === 'application/json') {
+                return $this->response->setJSON([
+                    'status'       => 'success',
+                    'message'      => 'Report generated successfully.',
+                    'report'       => $result,
+                    'download_url' => site_url('manage/reports/download/' . $result['id']),
+                ]);
+            }
+
+            return $this->response->download($result['filepath'], null)->setFileName($result['filename']);
         } catch (\Throwable $e) {
             log_message('error', 'Report generation exception: ' . $e->getMessage());
+            if ($this->request->isAJAX() || $this->request->getHeaderLine('accept') === 'application/json') {
+                return $this->response->setStatusCode(500)->setJSON([
+                    'status'  => 'error',
+                    'message' => 'Report generation failed: ' . $e->getMessage(),
+                ]);
+            }
             return redirect()->back()->with('error', 'Report generation failed: ' . $e->getMessage());
         }
     }
@@ -89,10 +104,10 @@ class ReportController extends BaseController
         $reportModel = new \App\Models\ReportModel();
         $report = $reportModel->find($id);
         
-        if ($report) {
+        if ($report && !empty($report['file_path'])) {
             $filepath = WRITEPATH . 'reports/' . $report['file_path'];
             if (file_exists($filepath)) {
-                return $this->response->download($filepath, null);
+                return $this->response->download($filepath, null)->setFileName($report['file_path']);
             }
         }
         
