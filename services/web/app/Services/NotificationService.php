@@ -28,8 +28,20 @@ class NotificationService
         try {
             $userModel = new UserModel();
             $user = $userModel->find($userId);
-            if ($user && !empty($user->email)) {
-                self::dispatchEmailNotification($user, $type, $title, $body, $actionUrl, $extra);
+            $userEmail = null;
+            if ($user) {
+                if (is_object($user)) {
+                    if (method_exists($user, 'getEmail')) {
+                        $userEmail = $user->getEmail();
+                    } elseif (!empty($user->email)) {
+                        $userEmail = $user->email;
+                    }
+                } elseif (is_array($user)) {
+                    $userEmail = $user['email'] ?? null;
+                }
+            }
+            if (!empty($userEmail)) {
+                self::dispatchEmailNotification($user, $userEmail, $type, $title, $body, $actionUrl, $extra);
             }
         } catch (\Throwable $e) {
             log_message('notice', 'Email dispatch notice: ' . $e->getMessage());
@@ -38,7 +50,7 @@ class NotificationService
         return $inserted;
     }
 
-    protected static function dispatchEmailNotification($user, string $type, string $title, string $body, ?string $actionUrl, array $extra = [])
+    protected static function dispatchEmailNotification($user, string $userEmail, string $type, string $title, string $body, ?string $actionUrl, array $extra = [])
     {
         $email = \Config\Services::email();
         $email->initialize([
@@ -55,7 +67,7 @@ class NotificationService
         ]);
 
         $email->setFrom(setting('Email.fromEmail') ?? 'notifications@chege.local', setting('Email.fromName') ?? setting('App.siteName'));
-        $email->setTo($user->email);
+        $email->setTo($userEmail);
         $email->setSubject($title . ' • ' . setting('App.siteName'));
 
         $template = 'emails/welcome';

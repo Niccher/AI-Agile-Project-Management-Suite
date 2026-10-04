@@ -11,88 +11,173 @@ class CalendarController extends BaseUserController
     {
         $db = \Config\Database::connect();
         $projectModel = new ProjectModel();
-        
-        $data['user'] = $this->currentUser;
-        $data['projects'] = $projectModel->where('user_id', $this->userId)->findAll();
-        
+
+        $userId = (int)$this->userId;
+        $currentUser = $this->currentUser;
+        $isAdmin = $currentUser && ($currentUser->inGroup('admin') || $currentUser->inGroup('superadmin'));
+        $isManager = $currentUser && $currentUser->inGroup('manager');
+
+        $data['user'] = $currentUser;
+        if ($isAdmin || $isManager) {
+            $data['projects'] = $projectModel->findAll();
+        } else {
+            $data['projects'] = $projectModel->where('user_id', $userId)->findAll();
+        }
+
         // --- 1. Stats Calculation ---
         $now = date('Y-m-d H:i:s');
         $monthStart = date('Y-m-01 00:00:00');
         $monthEnd = date('Y-m-t 23:59:59');
 
         // Manual Events Count
-        $data['total_events'] = $db->table('calendar_events')
-            ->where('user_id', $this->userId)
+        $evQuery = $db->table('calendar_events')
             ->where('start_time >=', $monthStart)
-            ->where('start_time <=', $monthEnd)
-            ->countAllResults();
+            ->where('start_time <=', $monthEnd);
+        if (!$isAdmin && !$isManager) {
+            $evQuery->where('user_id', $userId);
+        }
+        $data['total_events'] = $evQuery->countAllResults();
 
-        // Plus Projects Due this month
-        $data['total_events'] += $db->table('projects')
-            ->where('user_id', $this->userId)
+        // Projects Due this month
+        $pQuery = $db->table('projects')
             ->where('due_date >=', $monthStart)
-            ->where('due_date <=', $monthEnd)
-            ->countAllResults();
+            ->where('due_date <=', $monthEnd);
+        if (!$isAdmin && !$isManager) {
+            $pQuery->where('user_id', $userId);
+        }
+        $data['total_events'] += $pQuery->countAllResults();
 
-        // Plus Milestones Due this month
-        $data['total_events'] += $db->table('project_milestones')
+        // Milestones Due this month
+        $mQuery = $db->table('project_milestones')
             ->join('projects', 'projects.id = project_milestones.project_id')
-            ->where('projects.user_id', $this->userId)
             ->where('project_milestones.due_date >=', $monthStart)
-            ->where('project_milestones.due_date <=', $monthEnd)
-            ->countAllResults();
+            ->where('project_milestones.due_date <=', $monthEnd);
+        if (!$isAdmin && !$isManager) {
+            $mQuery->where('projects.user_id', $userId);
+        }
+        $data['total_events'] += $mQuery->countAllResults();
 
-        // Overdue count (Projects & Milestones past due_date and not completed)
-        $data['overdue_count'] = $db->table('projects')
-            ->where('user_id', $this->userId)
+        // Tasks Due this month
+        $tQuery = $db->table('tasks')
+            ->where('due_date >=', $monthStart)
+            ->where('due_date <=', $monthEnd);
+        if (!$isAdmin && !$isManager) {
+            $tQuery->groupStart()
+                   ->where('user_id', $userId)
+                   ->orWhere('assigned_to', $userId)
+                   ->groupEnd();
+        }
+        $data['total_events'] += $tQuery->countAllResults();
+
+        // Overdue count (Projects & Tasks past due_date and not completed)
+        $pOverdue = $db->table('projects')
             ->where('due_date <', date('Y-m-d'))
-            ->where('status !=', 'completed')
-            ->countAllResults();
+            ->where('status !=', 'completed');
+        if (!$isAdmin && !$isManager) {
+            $pOverdue->where('user_id', $userId);
+        }
+        $data['overdue_count'] = $pOverdue->countAllResults();
+
+        $tOverdue = $db->table('tasks')
+            ->where('due_date <', date('Y-m-d'))
+            ->whereNotIn('status', ['done', 'approved']);
+        if (!$isAdmin && !$isManager) {
+            $tOverdue->groupStart()
+                     ->where('user_id', $userId)
+                     ->orWhere('assigned_to', $userId)
+                     ->groupEnd();
+        }
+        $data['overdue_count'] += $tOverdue->countAllResults();
 
         // Completed Stats
-        $data['completed_count'] = $db->table('projects')->where('user_id', $this->userId)->where('status', 'completed')->countAllResults();
-        $data['completed_count'] += $db->table('project_milestones')->join('projects', 'projects.id = project_milestones.project_id')->where('projects.user_id', $this->userId)->where('project_milestones.status', 'completed')->countAllResults();
-        $data['completed_count'] += $db->table('notes')->where('user_id', $this->userId)->where('is_completed', 1)->countAllResults();
+        $pComp = $db->table('projects')->where('status', 'completed');
+        if (!$isAdmin && !$isManager) { $pComp->where('user_id', $userId); }
+        $data['completed_count'] = $pComp->countAllResults();
+
+        $tComp = $db->table('tasks')->whereIn('status', ['done', 'approved']);
+        if (!$isAdmin && !$isManager) {
+            $tComp->groupStart()->where('user_id', $userId)->orWhere('assigned_to', $userId)->groupEnd();
+        }
+        $data['completed_count'] += $tComp->countAllResults();
+
+        $data['completed_count'] += $db->table('notes')->where('user_id', $userId)->where('is_completed', 1)->countAllResults();
 
         // Pending Stats
-        $data['pending_count'] = $db->table('projects')->where('user_id', $this->userId)->whereIn('status', ['planning', 'in_progress', 'on_hold'])->countAllResults();
-        $data['pending_count'] += $db->table('project_milestones')->join('projects', 'projects.id = project_milestones.project_id')->where('projects.user_id', $this->userId)->where('project_milestones.status !=', 'completed')->countAllResults();
-        $data['pending_count'] += $db->table('notes')->where('user_id', $this->userId)->where('is_completed', 0)->where('is_deleted', 0)->countAllResults();
+        $pPend = $db->table('projects')->whereIn('status', ['planning', 'in_progress', 'on_hold']);
+        if (!$isAdmin && !$isManager) { $pPend->where('user_id', $userId); }
+        $data['pending_count'] = $pPend->countAllResults();
+
+        $tPend = $db->table('tasks')->whereNotIn('status', ['done', 'approved']);
+        if (!$isAdmin && !$isManager) {
+            $tPend->groupStart()->where('user_id', $userId)->orWhere('assigned_to', $userId)->groupEnd();
+        }
+        $data['pending_count'] += $tPend->countAllResults();
+
+        $data['pending_count'] += $db->table('notes')->where('user_id', $userId)->where('is_completed', 0)->where('is_deleted', 0)->countAllResults();
 
         // --- 2. Upcoming Events List (Paginated) ---
         $upcoming = [];
-        
+
+        // Tasks
+        $taskBuilder = $db->table('tasks')
+            ->select('tasks.*, projects.name as project_name, projects.color as project_color')
+            ->join('projects', 'projects.id = tasks.project_id', 'left')
+            ->where('tasks.due_date >=', date('Y-m-d'))
+            ->orderBy('tasks.due_date', 'ASC');
+        if (!$isAdmin && !$isManager) {
+            $taskBuilder->groupStart()
+                        ->where('tasks.user_id', $userId)
+                        ->orWhere('tasks.assigned_to', $userId)
+                        ->groupEnd();
+        }
+        $upcomingTasks = $taskBuilder->get()->getResultArray();
+        foreach ($upcomingTasks as $t) {
+            $upcoming[] = [
+                'date' => $t['due_date'],
+                'title' => $t['title'],
+                'desc' => 'Task Deadline (' . ucfirst($t['priority']) . ')',
+                'project' => $t['project_name'] ?: 'Workspace',
+                'color' => $t['project_color'] ?: '#39afd1',
+                'type' => 'task',
+                'icon' => 'fa-tasks'
+            ];
+        }
+
         // Projects
-        $upcomingProjects = $db->table('projects')
-            ->where('user_id', $this->userId)
+        $projBuilder = $db->table('projects')
             ->where('due_date >=', date('Y-m-d'))
-            ->orderBy('due_date', 'ASC')
-            ->get()->getResultArray();
+            ->orderBy('due_date', 'ASC');
+        if (!$isAdmin && !$isManager) {
+            $projBuilder->where('user_id', $userId);
+        }
+        $upcomingProjects = $projBuilder->get()->getResultArray();
         foreach ($upcomingProjects as $p) {
             $upcoming[] = [
                 'date' => $p['due_date'],
                 'title' => $p['name'],
                 'desc' => 'Project Deadline',
                 'project' => $p['name'],
-                'color' => $p['color'],
+                'color' => $p['color'] ?: '#6366f1',
                 'type' => 'project',
                 'icon' => 'fa-project-diagram'
             ];
         }
 
-        // Manual
-        $upcomingManual = $db->table('calendar_events')
-            ->where('user_id', $this->userId)
+        // Manual Events
+        $manualBuilder = $db->table('calendar_events')
             ->where('start_time >=', $now)
-            ->orderBy('start_time', 'ASC')
-            ->get()->getResultArray();
+            ->orderBy('start_time', 'ASC');
+        if (!$isAdmin && !$isManager) {
+            $manualBuilder->where('user_id', $userId);
+        }
+        $upcomingManual = $manualBuilder->get()->getResultArray();
         foreach ($upcomingManual as $e) {
             $upcoming[] = [
                 'date' => date('Y-m-d', strtotime($e['start_time'])),
                 'title' => $e['title'],
-                'desc' => $e['description'],
+                'desc' => $e['description'] ?: 'Event',
                 'project' => 'Personal',
-                'color' => $e['color'],
+                'color' => $e['color'] ?: '#727cf5',
                 'type' => 'event',
                 'icon' => 'fa-calendar-day'
             ];
@@ -103,22 +188,24 @@ class CalendarController extends BaseUserController
         });
 
         // Simple custom pagination logic for combined array
-        $page = $this->request->getVar('page_upcoming') ?? 1;
+        $page = (int)($this->request->getVar('page_upcoming') ?? 1);
         $perPage = 5;
         $totalItems = count($upcoming);
         $data['upcoming_events'] = array_slice($upcoming, ($page - 1) * $perPage, $perPage);
         $data['upcoming_pager'] = service('pager');
-        $data['upcoming_total_pages'] = ceil($totalItems / $perPage);
+        $data['upcoming_total_pages'] = (int)ceil($totalItems / $perPage);
         $data['upcoming_current_page'] = $page;
 
         // --- 3. Project Distribution ---
-        $data['distribution'] = $db->table('calendar_events')
+        $distBuilder = $db->table('calendar_events')
             ->select('projects.name, projects.color, COUNT(calendar_events.id) as count')
-            ->join('projects', 'projects.id = calendar_events.project_id', 'left')
-            ->where('calendar_events.user_id', $this->userId)
-            ->groupBy('calendar_events.project_id')
+            ->join('projects', 'projects.id = calendar_events.project_id', 'left');
+        if (!$isAdmin && !$isManager) {
+            $distBuilder->where('calendar_events.user_id', $userId);
+        }
+        $data['distribution'] = $distBuilder->groupBy('calendar_events.project_id')
             ->get()->getResultArray();
-        
+
         return view('user/calendar', $data);
     }
 

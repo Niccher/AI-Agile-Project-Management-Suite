@@ -13,10 +13,9 @@ class TeamDashboardController extends BaseController
         $db = \Config\Database::connect();
         
         // 1. Overall Team Stats
-        $taskModel = new TaskModel();
-        $totalTasks = $taskModel->countAllResults();
-        $approvedTasks = $taskModel->whereIn('status', ['approved', 'done'])->countAllResults();
-        $pendingTasks = $taskModel->whereIn('status', ['in_progress', 'review'])->countAllResults();
+        $totalTasks = (new TaskModel())->countAllResults();
+        $approvedTasks = (new TaskModel())->whereIn('status', ['approved', 'done'])->countAllResults();
+        $pendingTasks = (new TaskModel())->whereIn('status', ['in_progress', 'review'])->countAllResults();
         
         // 2. Performance Leaderboard (Rank workers by approved/completed tasks)
         $leaderboard = [];

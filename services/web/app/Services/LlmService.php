@@ -177,49 +177,62 @@ class LlmService
      */
     protected function request(string $method, string $path, array $data = []): array
     {
-        $url = $this->baseUrl . $path;
-        $client = \Config\Services::curlrequest([
-            'timeout'     => 180, // CPU LLM inference can take time
-            'http_errors' => false,
+        $candidateUrls = array_unique([
+            $this->baseUrl,
+            'http://127.0.0.1:8000',
+            'http://localhost:8000'
         ]);
 
-        $options = [
-            'headers' => [
-                'X-API-Key'    => $this->apiKey,
-                'Content-Type' => 'application/json',
-                'Accept'       => 'application/json',
-            ],
-        ];
+        $lastError = 'Could not communicate with ML microservice.';
 
-        if (in_array(strtoupper($method), ['POST', 'PATCH', 'PUT']) && !empty($data)) {
-            $options['body'] = json_encode($data);
-        }
+        foreach ($candidateUrls as $candidateBase) {
+            $url = rtrim($candidateBase, '/') . $path;
+            $client = \Config\Services::curlrequest([
+                'timeout'     => 180, // CPU LLM inference can take time
+                'http_errors' => false,
+            ]);
 
-        try {
-            $response = $client->request($method, $url, $options);
-            $rawBody = (string)$response->getBody();
-            $decoded = json_decode($rawBody, true);
+            $options = [
+                'headers' => [
+                    'X-API-Key'    => $this->apiKey,
+                    'Content-Type' => 'application/json',
+                    'Accept'       => 'application/json',
+                ],
+            ];
 
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return $decoded;
+            if (in_array(strtoupper($method), ['POST', 'PATCH', 'PUT']) && !empty($data)) {
+                $options['body'] = json_encode($data);
             }
 
-            return [
-                'success' => false,
-                'error'   => [
-                    'code'    => 'invalid_json_response',
-                    'message' => 'ML backend did not return valid JSON: ' . substr($rawBody, 0, 200),
-                ],
-            ];
-        } catch (\Throwable $e) {
-            log_message('error', "LlmService Exception on {$method} {$url}: " . $e->getMessage());
-            return [
-                'success' => false,
-                'error'   => [
-                    'code'    => 'service_unreachable',
-                    'message' => 'Could not communicate with ML microservice: ' . $e->getMessage(),
-                ],
-            ];
+            try {
+                $response = $client->request($method, $url, $options);
+                $rawBody = (string)$response->getBody();
+                $decoded = json_decode($rawBody, true);
+
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $this->baseUrl = rtrim($candidateBase, '/');
+                    return $decoded;
+                }
+
+                return [
+                    'success' => false,
+                    'error'   => [
+                        'code'    => 'invalid_json_response',
+                        'message' => 'ML backend did not return valid JSON: ' . substr($rawBody, 0, 200),
+                    ],
+                ];
+            } catch (\Throwable $e) {
+                $lastError = $e->getMessage();
+                log_message('warning', "LlmService candidate {$candidateBase} failed on {$method} {$path}: " . $lastError);
+            }
         }
+
+        return [
+            'success' => false,
+            'error'   => [
+                'code'    => 'service_unreachable',
+                'message' => 'Could not communicate with ML microservice: ' . $lastError,
+            ],
+        ];
     }
 }

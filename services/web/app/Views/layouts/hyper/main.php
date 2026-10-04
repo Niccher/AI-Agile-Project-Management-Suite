@@ -60,7 +60,28 @@
     <link href="<?= base_url('assets/hyper/css/app-dark.min.css') ?>" rel="stylesheet" type="text/css" id="dark-style" disabled="disabled" />
     
     <script>
+        window.csrfToken = '<?= csrf_token() ?>';
+        window.csrfHeaderName = '<?= csrf_header() ?>';
+        window.csrfHash = '<?= csrf_hash() ?>';
+
         (function() {
+            var originalFetch = window.fetch;
+            window.fetch = function(resource, init) {
+                init = init || {};
+                var method = (init.method || 'GET').toUpperCase();
+                if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+                    init.headers = init.headers || {};
+                    if (typeof Headers !== 'undefined' && init.headers instanceof Headers) {
+                        if (!init.headers.has(window.csrfHeaderName)) {
+                            init.headers.append(window.csrfHeaderName, window.csrfHash);
+                        }
+                    } else if (!init.headers[window.csrfHeaderName]) {
+                        init.headers[window.csrfHeaderName] = window.csrfHash;
+                    }
+                }
+                return originalFetch.call(this, resource, init);
+            };
+
             var theme = localStorage.getItem('hyper_theme');
             if (theme === 'dark') {
                 document.getElementById('light-style')?.setAttribute('disabled', 'disabled');

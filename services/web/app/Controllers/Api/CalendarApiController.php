@@ -11,13 +11,17 @@ class CalendarApiController extends BaseController
 {
     public function index()
     {
-        $userId = auth()->id();
+        $userId = (int)auth()->id();
+        $currentUser = auth()->user();
+        $isAdmin = $currentUser && ($currentUser->inGroup('admin') || $currentUser->inGroup('superadmin'));
+        $isManager = $currentUser && $currentUser->inGroup('manager');
+
         $db = \Config\Database::connect();
         $events = [];
 
         $projectIdFilter = $this->request->getGet('project_id');
 
-        // 1. Manual Events
+        // 1. Personal Manual Events
         $eventModel = new EventModel();
         $builder = $eventModel->where('user_id', $userId);
         $manualEvents = $builder->findAll();
@@ -38,13 +42,16 @@ class CalendarApiController extends BaseController
             ];
         }
 
-        // 2. Sprint Date Bands (Agile Sprints)
+        // 2. Agile Sprints
         $sprintBuilder = $db->table('sprints')
             ->select('sprints.*, projects.name as project_name, projects.slug as project_slug, projects.color as project_color')
             ->join('projects', 'projects.id = sprints.project_id')
-            ->where('projects.user_id', $userId)
             ->where('sprints.start_date IS NOT NULL')
             ->where('sprints.end_date IS NOT NULL');
+
+        if (!$isAdmin && !$isManager) {
+            $sprintBuilder->where('projects.user_id', $userId);
+        }
 
         if (!empty($projectIdFilter)) {
             $sprintBuilder->where('sprints.project_id', (int)$projectIdFilter);
@@ -72,12 +79,19 @@ class CalendarApiController extends BaseController
             ];
         }
 
-        // 3. Task Due Dates
+        // 3. Tasks & Deadlines
         $taskBuilder = $db->table('tasks')
             ->select('tasks.*, projects.name as project_name, projects.slug as project_slug, projects.color as project_color')
             ->join('projects', 'projects.id = tasks.project_id', 'left')
-            ->where('tasks.user_id', $userId)
-            ->where('tasks.due_date IS NOT NULL');
+            ->where('tasks.due_date IS NOT NULL')
+            ->where('tasks.due_date !=', '0000-00-00');
+
+        if (!$isAdmin && !$isManager) {
+            $taskBuilder->groupStart()
+                        ->where('tasks.user_id', $userId)
+                        ->orWhere('tasks.assigned_to', $userId)
+                        ->groupEnd();
+        }
 
         if (!empty($projectIdFilter)) {
             $taskBuilder->where('tasks.project_id', (int)$projectIdFilter);
@@ -97,7 +111,6 @@ class CalendarApiController extends BaseController
             }
 
             $pointsStr = !empty($task['story_points']) ? " [{$task['story_points']} pts]" : '';
-            $statusLabel = strtoupper(str_replace('_', ' ', $task['status']));
 
             $events[] = [
                 'id'            => 'task_' . $task['id'],
@@ -120,8 +133,12 @@ class CalendarApiController extends BaseController
 
         // 4. Project Target Completion Dates
         $projBuilder = $db->table('projects')
-            ->where('user_id', $userId)
-            ->where('due_date IS NOT NULL');
+            ->where('due_date IS NOT NULL')
+            ->where('due_date !=', '0000-00-00');
+
+        if (!$isAdmin && !$isManager) {
+            $projBuilder->where('user_id', $userId);
+        }
 
         if (!empty($projectIdFilter)) {
             $projBuilder->where('id', (int)$projectIdFilter);
@@ -148,8 +165,11 @@ class CalendarApiController extends BaseController
         // 5. Milestones
         $msBuilder = $db->table('project_milestones')
             ->select('project_milestones.*, projects.name as project_name, projects.slug as project_slug, projects.color as project_color')
-            ->join('projects', 'projects.id = project_milestones.project_id')
-            ->where('projects.user_id', $userId);
+            ->join('projects', 'projects.id = project_milestones.project_id');
+
+        if (!$isAdmin && !$isManager) {
+            $msBuilder->where('projects.user_id', $userId);
+        }
 
         if (!empty($projectIdFilter)) {
             $msBuilder->where('project_milestones.project_id', (int)$projectIdFilter);
@@ -157,7 +177,7 @@ class CalendarApiController extends BaseController
 
         $milestones = $msBuilder->get()->getResultArray();
         foreach ($milestones as $ms) {
-            if (!empty($ms['due_date']) && $ms['status'] !== 'completed') {
+            if (!empty($ms['due_date']) && $ms['due_date'] !== '0000-00-00' && $ms['status'] !== 'completed') {
                 $events[] = [
                     'id'            => 'ms_due_' . $ms['id'],
                     'title'         => '🚩 MILESTONE: ' . $ms['name'],
@@ -175,12 +195,14 @@ class CalendarApiController extends BaseController
         }
 
         // 6. Time Logs
-        $timeModel = new TimeLogModel();
-        $timeBuilder = $timeModel->where('user_id', $userId);
+        $timeBuilder = $db->table('time_logs');
+        if (!$isAdmin && !$isManager) {
+            $timeBuilder->where('user_id', $userId);
+        }
         if (!empty($projectIdFilter)) {
             $timeBuilder->where('project_id', (int)$projectIdFilter);
         }
-        $logs = $timeBuilder->findAll();
+        $logs = $timeBuilder->get()->getResultArray();
         foreach ($logs as $log) {
             $events[] = [
                 'id'            => 'time_' . $log['id'],
@@ -195,6 +217,31 @@ class CalendarApiController extends BaseController
                     'icon'        => 'fa-clock'
                 ]
             ];
+        }
+
+        // 7. System & Security Events (Admin Only)
+        if ($isAdmin && $db->tableExists('audit_logs')) {
+            $auditLogs = $db->table('audit_logs')
+                ->orderBy('created_at', 'DESC')
+                ->limit(50)
+                ->get()->getResultArray();
+
+            foreach ($auditLogs as $al) {
+                $actionLabel = ucfirst(str_replace('_', ' ', $al['action']));
+                $events[] = [
+                    'id'            => 'audit_' . $al['id'],
+                    'title'         => '🔔 SYSTEM: ' . $actionLabel,
+                    'start'         => $al['created_at'],
+                    'color'         => '#6c757d',
+                    'allDay'        => false,
+                    'extendedProps' => [
+                        'type'        => 'audit_log',
+                        'description' => 'Action: ' . $al['action'] . ' on ' . $al['target_table'] . ' #' . $al['target_id'],
+                        'dbId'        => $al['id'],
+                        'icon'        => 'fa-shield-alt'
+                    ]
+                ];
+            }
         }
 
         return $this->response->setJSON($events);

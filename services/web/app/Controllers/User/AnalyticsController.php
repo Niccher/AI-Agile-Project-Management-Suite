@@ -18,24 +18,29 @@ class AnalyticsController extends BaseUserController
         }
 
         // Total projects count
-        $totalProjects = $projectModel->where('user_id', $this->userId)->countAllResults();
-        $completedProjects = $projectModel->where('user_id', $this->userId)->where('status', 'completed')->countAllResults();
+        $pQuery = $isAdmin ? (new ProjectModel()) : (new ProjectModel())->where('user_id', $this->userId);
+        $totalProjects = $pQuery->countAllResults();
+
+        $compQuery = $isAdmin ? (new ProjectModel())->where('status', 'completed') : (new ProjectModel())->where('user_id', $this->userId)->where('status', 'completed');
+        $completedProjects = $compQuery->countAllResults();
 
         // Completion rate
         $completionRate = $totalProjects > 0 ? round(($completedProjects / $totalProjects) * 100) : 0;
 
         // Hours logged
-        $totalSeconds = $db->table('time_logs')
-            ->selectSum('duration')
-            ->where('user_id', $this->userId)
-            ->get()->getRow()->duration ?? 0;
+        $tlQuery = $db->table('time_logs')->selectSum('duration');
+        if (!$isAdmin) {
+            $tlQuery->where('user_id', $this->userId);
+        }
+        $totalSeconds = $tlQuery->get()->getRow()->duration ?? 0;
         $totalHours = round($totalSeconds / 3600, 1);
 
         // Avg daily
-        $daysLogged = $db->table('time_logs')
-            ->select('COUNT(DISTINCT DATE(start_time)) as days')
-            ->where('user_id', $this->userId)
-            ->get()->getRow()->days ?? 1;
+        $daysQuery = $db->table('time_logs')->select('COUNT(DISTINCT DATE(start_time)) as days');
+        if (!$isAdmin) {
+            $daysQuery->where('user_id', $this->userId);
+        }
+        $daysLogged = $daysQuery->get()->getRow()->days ?? 1;
         $avgDaily = $daysLogged > 0 ? round($totalHours / $daysLogged, 1) : 0;
 
         // Monthly trends (last 6 months)
@@ -86,22 +91,33 @@ class AnalyticsController extends BaseUserController
         $heatmapData = [];
         for ($i = 29; $i >= 0; $i--) {
             $day = date('Y-m-d', strtotime("-{$i} days"));
+            $dayStart = $day . ' 00:00:00';
+            $dayEnd   = $day . ' 23:59:59';
             $activityCount = 0;
             
-            $activityCount += $db->table('time_logs')
-                ->where('user_id', $this->userId)
-                ->where('DATE(start_time)', $day)
-                ->countAllResults();
+            $tlBuilder = $db->table('time_logs')
+                ->where('start_time >=', $dayStart)
+                ->where('start_time <=', $dayEnd);
+            if (!$isAdmin) {
+                $tlBuilder->where('user_id', $this->userId);
+            }
+            $activityCount += $tlBuilder->countAllResults();
             
-            $activityCount += $db->table('notes')
-                ->where('user_id', $this->userId)
-                ->where('DATE(created_at)', $day)
-                ->countAllResults();
+            $noteBuilder = $db->table('notes')
+                ->where('created_at >=', $dayStart)
+                ->where('created_at <=', $dayEnd);
+            if (!$isAdmin) {
+                $noteBuilder->where('user_id', $this->userId);
+            }
+            $activityCount += $noteBuilder->countAllResults();
 
-            $activityCount += $db->table('projects')
-                ->where('user_id', $this->userId)
-                ->where('DATE(updated_at)', $day)
-                ->countAllResults();
+            $projBuilder = $db->table('projects')
+                ->where('updated_at >=', $dayStart)
+                ->where('updated_at <=', $dayEnd);
+            if (!$isAdmin) {
+                $projBuilder->where('user_id', $this->userId);
+            }
+            $activityCount += $projBuilder->countAllResults();
 
             $heatmapData[] = [
                 'date' => $day,
