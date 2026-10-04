@@ -9,65 +9,134 @@ class ReportController extends BaseController
     public function index()
     {
         $db = \Config\Database::connect();
-        
-        // 1. Ensure reports table exists
-        if (!$db->tableExists('reports')) {
-            $forge = \Config\Database::forge();
-            $forge->addField([
-                'id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
-                'user_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
-                'name' => ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true],
-                'type' => ['type' => 'VARCHAR', 'constraint' => '50', 'default' => 'pdf'],
-                'parameters' => ['type' => 'JSON', 'null' => true],
-                'file_path' => ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true],
-                'status' => ['type' => 'VARCHAR', 'constraint' => '20', 'default' => 'completed'],
-                'created_at' => ['type' => 'DATETIME', 'null' => true],
-                'updated_at' => ['type' => 'DATETIME', 'null' => true],
-            ]);
-            $forge->addKey('id', true);
-            $forge->createTable('reports', true);
-        }
-
-        // 2. Synchronize any generated report files on disk into DB
-        $diskFiles = glob(WRITEPATH . 'reports/report_*.*');
-        if (!empty($diskFiles) && $db->tableExists('reports')) {
-            $existingRows = $db->table('reports')->select('file_path')->get()->getResultArray();
-            $loggedPaths = array_column($existingRows, 'file_path');
-
-            // Find valid user ID for FK compatibility
-            $defaultUserId = (int)(auth()->id() ?? 1);
-            if ($db->tableExists('users')) {
-                $userExists = $db->table('users')->where('id', $defaultUserId)->countAllResults();
-                if ($userExists == 0) {
-                    $firstU = $db->table('users')->select('id')->orderBy('id', 'ASC')->get()->getRowArray();
-                    $defaultUserId = $firstU ? (int)$firstU['id'] : null;
-                }
-            }
-
-            foreach ($diskFiles as $df) {
-                $base = basename($df);
-                if (!in_array($base, $loggedPaths, true)) {
-                    $ext = strtolower(pathinfo($df, PATHINFO_EXTENSION));
-                    $mtime = filemtime($df);
-                    $db->table('reports')->insert([
-                        'user_id'    => $defaultUserId,
-                        'name'       => 'Team Performance Report',
-                        'type'       => $ext ?: 'pdf',
-                        'parameters' => json_encode(['start' => null, 'end' => null]),
-                        'file_path'  => $base,
-                        'status'     => 'completed',
-                        'created_at' => date('Y-m-d H:i:s', $mtime),
-                        'updated_at' => date('Y-m-d H:i:s', $mtime),
-                    ]);
-                }
-            }
-        }
-
-        $reportModel = new \App\Models\ReportModel();
-        $reports = $reportModel->orderBy('created_at', 'DESC')->findAll(50);
-        
+        $reports = [];
         $pdfCount = 0;
         $csvCount = 0;
+
+        try {
+            // 1. Ensure reports table and all required columns exist
+            if (!$db->tableExists('reports')) {
+                $forge = \Config\Database::forge();
+                $forge->addField([
+                    'id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                    'user_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
+                    'name' => ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true],
+                    'type' => ['type' => 'VARCHAR', 'constraint' => '50', 'default' => 'pdf'],
+                    'parameters' => ['type' => 'TEXT', 'null' => true],
+                    'file_path' => ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true],
+                    'status' => ['type' => 'VARCHAR', 'constraint' => '20', 'default' => 'completed'],
+                    'created_at' => ['type' => 'DATETIME', 'null' => true],
+                    'updated_at' => ['type' => 'DATETIME', 'null' => true],
+                ]);
+                $forge->addKey('id', true);
+                $forge->createTable('reports', true);
+            } else {
+                $cols = $db->getFieldNames('reports') ?? [];
+                $addCols = [];
+                if (!in_array('user_id', $cols, true) && !in_array('created_by', $cols, true)) {
+                    $addCols['user_id'] = ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true];
+                }
+                if (!in_array('name', $cols, true)) {
+                    $addCols['name'] = ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true];
+                }
+                if (!in_array('type', $cols, true)) {
+                    $addCols['type'] = ['type' => 'VARCHAR', 'constraint' => '50', 'default' => 'pdf'];
+                }
+                if (!in_array('parameters', $cols, true)) {
+                    $addCols['parameters'] = ['type' => 'TEXT', 'null' => true];
+                }
+                if (!in_array('file_path', $cols, true)) {
+                    $addCols['file_path'] = ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true];
+                }
+                if (!in_array('status', $cols, true)) {
+                    $addCols['status'] = ['type' => 'VARCHAR', 'constraint' => '20', 'default' => 'completed'];
+                }
+                if (!in_array('created_at', $cols, true)) {
+                    $addCols['created_at'] = ['type' => 'DATETIME', 'null' => true];
+                }
+                if (!in_array('updated_at', $cols, true)) {
+                    $addCols['updated_at'] = ['type' => 'DATETIME', 'null' => true];
+                }
+                if (!empty($addCols)) {
+                    $forge = \Config\Database::forge();
+                    $forge->addColumn('reports', $addCols);
+                }
+            }
+
+            // 2. Synchronize any generated report files on disk into DB
+            $diskFiles = glob(WRITEPATH . 'reports/report_*.*') ?: [];
+            if (!empty($diskFiles)) {
+                $cols = $db->getFieldNames('reports') ?? [];
+                $loggedPaths = [];
+                if (in_array('file_path', $cols, true)) {
+                    $existingRows = $db->table('reports')->select('file_path')->get()->getResultArray();
+                    $loggedPaths = array_column($existingRows, 'file_path');
+                }
+
+                $defaultUserId = (int)(auth()->id() ?? 1);
+                if ($db->tableExists('users')) {
+                    $userExists = $db->table('users')->where('id', $defaultUserId)->countAllResults();
+                    if ($userExists == 0) {
+                        $firstU = $db->table('users')->select('id')->orderBy('id', 'ASC')->get()->getRowArray();
+                        $defaultUserId = $firstU ? (int)$firstU['id'] : null;
+                    }
+                }
+
+                foreach ($diskFiles as $df) {
+                    $base = basename($df);
+                    if (!in_array($base, $loggedPaths, true)) {
+                        $ext = strtolower(pathinfo($df, PATHINFO_EXTENSION));
+                        $mtime = filemtime($df);
+                        $ins = [
+                            'user_id'    => $defaultUserId,
+                            'name'       => 'Team Performance Report',
+                            'type'       => $ext ?: 'pdf',
+                            'parameters' => json_encode(['start' => null, 'end' => null]),
+                            'file_path'  => $base,
+                            'status'     => 'completed',
+                            'created_at' => date('Y-m-d H:i:s', $mtime),
+                            'updated_at' => date('Y-m-d H:i:s', $mtime),
+                        ];
+                        $validIns = array_intersect_key($ins, array_flip($cols));
+                        if (!empty($validIns)) {
+                            $db->table('reports')->insert($validIns);
+                        }
+                    }
+                }
+            }
+
+            // 3. Query reports from DB
+            $builder = $db->table('reports');
+            $cols = $db->getFieldNames('reports') ?? [];
+            if (in_array('created_at', $cols, true)) {
+                $builder->orderBy('created_at', 'DESC');
+            } else {
+                $builder->orderBy('id', 'DESC');
+            }
+            $reports = $builder->limit(50)->get()->getResultArray();
+        } catch (\Throwable $e) {
+            log_message('error', 'Report index error: ' . $e->getMessage());
+        }
+
+        // 4. Fallback to disk scan if DB reports are empty
+        if (empty($reports)) {
+            $diskFiles = glob(WRITEPATH . 'reports/report_*.*') ?: [];
+            foreach ($diskFiles as $df) {
+                $ext = strtolower(pathinfo($df, PATHINFO_EXTENSION));
+                $mtime = filemtime($df);
+                $reports[] = [
+                    'id'         => basename($df),
+                    'name'       => 'Team Performance Report',
+                    'type'       => $ext ?: 'pdf',
+                    'parameters' => json_encode(['start' => null, 'end' => null]),
+                    'file_path'  => basename($df),
+                    'status'     => 'completed',
+                    'created_at' => date('Y-m-d H:i:s', $mtime),
+                    'updated_at' => date('Y-m-d H:i:s', $mtime),
+                ];
+            }
+        }
+
         foreach ($reports as $r) {
             $t = strtolower($r['type'] ?? 'pdf');
             if ($t === 'pdf') $pdfCount++;

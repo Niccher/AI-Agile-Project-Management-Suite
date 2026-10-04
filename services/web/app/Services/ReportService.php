@@ -18,7 +18,7 @@ class ReportService
                 'user_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
                 'name' => ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true],
                 'type' => ['type' => 'VARCHAR', 'constraint' => '50', 'default' => 'pdf'],
-                'parameters' => ['type' => 'JSON', 'null' => true],
+                'parameters' => ['type' => 'TEXT', 'null' => true],
                 'file_path' => ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true],
                 'status' => ['type' => 'VARCHAR', 'constraint' => '20', 'default' => 'completed'],
                 'created_at' => ['type' => 'DATETIME', 'null' => true],
@@ -26,6 +26,37 @@ class ReportService
             ]);
             $forge->addKey('id', true);
             $forge->createTable('reports', true);
+        } else {
+            $cols = $db->getFieldNames('reports') ?? [];
+            $addCols = [];
+            if (!in_array('user_id', $cols, true) && !in_array('created_by', $cols, true)) {
+                $addCols['user_id'] = ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true];
+            }
+            if (!in_array('name', $cols, true)) {
+                $addCols['name'] = ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true];
+            }
+            if (!in_array('type', $cols, true)) {
+                $addCols['type'] = ['type' => 'VARCHAR', 'constraint' => '50', 'default' => 'pdf'];
+            }
+            if (!in_array('parameters', $cols, true)) {
+                $addCols['parameters'] = ['type' => 'TEXT', 'null' => true];
+            }
+            if (!in_array('file_path', $cols, true)) {
+                $addCols['file_path'] = ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true];
+            }
+            if (!in_array('status', $cols, true)) {
+                $addCols['status'] = ['type' => 'VARCHAR', 'constraint' => '20', 'default' => 'completed'];
+            }
+            if (!in_array('created_at', $cols, true)) {
+                $addCols['created_at'] = ['type' => 'DATETIME', 'null' => true];
+            }
+            if (!in_array('updated_at', $cols, true)) {
+                $addCols['updated_at'] = ['type' => 'DATETIME', 'null' => true];
+            }
+            if (!empty($addCols)) {
+                $forge = \Config\Database::forge();
+                $forge->addColumn('reports', $addCols);
+            }
         }
     }
 
