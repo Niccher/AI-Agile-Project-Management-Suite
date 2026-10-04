@@ -81,10 +81,14 @@ class CalendarApiController extends BaseController
 
         // 3. Tasks & Deadlines
         $taskBuilder = $db->table('tasks')
-            ->select('tasks.*, projects.name as project_name, projects.slug as project_slug, projects.color as project_color')
+            ->select('tasks.*, projects.name as project_name, projects.slug as project_slug, projects.color as project_color,
+                      COALESCE(NULLIF(TRIM(CONCAT(assignee.first_name, " ", assignee.last_name)), ""), assignee.username, "Unassigned") as assignee_name,
+                      COALESCE(NULLIF(TRIM(CONCAT(creator.first_name, " ", creator.last_name)), ""), creator.username, "Unknown") as creator_name')
             ->join('projects', 'projects.id = tasks.project_id', 'left')
+            ->join('users assignee', 'assignee.id = tasks.assigned_to', 'left')
+            ->join('users creator', 'creator.id = tasks.user_id', 'left')
             ->where('tasks.due_date IS NOT NULL')
-            ->where('tasks.due_date !=', '0000-00-00');
+            ->where('tasks.due_date >', '1970-01-01');
 
         if (!$isAdmin && !$isManager) {
             $taskBuilder->groupStart()
@@ -104,9 +108,9 @@ class CalendarApiController extends BaseController
             $taskColor = '#39afd1'; // default info
             if ($isDone) {
                 $taskColor = '#0acf97'; // green
-            } elseif ($task['priority'] === 'critical') {
-                $taskColor = '#fa5c7c'; // red
-            } elseif ($task['priority'] === 'high') {
+            } elseif ($task['priority'] === 'urgent' || $task['priority'] === 'high') {
+                $taskColor = '#fa5c7c'; // red/high
+            } elseif ($task['priority'] === 'medium') {
                 $taskColor = '#ffbc00'; // amber
             }
 
@@ -119,14 +123,19 @@ class CalendarApiController extends BaseController
                 'color'         => $taskColor,
                 'allDay'        => true,
                 'extendedProps' => [
-                    'type'         => 'task',
-                    'status'       => $task['status'],
-                    'priority'     => $task['priority'],
-                    'description'  => $task['description'] ?: 'No description provided.',
-                    'project_name' => $task['project_name'] ?: 'Workspace Task',
-                    'dbId'         => $task['id'],
-                    'url'          => !empty($task['project_slug']) ? site_url('projects/kanban/' . $task['project_slug']) : site_url('kanban'),
-                    'icon'         => 'fa-tasks'
+                    'type'          => 'task',
+                    'task_title'    => $task['title'],
+                    'status'        => $task['status'],
+                    'priority'      => $task['priority'],
+                    'story_points'  => $task['story_points'] ?? null,
+                    'assignee_name' => $task['assignee_name'] ?? 'Unassigned',
+                    'creator_name'  => $task['creator_name'] ?? 'Team Member',
+                    'due_date'      => $task['due_date'],
+                    'description'   => $task['description'] ?: 'No description provided.',
+                    'project_name'  => $task['project_name'] ?: 'Workspace Task',
+                    'dbId'          => $task['id'],
+                    'url'           => !empty($task['project_slug']) ? site_url('projects/kanban/' . $task['project_slug']) : site_url('kanban'),
+                    'icon'          => 'fa-tasks'
                 ]
             ];
         }
@@ -134,7 +143,7 @@ class CalendarApiController extends BaseController
         // 4. Project Target Completion Dates
         $projBuilder = $db->table('projects')
             ->where('due_date IS NOT NULL')
-            ->where('due_date !=', '0000-00-00');
+            ->where('due_date >', '1970-01-01');
 
         if (!$isAdmin && !$isManager) {
             $projBuilder->where('user_id', $userId);
@@ -177,7 +186,7 @@ class CalendarApiController extends BaseController
 
         $milestones = $msBuilder->get()->getResultArray();
         foreach ($milestones as $ms) {
-            if (!empty($ms['due_date']) && $ms['due_date'] !== '0000-00-00' && $ms['status'] !== 'completed') {
+            if (!empty($ms['due_date']) && strtotime($ms['due_date']) && $ms['due_date'] > '1970-01-01' && $ms['status'] !== 'completed') {
                 $events[] = [
                     'id'            => 'ms_due_' . $ms['id'],
                     'title'         => '🚩 MILESTONE: ' . $ms['name'],

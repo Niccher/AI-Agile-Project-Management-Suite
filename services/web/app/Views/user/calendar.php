@@ -123,132 +123,8 @@
             <div class="d-flex align-items-center"><i class="mdi mdi-circle font-10 text-success me-1"></i>Done</div>
         </div>
     </div>
-    <div class="card-body p-3 p-md-4">
-        <div id="calendar" class="calendar-container"></div>
-    </div>
-</div>
-
-<!-- Upcoming Events & Distribution -->
-<div class="row g-4 mb-4">
-    <div class="col-lg-8">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-transparent border-bottom py-3">
-                <h5 class="header-title mb-0">
-                    <i class="uil-list-ul me-1 text-primary"></i> Upcoming Deadlines & Events
-                </h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover table-centered mb-0">
-                        <thead class="table-light font-12 text-uppercase">
-                            <tr>
-                                <th>Date</th>
-                                <th>Event</th>
-                                <th>Project</th>
-                                <th>Status</th>
-                                <th>Time</th>
-                                <th class="text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        <?php if (!empty($upcoming_events)): ?>
-                            <?php foreach ($upcoming_events as $event): ?>
-                            <tr>
-                                <td class="font-13 fw-semibold"><?= date('M d, Y', strtotime($event['date'])) ?></td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar-xs rounded bg-light text-secondary d-flex align-items-center justify-content-center me-2 font-12" style="width: 28px; height: 28px;">
-                                            <i class="fas <?= esc($event['icon'] ?? 'fa-circle') ?>"></i>
-                                        </div>
-                                        <div>
-                                            <span class="font-14 fw-semibold text-body"><?= esc($event['title']) ?></span>
-                                            <?php if (!empty($event['desc'])): ?>
-                                            <div class="text-muted font-12 text-truncate" style="max-width: 220px;"><?= esc($event['desc']) ?></div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="badge" style="background-color: <?= esc($event['color'] ?? '#3e60d5') ?>; color: #fff;">
-                                        <?= esc($event['project']) ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-secondary-lighten text-secondary font-12">
-                                        <?= ucfirst(esc($event['type'])) ?>
-                                    </span>
-                                </td>
-                                <td class="font-12 text-muted">All Day</td>
-                                <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-info view-upcoming-btn" 
-                                            data-title="<?= esc($event['title']) ?>" 
-                                            data-desc="<?= esc($event['desc']) ?>"
-                                            data-date="<?= date('Y-m-d', strtotime($event['date'])) ?>"
-                                            data-type="<?= esc($event['type']) ?>">
-                                        <i class="mdi mdi-eye"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="6" class="text-center py-4 text-muted">
-                                    <i class="mdi mdi-calendar-blank font-24 d-block mb-1"></i>
-                                    No upcoming events found.
-                                </td>
-                            </tr>
-                        <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <?php if (($upcoming_total_pages ?? 1) > 1): ?>
-            <div class="card-footer bg-transparent border-top py-2 d-flex justify-content-between align-items-center">
-                <button class="btn btn-sm btn-outline-secondary <?= $upcoming_current_page <= 1 ? 'disabled' : '' ?>" 
-                        onclick="window.location.search = '?page_upcoming=<?= $upcoming_current_page - 1 ?>'">
-                    <i class="mdi mdi-chevron-left me-1"></i> Prev
-                </button>
-                <span class="font-12 text-muted">Page <?= $upcoming_current_page ?> of <?= $upcoming_total_pages ?></span>
-                <button class="btn btn-sm btn-outline-secondary <?= $upcoming_current_page >= $upcoming_total_pages ? 'disabled' : '' ?>"
-                        onclick="window.location.search = '?page_upcoming=<?= $upcoming_current_page + 1 ?>'">
-                    Next <i class="mdi mdi-chevron-right ms-1"></i>
-                </button>
-            </div>
-            <?php endif; ?>
-        </div>
-    </div>
-
-    <div class="col-lg-4">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-transparent border-bottom py-3">
-                <h5 class="header-title mb-0">
-                    <i class="uil-chart-pie me-1 text-primary"></i> Project Distribution
-                </h5>
-            </div>
-            <div class="card-body p-3">
-                <div class="project-distribution d-flex flex-column gap-3">
-                    <?php if (!empty($distribution)): ?>
-                        <?php 
-                        $totalCount = array_sum(array_column($distribution, 'count'));
-                        foreach ($distribution as $dist): 
-                            $percent = ($totalCount > 0) ? round(($dist['count'] / $totalCount) * 100) : 0;
-                        ?>
-                        <div class="distribution-item">
-                            <div class="d-flex justify-content-between align-items-center mb-1 font-13">
-                                <span class="fw-semibold text-body"><?= esc($dist['name'] ?? 'General') ?></span>
-                                <span class="text-muted"><?= $dist['count'] ?> event<?= $dist['count'] == 1 ? '' : 's' ?> (<?= $percent ?>%)</span>
-                            </div>
-                            <div class="progress" style="height: 6px;">
-                                <div class="progress-bar rounded" style="width: <?= $percent ?>%; background-color: <?= esc($dist['color'] ?? '#3e60d5') ?>;"></div>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <p class="text-center text-muted py-4">No project distribution data available.</p>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
+    <div class="card-body p-3">
+        <div id="calendar"></div>
     </div>
 </div>
 
@@ -317,28 +193,51 @@
     </div>
 </div>
 
-<!-- Event Details Modal -->
+<!-- Event & Task Details Modal -->
 <div class="modal fade" id="eventDetailsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="detailsTitle">Event Details</h5>
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header py-3 border-bottom" id="detailsModalHeader">
+                <div class="d-flex align-items-center gap-2">
+                    <span id="detailsTypeBadge" class="badge bg-primary">EVENT</span>
+                    <h5 class="modal-title fw-bold mb-0 text-truncate" id="detailsTitle" style="max-width: 340px;">Item Details</h5>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
-                <p id="detailsDesc" class="font-14 text-body mb-3"></p>
-                <div class="d-flex justify-content-between align-items-center font-12 text-muted border-top pt-2">
-                    <span><i class="mdi mdi-clock-outline me-1"></i> <span id="detailsTime"></span></span>
-                    <span id="detailsType" class="badge"></span>
+                <!-- Metadata Badges -->
+                <div class="d-flex flex-wrap gap-2 mb-3" id="detailsBadgesRow">
+                    <span id="detailsProject" class="badge bg-light text-dark border"><i class="fas fa-folder me-1 text-primary"></i> <span id="detailsProjectText">Project</span></span>
+                    <span id="detailsStatus" class="badge bg-info-lighten text-info">Status</span>
+                    <span id="detailsPriority" class="badge bg-warning-lighten text-warning">Priority</span>
+                    <span id="detailsPoints" class="badge bg-purple-lighten text-purple" style="display: none;">3 pts</span>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-3">
+                    <label class="font-12 text-uppercase text-muted fw-bold mb-1">Description</label>
+                    <div id="detailsDesc" class="p-3 bg-light rounded text-body font-13" style="max-height: 180px; overflow-y: auto; white-space: pre-line;">
+                        No description provided.
+                    </div>
+                </div>
+
+                <!-- Additional Info Grid -->
+                <div class="row g-2 font-12 text-muted border-top pt-3">
+                    <div class="col-6">
+                        <i class="mdi mdi-calendar-clock me-1 text-primary"></i> <strong>Date:</strong> <span id="detailsTime"></span>
+                    </div>
+                    <div class="col-6 text-end" id="detailsAssigneeContainer">
+                        <i class="mdi mdi-account-circle me-1 text-primary"></i> <strong>Assignee:</strong> <span id="detailsAssignee">Unassigned</span>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <a href="javascript:void(0);" class="btn btn-primary" id="openWorkspaceBtn" style="display: none;">
+            <div class="modal-footer bg-light py-2">
+                <a href="javascript:void(0);" class="btn btn-primary btn-sm rounded-pill" id="openWorkspaceBtn" style="display: none;">
                     <i class="mdi mdi-open-in-new me-1"></i> Open in Workspace
                 </a>
-                <button type="button" class="btn btn-outline-danger" id="deleteEventBtn">Delete</button>
-                <button type="button" class="btn btn-primary" id="editEventBtn">Edit</button>
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-outline-danger btn-sm rounded-pill" id="deleteEventBtn">Delete</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill" id="editEventBtn">Edit</button>
+                <button type="button" class="btn btn-light btn-sm rounded-pill" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -443,18 +342,104 @@ $(document).ready(function() {
         eventClick: function(info) {
             const props = info.event.extendedProps;
             
+            // Set Workspace Link
             if (props.url) {
                 $('#openWorkspaceBtn').attr('href', props.url).show();
             } else {
                 $('#openWorkspaceBtn').hide();
             }
 
-            if (props.type === 'manual') {
-                $('#detailsTitle').text(info.event.title);
-                $('#detailsDesc').text(props.description || 'No description provided.');
-                $('#detailsTime').text(info.event.start ? info.event.start.toLocaleString() : 'Scheduled');
-                $('#detailsType').text('Personal Event').removeClass('bg-info bg-success').addClass('bg-primary-lighten text-primary');
-                
+            // Set Title & Description
+            $('#detailsTitle').text(props.task_title || info.event.title);
+            $('#detailsDesc').text(props.description || 'No details provided.');
+            $('#detailsTime').text(info.event.start ? info.event.start.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A');
+
+            // Set Project
+            if (props.project_name) {
+                $('#detailsProjectText').text(props.project_name);
+                $('#detailsProject').show();
+            } else {
+                $('#detailsProject').hide();
+            }
+
+            // Set Type Badge
+            const typeNames = {
+                'task': 'TASK',
+                'sprint': 'SPRINT',
+                'project': 'PROJECT DUE',
+                'milestone': 'MILESTONE',
+                'manual': 'EVENT'
+            };
+            const typeColors = {
+                'task': 'bg-info',
+                'sprint': 'bg-primary',
+                'project': 'bg-dark',
+                'milestone': 'bg-warning text-dark',
+                'manual': 'bg-secondary'
+            };
+            const eventType = props.type || 'manual';
+            $('#detailsTypeBadge').text(typeNames[eventType] || 'EVENT')
+                .attr('class', 'badge ' + (typeColors[eventType] || 'bg-primary'));
+
+            // Set Status Badge
+            if (props.status) {
+                const statusLabels = {
+                    'todo': 'To Do',
+                    'in_progress': 'In Progress',
+                    'review': 'Under Review',
+                    'done': 'Done',
+                    'approved': 'Approved',
+                    'rejected': 'Rejected',
+                    'blocked': 'Blocked'
+                };
+                const statusBadges = {
+                    'todo': 'bg-secondary-lighten text-secondary',
+                    'in_progress': 'bg-primary-lighten text-primary',
+                    'review': 'bg-warning-lighten text-warning',
+                    'done': 'bg-success-lighten text-success',
+                    'approved': 'bg-success text-white',
+                    'rejected': 'bg-danger-lighten text-danger',
+                    'blocked': 'bg-danger text-white'
+                };
+                $('#detailsStatus').text(statusLabels[props.status] || props.status.toUpperCase())
+                    .attr('class', 'badge ' + (statusBadges[props.status] || 'bg-info-lighten text-info'))
+                    .show();
+            } else {
+                $('#detailsStatus').hide();
+            }
+
+            // Set Priority Badge
+            if (props.priority) {
+                const prioBadges = {
+                    'urgent': 'bg-danger text-white',
+                    'high': 'bg-danger-lighten text-danger',
+                    'medium': 'bg-warning-lighten text-warning',
+                    'low': 'bg-secondary-lighten text-secondary'
+                };
+                $('#detailsPriority').text(props.priority.toUpperCase() + ' PRIORITY')
+                    .attr('class', 'badge ' + (prioBadges[props.priority] || 'bg-warning-lighten text-warning'))
+                    .show();
+            } else {
+                $('#detailsPriority').hide();
+            }
+
+            // Set Story Points
+            if (props.story_points) {
+                $('#detailsPoints').text(props.story_points + ' pts').show();
+            } else {
+                $('#detailsPoints').hide();
+            }
+
+            // Set Assignee & Creator
+            if (props.assignee_name) {
+                $('#detailsAssignee').text(props.assignee_name);
+                $('#detailsAssigneeContainer').show();
+            } else {
+                $('#detailsAssigneeContainer').hide();
+            }
+
+            // Manual Event edit/delete buttons
+            if (eventType === 'manual') {
                 $('#editEventBtn').show().off('click').on('click', function() {
                     bootstrap.Modal.getInstance(document.getElementById('eventDetailsModal')).hide();
                     $('#eventId').val(props.dbId);
@@ -481,18 +466,6 @@ $(document).ready(function() {
                     }
                 });
             } else {
-                $('#detailsTitle').text(info.event.title);
-                $('#detailsDesc').text(props.description || 'No details provided.');
-                $('#detailsTime').text(info.event.start ? info.event.start.toLocaleDateString() : '');
-                
-                let badgeClass = 'bg-primary-lighten text-primary';
-                if (props.type === 'sprint') badgeClass = 'bg-primary text-white';
-                else if (props.type === 'task') badgeClass = 'bg-info-lighten text-info';
-                else if (props.type === 'project') badgeClass = 'bg-secondary-lighten text-secondary';
-                else if (props.type === 'milestone') badgeClass = 'bg-warning-lighten text-warning';
-
-                $('#detailsType').text(props.type.toUpperCase()).attr('class', 'badge ' + badgeClass);
-                
                 $('#editEventBtn').hide();
                 $('#deleteEventBtn').hide();
             }
