@@ -9,7 +9,7 @@
     <div class="col-12">
         <div class="page-title-box">
             <div class="page-title-right">
-                <button type="button" class="btn btn-outline-primary rounded-pill" id="manualEntryBtn">
+                <button type="button" class="btn btn-outline-primary rounded-pill" id="manualEntryBtn" data-bs-toggle="modal" data-bs-target="#manualEntryModal">
                     <i class="mdi mdi-plus-circle-outline me-1"></i> Log Time Manually
                 </button>
             </div>
