@@ -125,9 +125,14 @@
                                                 <?= date('M j, Y g:i A', strtotime($report['created_at'])) ?>
                                             </td>
                                             <td class="text-end pe-4">
-                                                <a href="<?= site_url('manage/reports/download/' . ($report['id'] ?? $report['file_path'])) ?>" class="btn btn-sm btn-outline-primary" download>
-                                                    <i class="fas fa-download"></i> Download
-                                                </a>
+                                                <div class="d-flex justify-content-end gap-1">
+                                                    <a href="<?= site_url('manage/reports/download/' . ($report['id'] ?? $report['file_path'])) ?>" class="btn btn-sm btn-outline-primary" download>
+                                                        <i class="fas fa-download me-1"></i> Download
+                                                    </a>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-delete-report" data-id="<?= esc($report['id'] ?? $report['file_path']) ?>" title="Delete Report">
+                                                        <i class="fas fa-trash-alt me-1"></i> Delete
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -152,10 +157,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const tableContainer = document.getElementById('reports-table-container');
     const alertArea = document.getElementById('ajaxReportAlertArea');
 
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    function getCsrfHeader() {
+        const meta = document.querySelector('meta[name="csrf-header"]');
+        return meta ? meta.getAttribute('content') : 'X-CSRF-TOKEN';
+    }
+
     function showAlert(type, message) {
         if (!alertArea) return;
         const alertHtml = `
-            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            <div class="alert alert-${type} alert-dismissible fade show shadow-sm" role="alert">
                 <i class="mdi mdi-${type === 'success' ? 'check-circle' : 'alert-circle'} me-2"></i>
                 ${message}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -181,6 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 2000);
     }
 
+    // Handle Report Generation via AJAX
     if (form && submitBtn) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -209,13 +225,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.innerHTML = origHtml;
 
                 if (data.status === 'success') {
-                    showAlert('success', 'Report generated successfully! Starting download...');
+                    showAlert('success', 'Report generated successfully and added to the list.');
 
                     // Add new row to table
                     if (placeholder) placeholder.classList.add('d-none');
                     if (tableContainer) tableContainer.classList.remove('d-none');
 
                     const r = data.report || {};
+                    const reportId = r.id || r.filename;
                     const isPdf = (r.type === 'pdf');
                     const badgeHtml = isPdf 
                         ? '<span class="badge badge-danger bg-opacity-10 text-danger border border-danger"><i class="fas fa-file-pdf"></i> PDF</span>'
@@ -226,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const dateRangeStr = `${startVal} - ${endVal}`;
                     const createdStr = new Date().toLocaleString();
 
-                    const downloadUrl = data.download_url || ('<?= site_url('manage/reports/download/') ?>' + (r.id || r.filename));
+                    const downloadUrl = data.download_url || ('<?= site_url('manage/reports/download/') ?>' + reportId);
 
                     const newRow = document.createElement('tr');
                     newRow.className = 'table-success bg-opacity-10';
@@ -236,16 +253,21 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td><small>${dateRangeStr}</small></td>
                         <td class="text-muted small">${createdStr}</td>
                         <td class="text-end pe-4">
-                            <a href="${downloadUrl}" class="btn btn-sm btn-outline-primary" download>
-                                <i class="fas fa-download"></i> Download
-                            </a>
+                            <div class="d-flex justify-content-end gap-1">
+                                <a href="${downloadUrl}" class="btn btn-sm btn-outline-primary" download>
+                                    <i class="fas fa-download me-1"></i> Download
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-report" data-id="${reportId}" title="Delete Report">
+                                    <i class="fas fa-trash-alt me-1"></i> Delete
+                                </button>
+                            </div>
                         </td>
                     `;
                     if (tableBody) {
                         tableBody.insertBefore(newRow, tableBody.firstChild);
                     }
 
-                    // Silent browser download without navigating page
+                    // Silent browser download without reloading/navigating page
                     triggerSilentDownload(downloadUrl, r.filename);
                 } else {
                     showAlert('danger', data.message || 'Could not generate report.');
@@ -258,6 +280,66 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // Handle AJAX Delete Report via Event Delegation
+    document.addEventListener('click', function(e) {
+        const deleteBtn = e.target.closest('.btn-delete-report');
+        if (!deleteBtn) return;
+
+        const reportId = deleteBtn.getAttribute('data-id');
+        if (!reportId) return;
+
+        if (!confirm('Are you sure you want to delete this report?')) {
+            return;
+        }
+
+        const tr = deleteBtn.closest('tr');
+        const origContent = deleteBtn.innerHTML;
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+        const deleteUrl = '<?= site_url('manage/reports/delete/') ?>' + encodeURIComponent(reportId);
+        const headers = {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        };
+        const csrfToken = getCsrfToken();
+        const csrfHeader = getCsrfHeader();
+        if (csrfToken) {
+            headers[csrfHeader] = csrfToken;
+        }
+
+        fetch(deleteUrl, {
+            method: 'POST',
+            headers: headers
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.status === 'success') {
+                if (tr) {
+                    tr.style.transition = 'opacity 0.3s ease';
+                    tr.style.opacity = '0';
+                    setTimeout(() => {
+                        tr.remove();
+                        if (tableBody && tableBody.querySelectorAll('tr').length === 0) {
+                            if (tableContainer) tableContainer.classList.add('d-none');
+                            if (placeholder) placeholder.classList.remove('d-none');
+                        }
+                    }, 300);
+                }
+                showAlert('success', 'Report deleted successfully.');
+            } else {
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = origContent;
+                showAlert('danger', res.message || 'Failed to delete report.');
+            }
+        })
+        .catch(err => {
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = origContent;
+            showAlert('danger', err.message || 'An error occurred while deleting the report.');
+        });
+    });
 });
 </script>
 <?= $this->endSection() ?>

@@ -168,4 +168,68 @@ class ReportController extends BaseController
         
         return redirect()->back()->with('error', 'Report file not found.');
     }
+
+    public function delete($id)
+    {
+        try {
+            $db = \Config\Database::connect();
+            $deleted = false;
+
+            // 1. Try finding by numeric ID
+            if (is_numeric($id) && $db->tableExists('reports')) {
+                $report = $db->table('reports')->where('id', (int)$id)->get()->getRowArray();
+                if ($report) {
+                    if (!empty($report['file_path'])) {
+                        $filepath = WRITEPATH . 'reports/' . basename($report['file_path']);
+                        if (file_exists($filepath) && is_file($filepath)) {
+                            @unlink($filepath);
+                        }
+                    }
+                    $db->table('reports')->where('id', (int)$id)->delete();
+                    $deleted = true;
+                }
+            }
+
+            // 2. Try finding by filename in DB
+            if (!$deleted && $db->tableExists('reports')) {
+                $report = $db->table('reports')->where('file_path', (string)$id)->get()->getRowArray();
+                if ($report) {
+                    $filepath = WRITEPATH . 'reports/' . basename($report['file_path']);
+                    if (file_exists($filepath) && is_file($filepath)) {
+                        @unlink($filepath);
+                    }
+                    $db->table('reports')->where('id', $report['id'])->delete();
+                    $deleted = true;
+                }
+            }
+
+            // 3. Direct file removal if exists on disk
+            $cleanName = basename((string)$id);
+            $diskCandidate = WRITEPATH . 'reports/' . $cleanName;
+            if (file_exists($diskCandidate) && is_file($diskCandidate)) {
+                @unlink($diskCandidate);
+                $deleted = true;
+            }
+
+            if ($this->request->isAJAX() || $this->request->getHeaderLine('accept') === 'application/json') {
+                return $this->response->setJSON([
+                    'status'  => 'success',
+                    'message' => 'Report deleted successfully.',
+                    'id'      => $id
+                ]);
+            }
+
+            return redirect()->back()->with('message', 'Report deleted successfully.');
+        } catch (\Throwable $e) {
+            log_message('error', 'Report deletion exception: ' . $e->getMessage());
+            if ($this->request->isAJAX() || $this->request->getHeaderLine('accept') === 'application/json') {
+                return $this->response->setStatusCode(500)->setJSON([
+                    'status'  => 'error',
+                    'message' => 'Failed to delete report: ' . $e->getMessage()
+                ]);
+            }
+            return redirect()->back()->with('error', 'Failed to delete report: ' . $e->getMessage());
+        }
+    }
 }
+

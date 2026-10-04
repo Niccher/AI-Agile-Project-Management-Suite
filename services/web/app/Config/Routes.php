@@ -164,7 +164,9 @@ $managerRouteHandler = function($routes) {
     $routes->post('approvals/(:num)/reject', 'Manager\WorkApprovalController::reject/$1');
     $routes->get('reports', 'Manager\ReportController::index');
     $routes->post('reports/generate', 'Manager\ReportController::generate');
-    $routes->get('reports/download/(:num)', 'Manager\ReportController::download/$1');
+    $routes->get('reports/download/(:any)', 'Manager\ReportController::download/$1');
+    $routes->post('reports/delete/(:any)', 'Manager\ReportController::delete/$1');
+    $routes->get('reports/delete/(:any)', 'Manager\ReportController::delete/$1');
 };
 
 $routes->group('manage', ['filter' => ['session', 'manager']], $managerRouteHandler);
