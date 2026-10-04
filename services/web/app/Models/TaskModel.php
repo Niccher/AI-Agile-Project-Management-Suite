@@ -59,7 +59,7 @@ class TaskModel extends Model
             $selects[] = 'ua.last_name as assignee_last_name';
         }
 
-        $query = $this->select(implode(', ', $selects))
+        $query = (new static())->select(implode(', ', $selects))
                       ->join('users uc', 'uc.id = tasks.user_id', 'left')
                       ->join('users ua', 'ua.id = tasks.assigned_to', 'left')
                       ->where('tasks.project_id', $projectId);
@@ -113,7 +113,7 @@ class TaskModel extends Model
             $selects[] = 'projects.color as project_color';
         }
 
-        $query = $this->select(implode(', ', $selects));
+        $query = (new static())->select(implode(', ', $selects));
         if ($db->tableExists('projects')) {
             $query->join('projects', 'projects.id = tasks.project_id', 'left');
         }
@@ -158,7 +158,7 @@ class TaskModel extends Model
             $selects[] = 'users.last_name';
         }
 
-        $query = $this->select(implode(', ', $selects));
+        $query = (new static())->select(implode(', ', $selects));
 
         if ($db->tableExists('projects')) {
             $query->join('projects', 'projects.id = tasks.project_id', 'left');
@@ -175,7 +175,7 @@ class TaskModel extends Model
         if ($managerId !== null && in_array('assigned_by', $taskFields, true)) {
             $query->groupStart()
                   ->where('tasks.assigned_by', $managerId)
-                  ->orWhere('tasks.assigned_by', null)
+                  ->orWhere('tasks.assigned_by IS NULL', null, false)
                   ->groupEnd();
         }
 
@@ -202,7 +202,7 @@ class TaskModel extends Model
             $selects[] = 'users.username as assignee_name';
         }
 
-        $query = $this->select(implode(', ', $selects));
+        $query = (new static())->select(implode(', ', $selects));
         if (in_array('assigned_to', $taskFields, true)) {
             $query->join('users', 'users.id = tasks.assigned_to', 'left');
         } elseif ($db->tableExists('users')) {
@@ -237,7 +237,7 @@ class TaskModel extends Model
             $selects[] = 'users.username as assignee_name';
         }
 
-        $query = $this->select(implode(', ', $selects));
+        $query = (new static())->select(implode(', ', $selects));
         if (in_array('assigned_to', $taskFields, true)) {
             $query->join('users', 'users.id = tasks.assigned_to', 'left');
         } elseif ($db->tableExists('users')) {

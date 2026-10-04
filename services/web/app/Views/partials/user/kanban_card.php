@@ -16,12 +16,12 @@ if ($priority === 'critical') {
 
 $isOverdue = false;
 $isDueToday = false;
-if (!empty($task['due_date']) && ($task['status'] ?? '') !== 'done') {
-    $dueDateTimestamp = strtotime($task['due_date']);
+if (!empty($task['due_date']) && $task['due_date'] !== '0000-00-00' && ($task['status'] ?? '') !== 'done') {
+    $dueDateTimestamp = strtotime((string)$task['due_date']);
     $todayTimestamp = strtotime('today');
-    if ($dueDateTimestamp < $todayTimestamp) {
+    if ($dueDateTimestamp !== false && $dueDateTimestamp < $todayTimestamp) {
         $isOverdue = true;
-    } elseif ($dueDateTimestamp === $todayTimestamp) {
+    } elseif ($dueDateTimestamp !== false && $dueDateTimestamp === $todayTimestamp) {
         $isDueToday = true;
     }
 }
@@ -94,7 +94,10 @@ $initials = !empty($task['assignee_name']) ? strtoupper(substr($task['assignee_n
             
             <div class="task-date font-11 <?= $isOverdue ? 'text-danger fw-bold' : ($isDueToday ? 'text-warning fw-semibold' : 'text-muted') ?>" title="Due Date">
                 <i class="mdi <?= $isOverdue ? 'mdi-alert-circle-outline' : 'mdi-calendar-clock' ?> me-1"></i>
-                <?= !empty($task['due_date']) ? date('M j', strtotime($task['due_date'])) : 'No due date' ?>
+                <?php 
+                    $dueDateTs = (!empty($task['due_date']) && $task['due_date'] !== '0000-00-00') ? strtotime((string)$task['due_date']) : false;
+                ?>
+                <?= ($dueDateTs !== false) ? date('M j', $dueDateTs) : 'No due date' ?>
                 <?php if ($isOverdue): ?>
                     <span class="badge bg-danger-lighten text-danger ms-1 font-10">Overdue</span>
                 <?php endif; ?>

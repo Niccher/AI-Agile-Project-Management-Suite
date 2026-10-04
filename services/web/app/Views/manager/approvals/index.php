@@ -65,7 +65,10 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <?= date('M j, Y g:i A', strtotime($task['updated_at'] ?? $task['created_at'] ?? 'now')) ?>
+                                        <?php 
+                                            $dateStr = !empty($task['updated_at']) ? $task['updated_at'] : (!empty($task['created_at']) ? $task['created_at'] : null);
+                                            $ts = $dateStr ? strtotime((string)$dateStr) : false;
+                                        ?><?= ($ts !== false) ? date('M j, Y g:i A', $ts) : 'N/A' ?>
                                     </td>
                                     <td class="text-end">
                                         <form action="<?= site_url('manager/approvals/'.$task['id'].'/approve') ?>" method="POST" class="d-inline form-approve-task" data-id="<?= $task['id'] ?>" data-title="<?= esc($task['title']) ?>">

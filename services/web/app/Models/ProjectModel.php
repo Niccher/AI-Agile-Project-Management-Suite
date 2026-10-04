@@ -124,7 +124,7 @@ class ProjectModel extends Model
             $selects[] = 'u.last_name as owner_last_name';
         }
 
-        $builder = $this->select(implode(', ', $selects))
+        $builder = (new static())->select(implode(', ', $selects))
                         ->join('users u', 'u.id = projects.user_id', 'left')
                         ->where('projects.deleted_at', null);
 
@@ -188,7 +188,7 @@ class ProjectModel extends Model
             $selects[] = 'u.last_name as owner_last_name';
         }
 
-        $query = $this->select(implode(', ', $selects))
+        $query = (new static())->select(implode(', ', $selects))
                       ->join('users u', 'u.id = projects.user_id', 'left');
 
         // 1. Try exact slug match
