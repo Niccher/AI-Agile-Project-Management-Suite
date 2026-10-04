@@ -6,18 +6,21 @@
         <h2><i class="fas fa-file-invoice text-primary me-2"></i> Team Reports</h2>
     </div>
 
-    <?php if (session()->has('message')) : ?>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <?= session('message') ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    <?php endif; ?>
-    <?php if (session()->has('error')) : ?>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <?= session('error') ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    <?php endif; ?>
+    <!-- Live Alert Area -->
+    <div id="ajaxReportAlertArea">
+        <?php if (session()->has('message')) : ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <?= session('message') ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+        <?php if (session()->has('error')) : ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <?= session('error') ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+    </div>
 
     <div class="row">
         <!-- Generate Report Form -->
@@ -122,7 +125,7 @@
                                                 <?= date('M j, Y g:i A', strtotime($report['created_at'])) ?>
                                             </td>
                                             <td class="text-end pe-4">
-                                                <a href="<?= site_url('manage/reports/download/' . $report['id']) ?>" class="btn btn-sm btn-outline-primary">
+                                                <a href="<?= site_url('manage/reports/download/' . ($report['id'] ?? $report['file_path'])) ?>" class="btn btn-sm btn-outline-primary" download>
                                                     <i class="fas fa-download"></i> Download
                                                 </a>
                                             </td>
@@ -147,6 +150,36 @@ document.addEventListener('DOMContentLoaded', function() {
     const tableBody = document.getElementById('reports-table-body');
     const placeholder = document.getElementById('no-reports-placeholder');
     const tableContainer = document.getElementById('reports-table-container');
+    const alertArea = document.getElementById('ajaxReportAlertArea');
+
+    function showAlert(type, message) {
+        if (!alertArea) return;
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="mdi mdi-${type === 'success' ? 'check-circle' : 'alert-circle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        alertArea.innerHTML = alertHtml;
+    }
+
+    function triggerSilentDownload(url, filename) {
+        if (!url) return;
+        const link = document.createElement('a');
+        link.href = url;
+        if (filename) {
+            link.setAttribute('download', filename);
+        }
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+            if (link.parentNode) {
+                link.parentNode.removeChild(link);
+            }
+        }, 2000);
+    }
 
     if (form && submitBtn) {
         form.addEventListener('submit', function(e) {
@@ -176,13 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.innerHTML = origHtml;
 
                 if (data.status === 'success') {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Report Generated!',
-                        text: 'Your report has been generated. Starting download...',
-                        timer: 2500,
-                        showConfirmButton: false
-                    });
+                    showAlert('success', 'Report generated successfully! Starting download...');
 
                     // Add new row to table
                     if (placeholder) placeholder.classList.add('d-none');
@@ -199,6 +226,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     const dateRangeStr = `${startVal} - ${endVal}`;
                     const createdStr = new Date().toLocaleString();
 
+                    const downloadUrl = data.download_url || ('<?= site_url('manage/reports/download/') ?>' + (r.id || r.filename));
+
                     const newRow = document.createElement('tr');
                     newRow.className = 'table-success bg-opacity-10';
                     newRow.innerHTML = `
@@ -207,7 +236,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td><small>${dateRangeStr}</small></td>
                         <td class="text-muted small">${createdStr}</td>
                         <td class="text-end pe-4">
-                            <a href="${data.download_url}" class="btn btn-sm btn-outline-primary">
+                            <a href="${downloadUrl}" class="btn btn-sm btn-outline-primary" download>
                                 <i class="fas fa-download"></i> Download
                             </a>
                         </td>
@@ -216,26 +245,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         tableBody.insertBefore(newRow, tableBody.firstChild);
                     }
 
-                    // Trigger browser download
-                    if (data.download_url) {
-                        window.location.href = data.download_url;
-                    }
+                    // Silent browser download without navigating page
+                    triggerSilentDownload(downloadUrl, r.filename);
                 } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Report Error',
-                        text: data.message || 'Could not generate report.'
-                    });
+                    showAlert('danger', data.message || 'Could not generate report.');
                 }
             })
             .catch(err => {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = origHtml;
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Generation Failed',
-                    text: err.message || 'An unexpected error occurred.'
-                });
+                showAlert('danger', err.message || 'An unexpected error occurred while generating report.');
             });
         });
     }

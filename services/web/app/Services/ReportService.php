@@ -46,6 +46,8 @@ class ReportService
                     'parameters' => json_encode($params),
                     'file_path'  => $filename,
                     'status'     => 'completed',
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ];
                 if (in_array('user_id', $reportFields, true)) {
                     $insertData['user_id'] = $generatedBy;
@@ -54,15 +56,17 @@ class ReportService
                 }
 
                 $validData = array_intersect_key($insertData, array_flip($reportFields));
-                $reportModel = new ReportModel();
-                $reportId = $reportModel->insert($validData);
+                if (!empty($validData)) {
+                    $db->table('reports')->insert($validData);
+                    $reportId = (int)$db->insertID();
+                }
             }
         } catch (\Throwable $e) {
             log_message('error', 'Report logging error: ' . $e->getMessage());
         }
 
         return [
-            'id'         => $reportId ?: time(),
+            'id'         => $reportId ?: $filename,
             'filename'   => $filename,
             'filepath'   => $filepath,
             'name'       => $title,
@@ -98,6 +102,8 @@ class ReportService
                     'parameters' => json_encode($params),
                     'file_path'  => $filename,
                     'status'     => 'completed',
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ];
                 if (in_array('user_id', $reportFields, true)) {
                     $insertData['user_id'] = $generatedBy;
@@ -106,15 +112,17 @@ class ReportService
                 }
 
                 $validData = array_intersect_key($insertData, array_flip($reportFields));
-                $reportModel = new ReportModel();
-                $reportId = $reportModel->insert($validData);
+                if (!empty($validData)) {
+                    $db->table('reports')->insert($validData);
+                    $reportId = (int)$db->insertID();
+                }
             }
         } catch (\Throwable $e) {
             log_message('error', 'Report logging error: ' . $e->getMessage());
         }
 
         return [
-            'id'         => $reportId ?: time(),
+            'id'         => $reportId ?: $filename,
             'filename'   => $filename,
             'filepath'   => $filepath,
             'name'       => 'Team Performance Report',

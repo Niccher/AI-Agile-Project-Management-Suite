@@ -104,14 +104,66 @@ class ReportController extends BaseController
     
     public function download($id)
     {
-        $reportModel = new \App\Models\ReportModel();
-        $report = $reportModel->find($id);
-        
-        if ($report && !empty($report['file_path'])) {
-            $filepath = WRITEPATH . 'reports/' . $report['file_path'];
-            if (file_exists($filepath)) {
-                return $this->response->download($filepath, null)->setFileName($report['file_path']);
+        $db = \Config\Database::connect();
+        $filepath = null;
+        $downloadName = null;
+
+        // 1. Try finding by numeric ID
+        if (is_numeric($id) && $db->tableExists('reports')) {
+            $report = $db->table('reports')->where('id', (int)$id)->get()->getRowArray();
+            if ($report && !empty($report['file_path'])) {
+                $candidate = WRITEPATH . 'reports/' . basename($report['file_path']);
+                if (file_exists($candidate) && is_file($candidate)) {
+                    $filepath = $candidate;
+                    $downloadName = basename($report['file_path']);
+                }
             }
+        }
+
+        // 2. Try finding by filename in DB
+        if (!$filepath && $db->tableExists('reports')) {
+            $report = $db->table('reports')->where('file_path', (string)$id)->get()->getRowArray();
+            if ($report && !empty($report['file_path'])) {
+                $candidate = WRITEPATH . 'reports/' . basename($report['file_path']);
+                if (file_exists($candidate) && is_file($candidate)) {
+                    $filepath = $candidate;
+                    $downloadName = basename($report['file_path']);
+                }
+            }
+        }
+
+        // 3. Direct filename on disk
+        if (!$filepath) {
+            $cleanName = basename((string)$id);
+            $candidate = WRITEPATH . 'reports/' . $cleanName;
+            if (file_exists($candidate) && is_file($candidate)) {
+                $filepath = $candidate;
+                $downloadName = $cleanName;
+            }
+        }
+
+        // 4. Fallback to newest generated report
+        if (!$filepath) {
+            $files = glob(WRITEPATH . 'reports/report_*.*');
+            if (!empty($files)) {
+                usort($files, function($a, $b) {
+                    return filemtime($b) <=> filemtime($a);
+                });
+                $filepath = $files[0];
+                $downloadName = basename($files[0]);
+            }
+        }
+
+        if ($filepath && file_exists($filepath)) {
+            $ext = strtolower(pathinfo($filepath, PATHINFO_EXTENSION));
+            $mime = ($ext === 'pdf') ? 'application/pdf' : 'text/csv';
+
+            return $this->response
+                ->setHeader('Content-Type', $mime)
+                ->setHeader('Content-Disposition', 'attachment; filename="' . $downloadName . '"')
+                ->setHeader('Content-Length', (string)filesize($filepath))
+                ->setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+                ->setBody(file_get_contents($filepath));
         }
         
         return redirect()->back()->with('error', 'Report file not found.');
