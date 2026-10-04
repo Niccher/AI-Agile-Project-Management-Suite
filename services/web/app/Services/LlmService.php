@@ -178,54 +178,79 @@ class LlmService
     }
 
     /**
-     * Generic HTTP dispatcher using CI4 curlrequest service
+     * Generic HTTP dispatcher using CI4 curlrequest service with resilient endpoint fallback
      */
     protected function request(string $method, string $path, array $data = []): array
     {
-        $url = rtrim($this->baseUrl, '/') . $path;
-        $client = \Config\Services::curlrequest([
-            'timeout'     => 180, // CPU LLM inference can take time
-            'http_errors' => false,
-        ]);
+        $urlsToTry = [$this->baseUrl];
 
-        $options = [
-            'headers' => [
-                'X-API-Key'    => $this->apiKey,
-                'Content-Type' => 'application/json',
-                'Accept'       => 'application/json',
-            ],
+        // Populate fallback candidate URLs (Docker internal network, Host 127.0.0.1, Localhost)
+        $candidates = [
+            'http://ml-chege-jira:8000',
+            'http://127.0.0.1:8000',
+            'http://localhost:8000',
         ];
-
-        if (in_array(strtoupper($method), ['POST', 'PATCH', 'PUT']) && !empty($data)) {
-            $options['body'] = json_encode($data);
+        foreach ($candidates as $cand) {
+            if ($cand !== $this->baseUrl && !in_array($cand, $urlsToTry, true)) {
+                $urlsToTry[] = $cand;
+            }
         }
 
-        try {
-            $response = $client->request($method, $url, $options);
-            $rawBody = (string)$response->getBody();
-            $decoded = json_decode($rawBody, true);
+        $lastErrorMsg = '';
 
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return $decoded;
+        foreach ($urlsToTry as $baseUrl) {
+            $url = rtrim($baseUrl, '/') . $path;
+            $client = \Config\Services::curlrequest([
+                'timeout'     => 180, // CPU LLM inference can take time
+                'http_errors' => false,
+            ]);
+
+            $options = [
+                'headers' => [
+                    'X-API-Key'    => $this->apiKey,
+                    'Content-Type' => 'application/json',
+                    'Accept'       => 'application/json',
+                ],
+            ];
+
+            if (in_array(strtoupper($method), ['POST', 'PATCH', 'PUT']) && !empty($data)) {
+                $options['body'] = json_encode($data);
             }
 
-            return [
-                'success' => false,
-                'error'   => [
-                    'code'    => 'invalid_json_response',
-                    'message' => 'ML backend did not return valid JSON: ' . substr($rawBody, 0, 200),
-                ],
-            ];
-        } catch (\Throwable $e) {
-            $errorMsg = $e->getMessage();
-            log_message('warning', "LlmService request failed on {$method} {$url}: " . $errorMsg);
-            return [
-                'success' => false,
-                'error'   => [
-                    'code'    => 'service_unreachable',
-                    'message' => "Could not communicate with ML microservice at {$this->baseUrl}: " . $errorMsg,
-                ],
-            ];
+            try {
+                $response = $client->request($method, $url, $options);
+                $rawBody = (string)$response->getBody();
+                $decoded = json_decode($rawBody, true);
+
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    // If successfully reached via fallback URL, update baseUrl in-memory
+                    if ($this->baseUrl !== $baseUrl) {
+                        $this->baseUrl = $baseUrl;
+                    }
+                    return $decoded;
+                }
+
+                return [
+                    'success' => false,
+                    'error'   => [
+                        'code'    => 'invalid_json_response',
+                        'message' => 'ML backend did not return valid JSON: ' . substr($rawBody, 0, 200),
+                    ],
+                ];
+            } catch (\Throwable $e) {
+                $lastErrorMsg = $e->getMessage();
+                // If it was a host resolution or connection failure, continue loop to try next fallback
+                continue;
+            }
         }
+
+        log_message('warning', "LlmService request failed on {$method} {$path} across all endpoints: " . $lastErrorMsg);
+        return [
+            'success' => false,
+            'error'   => [
+                'code'    => 'service_unreachable',
+                'message' => "Could not communicate with ML microservice at {$this->baseUrl}: " . $lastErrorMsg,
+            ],
+        ];
     }
 }
