@@ -150,15 +150,15 @@
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <div class="avatar-xs me-2 flex-shrink-0">
-                                                    <span class="avatar-title rounded font-14" style="background-color: <?= $p['color'] ?: '#727cf5' ?>20; color: <?= $p['color'] ?: '#727cf5' ?>;">
-                                                        <i class="mdi <?= $p['icon'] ?: 'mdi-folder' ?>"></i>
+                                                    <span class="avatar-title rounded font-14" style="background-color: <?= esc($p['color'] ?? '#727cf5') ?>20; color: <?= esc($p['color'] ?? '#727cf5') ?>;">
+                                                        <i class="mdi <?= esc($p['icon'] ?? 'mdi-folder') ?>"></i>
                                                     </span>
                                                 </div>
                                                 <div>
                                                     <a href="<?= site_url('projects/view/' . $pSlug) ?>" class="text-dark fw-bold text-decoration-none font-14">
-                                                        <?= esc($p['name']) ?>
+                                                        <?= esc($p['name'] ?? 'Project') ?>
                                                     </a>
-                                                    <?php if (!empty($p['due_date'])): ?>
+                                                    <?php if (!empty($p['due_date']) && strtotime($p['due_date']) > 0): ?>
                                                         <small class="text-muted font-11 d-block">
                                                             <i class="mdi mdi-calendar-clock me-1"></i>Target: <?= date('M j, Y', strtotime($p['due_date'])) ?>
                                                         </small>
@@ -168,13 +168,13 @@
                                         </td>
                                         <td>
                                             <div class="d-flex align-items-center mb-1">
-                                                <span class="badge <?= $h['badge_class'] ?> font-12 fw-bold px-2 py-1 me-2">
-                                                    <i class="mdi <?= $h['icon'] ?> me-1"></i> <?= $h['score'] ?>/100
+                                                <span class="badge <?= $h['badge_class'] ?? 'bg-info' ?> font-12 fw-bold px-2 py-1 me-2">
+                                                    <i class="mdi <?= $h['icon'] ?? 'mdi-information' ?> me-1"></i> <?= $h['score'] ?? 100 ?>/100
                                                 </span>
-                                                <span class="font-12 fw-semibold text-muted"><?= $h['label'] ?></span>
+                                                <span class="font-12 fw-semibold text-muted"><?= $h['label'] ?? 'Healthy' ?></span>
                                             </div>
                                             <div class="progress progress-sm" style="height: 6px; width: 140px;">
-                                                <div class="progress-bar <?= $progressBarClass ?>" role="progressbar" style="width: <?= $h['score'] ?>%;" aria-valuenow="<?= $h['score'] ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                                                <div class="progress-bar <?= $progressBarClass ?>" role="progressbar" style="width: <?= $h['score'] ?? 100 ?>%;" aria-valuenow="<?= $h['score'] ?? 100 ?>" aria-valuemin="0" aria-valuemax="100"></div>
                                             </div>
                                         </td>
                                         <td>
@@ -182,7 +182,7 @@
                                                 <?= ucfirst(str_replace('_', ' ', $p['status'] ?? 'planning')) ?>
                                             </span>
                                             <div class="font-11 text-muted">
-                                                Progress: <strong><?= $p['progress'] ?? 0 ?>%</strong> (<?= $h['done_tasks'] ?>/<?= $h['total_tasks'] ?> tasks)
+                                                Progress: <strong><?= $p['progress'] ?? 0 ?>%</strong> (<?= $h['done_tasks'] ?? 0 ?>/<?= $h['total_tasks'] ?? 0 ?> tasks)
                                             </div>
                                         </td>
                                         <td>

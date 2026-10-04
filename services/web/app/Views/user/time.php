@@ -338,7 +338,9 @@
 
 <!-- Toast Container -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
+<?= $this->endSection() ?>
 
+<?= $this->section('js') ?>
 <script>
 $(document).ready(function() {
     let timerInterval = null;

@@ -380,6 +380,14 @@ class ProjectModel extends Model
      */
     public function calculateHealthScore(array $project, array $tasks = [], ?array $activeSprint = null): array
     {
+        $totalTasks = count($tasks);
+        $completedTasks = 0;
+        foreach ($tasks as $t) {
+            if (($t['status'] ?? '') === 'done' || ($t['status'] ?? '') === 'approved') {
+                $completedTasks++;
+            }
+        }
+
         if (($project['status'] ?? '') === 'completed') {
             return [
                 'score'       => 100,
@@ -389,6 +397,8 @@ class ProjectModel extends Model
                 'icon'        => 'mdi-check-all',
                 'issues'      => [],
                 'overdue_cnt' => 0,
+                'total_tasks' => $totalTasks,
+                'done_tasks'  => $completedTasks ?: $totalTasks,
             ];
         }
 

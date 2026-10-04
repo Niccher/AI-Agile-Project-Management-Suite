@@ -112,7 +112,9 @@
         </div>
     </div>
 </div>
+<?= $this->endSection() ?>
 
+<?= $this->section('js') ?>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const Toast = Swal.mixin({
