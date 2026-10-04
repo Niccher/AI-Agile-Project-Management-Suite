@@ -254,8 +254,15 @@ $currentUserId = (int)auth()->id();
             <option value="">Unassigned</option>
             <?php if (!empty($users)): ?>
                 <?php foreach ($users as $u): ?>
-                    <option value="<?= $u->id ?>">
-                        <?= esc(trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->username) ?>
+                    <?php
+                        $uId = is_array($u) ? ($u['id'] ?? '') : ($u->id ?? '');
+                        $uUsername = is_array($u) ? ($u['username'] ?? '') : ($u->username ?? '');
+                        $uFirstName = is_array($u) ? ($u['first_name'] ?? '') : ($u->first_name ?? '');
+                        $uLastName = is_array($u) ? ($u['last_name'] ?? '') : ($u->last_name ?? '');
+                        $uName = trim("{$uFirstName} {$uLastName}") ?: $uUsername;
+                    ?>
+                    <option value="<?= esc($uId) ?>">
+                        <?= esc($uName) ?>
                     </option>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -330,8 +337,15 @@ $currentUserId = (int)auth()->id();
                                 <option value="">Unassigned</option>
                                 <?php if (!empty($users)): ?>
                                     <?php foreach ($users as $u): ?>
-                                        <option value="<?= $u->id ?>" <?= $u->id == auth()->id() ? 'selected' : '' ?>>
-                                            <?= esc(trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->username) ?> (<?= esc($u->username) ?>)
+                                        <?php
+                                            $uId = is_array($u) ? ($u['id'] ?? '') : ($u->id ?? '');
+                                            $uUsername = is_array($u) ? ($u['username'] ?? '') : ($u->username ?? '');
+                                            $uFirstName = is_array($u) ? ($u['first_name'] ?? '') : ($u->first_name ?? '');
+                                            $uLastName = is_array($u) ? ($u['last_name'] ?? '') : ($u->last_name ?? '');
+                                            $uName = trim("{$uFirstName} {$uLastName}") ?: $uUsername;
+                                        ?>
+                                        <option value="<?= esc($uId) ?>" <?= (string)$uId === (string)auth()->id() ? 'selected' : '' ?>>
+                                            <?= esc($uName) ?> (<?= esc($uUsername) ?>)
                                         </option>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
@@ -436,8 +450,15 @@ $currentUserId = (int)auth()->id();
                                     <option value="">Unassigned</option>
                                     <?php if (!empty($users)): ?>
                                         <?php foreach ($users as $u): ?>
-                                            <option value="<?= $u->id ?>">
-                                                <?= esc(trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->username) ?> (<?= esc($u->username) ?>)
+                                            <?php
+                                                $uId = is_array($u) ? ($u['id'] ?? '') : ($u->id ?? '');
+                                                $uUsername = is_array($u) ? ($u['username'] ?? '') : ($u->username ?? '');
+                                                $uFirstName = is_array($u) ? ($u['first_name'] ?? '') : ($u->first_name ?? '');
+                                                $uLastName = is_array($u) ? ($u['last_name'] ?? '') : ($u->last_name ?? '');
+                                                $uName = trim("{$uFirstName} {$uLastName}") ?: $uUsername;
+                                            ?>
+                                            <option value="<?= esc($uId) ?>">
+                                                <?= esc($uName) ?> (<?= esc($uUsername) ?>)
                                             </option>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
