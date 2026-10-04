@@ -465,12 +465,7 @@ $(document).ready(function() {
         $('#quickStartSection').show();
     });
 
-    // Manual entry modal
-    $('#manualEntryBtn').on('click', function() {
-        const modal = new bootstrap.Modal(document.getElementById('manualEntryModal'));
-        modal.show();
-    });
-
+    // Manual entry form submission
     $('#manualEntryForm').on('submit', async function(e) {
         e.preventDefault();
         const form = this;
@@ -489,9 +484,18 @@ $(document).ready(function() {
         if (res && (res.success || res.status === 'success')) {
             const modalEl = document.getElementById('manualEntryModal');
             if (modalEl) {
-                const modal = bootstrap.Modal.getInstance(modalEl);
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
                 if (modal) modal.hide();
             }
+            
+            // Clean up any stale backdrops and restore scrolling
+            setTimeout(() => {
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+            }, 200);
+
             form.reset();
 
             $('#emptyLogsRow').remove();
