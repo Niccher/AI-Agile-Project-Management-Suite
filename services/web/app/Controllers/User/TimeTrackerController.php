@@ -15,10 +15,11 @@ class TimeTrackerController extends BaseUserController
 
         $currentUser = auth()->user();
         $isAdmin = $currentUser && $currentUser->inGroup('admin');
-        $isManager = $currentUser && ($currentUser->inGroup('manager') || $isAdmin);
+        $isManager = $currentUser && ($currentUser->inGroup('manager') || $isAdmin || is_solo_mode());
 
         // Fetch accessible projects
-        $data['projects'] = $projectModel->getAccessibleProjects($this->userId, $isManager);
+        $projects = $projectModel->getAccessibleProjects($this->userId, $isManager);
+        $data['projects'] = $projects;
 
         $projectId = null;
         $activeProject = null;
@@ -42,7 +43,7 @@ class TimeTrackerController extends BaseUserController
             $logsQuery->where('time_logs.project_id', $projectId);
         }
 
-        // Stats
+        // 1. Stats Calculation
         $todayQuery = $db->table('time_logs')
             ->selectSum('duration')
             ->where('user_id', $this->userId)
@@ -52,6 +53,7 @@ class TimeTrackerController extends BaseUserController
         }
         $todayDuration = $todayQuery->get()->getRow()->duration ?? 0;
         $data['todayTime'] = round($todayDuration / 3600, 1);
+        $data['todayMinutes'] = round($todayDuration / 60);
 
         $weekQuery = $db->table('time_logs')
             ->selectSum('duration')
@@ -89,30 +91,88 @@ class TimeTrackerController extends BaseUserController
             $totalSecondsQuery->where('project_id', $projectId);
         }
         $totalSeconds = $totalSecondsQuery->get()->getRow()->duration ?? 0;
+        $data['totalHours'] = round($totalSeconds / 3600, 1);
 
         if ($daysLogged > 0) {
             $data['avgDaily'] = round(($totalSeconds / $daysLogged) / 3600, 1);
         }
 
-        // Paginated Time Entries
-        $data['time_logs'] = $logsQuery->orderBy('time_logs.start_time', 'DESC')
-            ->paginate(10, 'time_logs');
-        $data['pager'] = $timeModel->pager;
+        // Billable vs Non-Billable calculation
+        $hasBillable = $db->fieldExists('is_billable', 'time_logs');
+        $billableSeconds = 0;
+        if ($hasBillable) {
+            $billableQuery = $db->table('time_logs')
+                ->selectSum('duration')
+                ->where('user_id', $this->userId)
+                ->where('is_billable', 1);
+            if ($projectId) {
+                $billableQuery->where('project_id', $projectId);
+            }
+            $billableSeconds = $billableQuery->get()->getRow()->duration ?? 0;
+        }
+        $data['billableHours'] = round($billableSeconds / 3600, 1);
+        $data['billableRate'] = $totalSeconds > 0 ? round(($billableSeconds / $totalSeconds) * 100) : 100;
 
-        // Project Time Breakdown
+        // Total log count
+        $countQuery = $db->table('time_logs')->where('user_id', $this->userId);
+        if ($projectId) {
+            $countQuery->where('project_id', $projectId);
+        }
+        $data['totalLogsCount'] = $countQuery->countAllResults();
+
+        // 2. 7-Day Velocity & Effort Trend Chart
+        $trendLabels = [];
+        $trendHours = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $d = date('Y-m-d', strtotime("-{$i} days"));
+            $dLabel = date('D (m/d)', strtotime("-{$i} days"));
+            $trendLabels[] = $dLabel;
+
+            $dQuery = $db->table('time_logs')
+                ->selectSum('duration')
+                ->where('user_id', $this->userId)
+                ->where('DATE(start_time)', $d);
+            if ($projectId) {
+                $dQuery->where('project_id', $projectId);
+            }
+            $dSec = $dQuery->get()->getRow()->duration ?? 0;
+            $trendHours[] = round($dSec / 3600, 2);
+        }
+        $data['trendLabels'] = $trendLabels;
+        $data['trendHours'] = $trendHours;
+
+        // 3. Project Time Breakdown
         $breakdownQuery = $db->table('time_logs')
-            ->select('projects.name, projects.color, SUM(time_logs.duration) as total_duration')
+            ->select('COALESCE(projects.name, "General") as name, COALESCE(projects.color, "#727cf5") as color, SUM(time_logs.duration) as total_duration, COUNT(time_logs.id) as sessions_count')
             ->join('projects', 'projects.id = time_logs.project_id', 'left')
             ->where('time_logs.user_id', $this->userId)
             ->groupBy('time_logs.project_id')
             ->orderBy('total_duration', 'DESC');
         
-        $totalBreakdown = $breakdownQuery->countAllResults(false);
-        $pageBreakdown = $this->request->getVar('page_breakdown') ?? 1;
-        $data['project_breakdown'] = $breakdownQuery->get(5, ($pageBreakdown - 1) * 5)->getResultArray();
-        $data['breakdown_total_pages'] = ceil($totalBreakdown / 5);
-        $data['breakdown_current_page'] = $pageBreakdown;
-        $data['total_all_duration'] = array_sum(array_column($data['project_breakdown'], 'total_duration')) ?: 1;
+        $projectBreakdowns = $breakdownQuery->get()->getResultArray();
+        $chartProjectLabels = [];
+        $chartProjectHours = [];
+        $chartProjectColors = [];
+        foreach ($projectBreakdowns as &$pb) {
+            $pbSecs = (int)($pb['total_duration'] ?? 0);
+            $pbHrs = round($pbSecs / 3600, 1);
+            $pb['hours'] = $pbHrs;
+            $chartProjectLabels[] = $pb['name'];
+            $chartProjectHours[] = $pbHrs;
+            $chartProjectColors[] = $pb['color'] ?: '#727cf5';
+        }
+        unset($pb);
+
+        $data['project_breakdown'] = $projectBreakdowns;
+        $data['chartProjectLabels'] = $chartProjectLabels;
+        $data['chartProjectHours'] = $chartProjectHours;
+        $data['chartProjectColors'] = $chartProjectColors;
+        $data['total_all_duration'] = array_sum(array_column($projectBreakdowns, 'total_duration')) ?: 1;
+
+        // 4. Time Entries
+        $data['time_logs'] = $logsQuery->orderBy('time_logs.start_time', 'DESC')
+            ->paginate(15, 'time_logs');
+        $data['pager'] = $timeModel->pager;
 
         return view('user/time', $data);
     }
@@ -133,6 +193,7 @@ class TimeTrackerController extends BaseUserController
         $date = !empty($input['date']) ? $input['date'] : ($this->request->getVar('date') ?: date('Y-m-d'));
         $durationHours = (float)($input['duration'] ?? $this->request->getVar('duration') ?? 1.0);
         $notes = $input['notes'] ?? $this->request->getVar('notes') ?? '';
+        $isBillable = isset($input['is_billable']) ? (int)$input['is_billable'] : (isset($_POST['is_billable']) ? 1 : 1);
 
         if (empty($taskName)) {
             $taskName = 'Work session';
@@ -142,7 +203,7 @@ class TimeTrackerController extends BaseUserController
         $startTime = $date . ' ' . date('H:i:s');
         $durationSeconds = max(60, (int)round($durationHours * 3600));
 
-        $insertId = $timeModel->insert([
+        $dataToInsert = [
             'user_id'    => $this->userId,
             'project_id' => $projectId,
             'task_name'  => $taskName,
@@ -150,7 +211,14 @@ class TimeTrackerController extends BaseUserController
             'end_time'   => date('Y-m-d H:i:s', strtotime($startTime) + $durationSeconds),
             'duration'   => $durationSeconds,
             'notes'      => $notes
-        ]);
+        ];
+
+        $db = \Config\Database::connect();
+        if ($db->fieldExists('is_billable', 'time_logs')) {
+            $dataToInsert['is_billable'] = $isBillable;
+        }
+
+        $insertId = $timeModel->insert($dataToInsert);
 
         $projectModel = new ProjectModel();
         $projectName = 'General';

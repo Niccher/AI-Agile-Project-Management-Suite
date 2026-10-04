@@ -1,75 +1,380 @@
 <?= $this->extend('layouts/hyper/main') ?>
 
-<?= $this->section('title') ?>Time Tracking • <?= esc(setting('App.siteName')) ?><?= $this->endSection() ?>
+<?= $this->section('title') ?>Time Tracking & Agile Worklogs • <?= esc(setting('App.siteName')) ?><?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 
-<!-- Page Header -->
-<div class="row">
-    <div class="col-12">
-        <div class="page-title-box">
-            <div class="page-title-right">
-                <button type="button" class="btn btn-outline-primary rounded-pill" id="manualEntryBtn" data-bs-toggle="modal" data-bs-target="#manualEntryModal">
-                    <i class="mdi mdi-plus-circle-outline me-1"></i> Log Time Manually
-                </button>
-            </div>
-            <h4 class="page-title">
-                <i class="uil-stopwatch me-2 text-primary"></i> Time Tracking & Worklogs
+<!-- ApexCharts Dependency -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+<div class="container-fluid py-3">
+
+    <!-- Page Header & Export Actions -->
+    <div class="row mb-3 align-items-center">
+        <div class="col-md-6">
+            <h4 class="page-title mb-1 fw-bold text-dark">
+                <i class="uil-stopwatch text-primary me-2"></i> Time Tracking & Worklogs
             </h4>
+            <p class="text-muted font-13 mb-0">
+                Track live work sessions, analyze team effort distribution, and export client-ready timesheets.
+            </p>
+        </div>
+        <div class="col-md-6 text-md-end mt-3 mt-md-0">
+            <div class="d-inline-flex gap-2 flex-wrap">
+                <button type="button" class="btn btn-primary rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#manualEntryModal">
+                    <i class="mdi mdi-plus-circle-outline me-1"></i> Log Manual Time
+                </button>
+                <div class="btn-group">
+                    <a href="<?= site_url('time/report/pdf' . (!empty($selectedProjectId) ? '?project_id=' . $selectedProjectId : '')) ?>" class="btn btn-outline-secondary rounded-pill shadow-sm" title="Export PDF Timesheet" target="_blank">
+                        <i class="mdi mdi-file-pdf-box text-danger me-1"></i> PDF Timesheet
+                    </a>
+                    <a href="<?= site_url('time/report/csv' . (!empty($selectedProjectId) ? '?project_id=' . $selectedProjectId : '')) ?>" class="btn btn-outline-secondary rounded-pill shadow-sm ms-1" title="Export CSV Data">
+                        <i class="mdi mdi-file-delimited text-success me-1"></i> CSV Export
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- Flash Alerts -->
-<?php if (session()->getFlashdata('success') || session()->getFlashdata('message')): ?>
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="mdi mdi-check-all me-1"></i> <?= session()->getFlashdata('success') ?: session()->getFlashdata('message') ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-<?php endif; ?>
-<?php if (session()->getFlashdata('error')): ?>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <i class="mdi mdi-block-helper me-1"></i> <?= session()->getFlashdata('error') ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-<?php endif; ?>
-
-<!-- Active Timer & Quick Start Section -->
-<div class="row mb-4">
-    <div class="col-12">
-        <!-- Active Timer Card (Shown when running) -->
-        <div class="card shadow-sm border-0 bg-primary-lighten text-primary" id="activeTimerSection" style="display: none;">
-            <div class="card-body p-4">
-                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                    <div>
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <span class="spinner-grow spinner-grow-sm text-danger" role="status"></span>
-                            <h5 class="mb-0 text-primary fw-bold">Live Tracking Active</h5>
+    <!-- Active Timer & Live Stopwatch Hero Banner -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <!-- Active Timer Card (Shown when live session is running) -->
+            <div class="card shadow border-0 bg-dark text-white overflow-hidden position-relative" id="activeTimerSection" style="display: none; background: linear-gradient(135deg, #1e2229 0%, #2a3042 100%);">
+                <div class="card-body p-4 position-relative" style="z-index: 2;">
+                    <div class="row align-items-center g-3">
+                        <div class="col-lg-5">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <span class="badge bg-danger text-white font-12 px-2 py-1 d-inline-flex align-items-center">
+                                    <span class="spinner-grow spinner-grow-sm me-1" style="width: 8px; height: 8px;"></span> RECORDING
+                                </span>
+                                <span class="badge bg-light text-dark font-12" id="activeProjectBadge">Project</span>
+                            </div>
+                            <h4 class="text-white fw-bold mb-1 text-truncate" id="currentTask">Working on Task...</h4>
+                            <p class="text-muted font-12 mb-0" id="sessionStartTime"><i class="mdi mdi-clock-start me-1"></i>Started at --:--</p>
                         </div>
-                        <p class="mb-0 text-muted font-14">Task: <strong class="text-body" id="currentTask">Working on Task...</strong></p>
+                        <div class="col-lg-4 text-center">
+                            <div class="display-4 font-monospace fw-bold text-success text-shadow" id="timerDisplay">00:00:00</div>
+                        </div>
+                        <div class="col-lg-3 text-lg-end">
+                            <button class="btn btn-danger btn-lg rounded-pill px-4 shadow" id="stopTimerBtn">
+                                <i class="mdi mdi-stop-circle me-1"></i> Stop & Record
+                            </button>
+                        </div>
                     </div>
-                    <div class="d-flex flex-wrap align-items-center gap-3">
-                        <div class="display-5 font-monospace fw-bold text-body" id="timerDisplay">00:00:00</div>
-                        <button class="btn btn-danger btn-lg rounded-pill px-4" id="stopTimerBtn">
-                            <i class="mdi mdi-stop-circle me-1"></i> Stop Timer
-                        </button>
+                </div>
+            </div>
+
+            <!-- Quick Start Stopwatch Card -->
+            <div class="card shadow-sm border-0 border-top border-primary border-3" id="quickStartSection">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold font-15 text-dark">
+                        <i class="mdi mdi-play-circle-outline text-success me-2"></i> Instant Live Stopwatch
+                    </h5>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn btn-xs btn-outline-secondary quick-chip-btn" data-preset="15">+15m</button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary quick-chip-btn" data-preset="30">+30m</button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary quick-chip-btn" data-preset="60">+1h</button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary quick-chip-btn" data-preset="120">+2h</button>
+                    </div>
+                </div>
+                <div class="card-body p-3 p-md-4">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-lg-4 col-md-5">
+                            <label for="quickProjectSelect" class="form-label font-12 fw-semibold text-muted mb-1 text-uppercase">Project</label>
+                            <select class="form-select" id="quickProjectSelect">
+                                <option value="">Select Project / Workspace...</option>
+                                <?php foreach ($projects as $proj): ?>
+                                    <option value="<?= $proj['id'] ?>" data-color="<?= esc($proj['color'] ?? '#727cf5') ?>" <?= (!empty($selectedProjectId) && $selectedProjectId == $proj['id']) ? 'selected' : '' ?>>
+                                        <?= esc($proj['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-lg-6 col-md-5">
+                            <label for="quickTaskInput" class="form-label font-12 fw-semibold text-muted mb-1 text-uppercase">Task Description / Worklog</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0"><i class="mdi mdi-pencil-outline text-muted"></i></span>
+                                <input type="text" class="form-control border-start-0" id="quickTaskInput" placeholder="What are you working on right now? (e.g. Bug fixes, API integration, Code review)">
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-2 d-grid">
+                            <button class="btn btn-success fw-bold shadow-sm" id="startTimerBtn" style="height: 38px;">
+                                <i class="mdi mdi-play me-1"></i> Start Timer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4 KPI Metric Cards -->
+    <div class="row g-3 mb-4">
+        <!-- 1. Today's Effort -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card widget-flat h-100 mb-0 shadow-sm border-0 border-top border-info border-3">
+                <div class="card-body">
+                    <div class="float-end">
+                        <div class="avatar-sm bg-info-lighten text-info rounded-circle d-flex align-items-center justify-content-center">
+                            <i class="mdi mdi-clock-check-outline font-22"></i>
+                        </div>
+                    </div>
+                    <h6 class="text-muted text-uppercase font-12 fw-semibold mt-0" title="Today's Time">Today's Worklog</h6>
+                    <h3 class="mt-2 mb-1 fw-bold text-dark" id="todayTime"><?= esc($todayTime ?? '0.0') ?> <span class="font-14 text-muted fw-normal">hrs</span></h3>
+                    <?php 
+                        $targetHours = 8.0;
+                        $todayPercent = min(100, round((($todayTime ?? 0) / $targetHours) * 100));
+                    ?>
+                    <div class="progress progress-sm my-2" style="height: 5px;">
+                        <div class="progress-bar bg-info" role="progressbar" style="width: <?= $todayPercent ?>%"></div>
+                    </div>
+                    <p class="mb-0 text-muted font-11">
+                        <span class="text-info fw-semibold"><?= $todayPercent ?>%</span> of standard 8.0h daily target
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. This Week -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card widget-flat h-100 mb-0 shadow-sm border-0 border-top border-primary border-3">
+                <div class="card-body">
+                    <div class="float-end">
+                        <div class="avatar-sm bg-primary-lighten text-primary rounded-circle d-flex align-items-center justify-content-center">
+                            <i class="mdi mdi-calendar-week font-22"></i>
+                        </div>
+                    </div>
+                    <h6 class="text-muted text-uppercase font-12 fw-semibold mt-0" title="This Week">This Week</h6>
+                    <h3 class="mt-2 mb-1 fw-bold text-primary" id="weekTime"><?= esc($weekTime ?? '0.0') ?> <span class="font-14 text-muted fw-normal">hrs</span></h3>
+                    <div class="d-flex align-items-center gap-1 mt-2 font-12">
+                        <span class="badge bg-primary-lighten text-primary"><i class="mdi mdi-speedometer me-1"></i><?= esc($avgDaily ?? '0.0') ?>h/day avg</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Quick Start Timer Card -->
-        <div class="card shadow-sm border-0" id="quickStartSection">
-            <div class="card-header bg-transparent border-bottom py-3">
-                <h5 class="header-title mb-0">
-                    <i class="uil-play-circle me-1 text-success"></i> Start Live Timer
-                </h5>
+        <!-- 3. This Month -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card widget-flat h-100 mb-0 shadow-sm border-0 border-top border-warning border-3">
+                <div class="card-body">
+                    <div class="float-end">
+                        <div class="avatar-sm bg-warning-lighten text-warning rounded-circle d-flex align-items-center justify-content-center">
+                            <i class="mdi mdi-calendar-month font-22"></i>
+                        </div>
+                    </div>
+                    <h6 class="text-muted text-uppercase font-12 fw-semibold mt-0" title="This Month">This Month</h6>
+                    <h3 class="mt-2 mb-1 fw-bold text-warning" id="monthTime"><?= esc($monthTime ?? '0.0') ?> <span class="font-14 text-muted fw-normal">hrs</span></h3>
+                    <p class="mb-0 text-muted font-11 mt-2">
+                        <span class="text-dark fw-semibold"><i class="mdi mdi-counter me-1"></i><?= esc($totalLogsCount ?? 0) ?></span> total logged sessions
+                    </p>
+                </div>
             </div>
-            <div class="card-body p-4">
-                <div class="row g-3 align-items-center">
-                    <div class="col-lg-4 col-md-5">
-                        <label for="quickProjectSelect" class="form-label font-12 fw-semibold text-muted mb-1">SELECT PROJECT</label>
-                        <select class="form-select" id="quickProjectSelect">
+        </div>
+
+        <!-- 4. Billable Efficiency -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card widget-flat h-100 mb-0 shadow-sm border-0 border-top border-success border-3">
+                <div class="card-body">
+                    <div class="float-end">
+                        <div class="avatar-sm bg-success-lighten text-success rounded-circle d-flex align-items-center justify-content-center">
+                            <i class="mdi mdi-currency-usd font-22"></i>
+                        </div>
+                    </div>
+                    <h6 class="text-muted text-uppercase font-12 fw-semibold mt-0" title="Billable Ratio">Billable Efficiency</h6>
+                    <h3 class="mt-2 mb-1 fw-bold text-success"><?= esc($billableRate ?? 100) ?>%</h3>
+                    <p class="mb-0 text-muted font-11 mt-2">
+                        <span class="text-success fw-semibold"><i class="mdi mdi-check-circle me-1"></i><?= esc($billableHours ?? $totalHours) ?> hrs</span> billable to clients
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Visual Analytics Row (ApexCharts) -->
+    <div class="row g-3 mb-4">
+        <!-- 7-Day Velocity Chart -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+                    <h5 class="mb-0 fw-bold font-15 text-dark">
+                        <i class="mdi mdi-chart-bar text-primary me-2"></i> 7-Day Effort Velocity (Hours Tracked)
+                    </h5>
+                    <span class="badge bg-light text-muted font-11 px-2 py-1">Last 7 Days</span>
+                </div>
+                <div class="card-body p-3">
+                    <div id="effort-velocity-chart" style="min-height: 250px; width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Effort Allocation (Donut Chart) -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+                    <h5 class="mb-0 fw-bold font-15 text-dark">
+                        <i class="mdi mdi-chart-donut text-success me-2"></i> Effort by Project
+                    </h5>
+                </div>
+                <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
+                    <?php if (!empty($chartProjectHours) && array_sum($chartProjectHours) > 0): ?>
+                        <div id="project-effort-donut" style="min-height: 250px; width: 100%;"></div>
+                    <?php else: ?>
+                        <div class="text-center py-4">
+                            <div class="avatar-lg bg-light rounded-circle mx-auto d-flex align-items-center justify-content-center mb-2">
+                                <i class="mdi mdi-chart-pie font-24 text-muted"></i>
+                            </div>
+                            <h6 class="text-muted fw-normal">No project hours logged yet</h6>
+                            <p class="text-muted font-12">Start the live stopwatch or log time manually to see project allocation.</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Worklogs Table & Search Filter -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+            <div class="row align-items-center g-2">
+                <div class="col-md-5">
+                    <h5 class="mb-0 fw-bold font-15 text-dark">
+                        <i class="mdi mdi-format-list-bulleted text-primary me-2"></i> Recorded Worklogs & Timesheets
+                    </h5>
+                </div>
+                <div class="col-md-7">
+                    <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                        <div class="input-group input-group-sm" style="max-width: 250px;">
+                            <span class="input-group-text bg-light border-end-0"><i class="mdi mdi-magnify text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0" id="searchLogsInput" placeholder="Search worklogs...">
+                        </div>
+                        <select class="form-select form-select-sm w-auto" id="filterProjectSelect">
+                            <option value="">All Projects</option>
+                            <?php foreach ($projects as $p): ?>
+                                <option value="<?= strtolower(esc($p['name'])) ?>"><?= esc($p['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 font-13" id="timeEntriesTable">
+                    <thead class="table-light font-12 text-uppercase text-muted">
+                        <tr>
+                            <th class="ps-4">Date & Time Range</th>
+                            <th>Project</th>
+                            <th>Task Description</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="timeLogsTableBody">
+                        <?php if (empty($time_logs)): ?>
+                            <tr id="emptyLogsRow">
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <div class="avatar-lg bg-light rounded-circle mx-auto d-flex align-items-center justify-content-center mb-2">
+                                        <i class="mdi mdi-timer-off-outline font-28 text-muted"></i>
+                                    </div>
+                                    <h6 class="fw-semibold">No time entries recorded yet</h6>
+                                    <p class="text-muted font-12 mb-0">Use the stopwatch above or click "Log Manual Time" to record your work session.</p>
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($time_logs as $log): ?>
+                                <?php 
+                                    $pColor = $log['project_color'] ?? '#727cf5';
+                                    $pName = $log['project_name'] ?? 'General';
+                                    $pSlug = $log['project_slug'] ?? '';
+                                    $durationSec = (int)($log['duration'] ?? 0);
+                                    $hrs = floor($durationSec / 3600);
+                                    $mins = floor(($durationSec % 3600) / 60);
+                                    $durationFormatted = ($hrs > 0 ? "{$hrs}h " : "") . "{$mins}m";
+                                    if ($durationSec < 60) $durationFormatted = "< 1m";
+                                    $isBillable = isset($log['is_billable']) ? (int)$log['is_billable'] : 1;
+                                ?>
+                                <tr class="time-log-row" data-id="<?= $log['id'] ?>" data-project="<?= strtolower(esc($pName)) ?>" data-task="<?= strtolower(esc($log['task_name'])) ?>">
+                                    <td class="ps-4 font-13">
+                                        <span class="fw-semibold text-dark d-block"><?= date('M d, Y', strtotime($log['start_time'])) ?></span>
+                                        <small class="text-muted font-11">
+                                            <i class="mdi mdi-clock-outline me-1"></i><?= date('H:i', strtotime($log['start_time'])) ?> - <?= !empty($log['end_time']) ? date('H:i', strtotime($log['end_time'])) : 'In Progress' ?>
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-xs rounded me-2 d-flex align-items-center justify-content-center text-white font-11 fw-bold" 
+                                                 style="width: 26px; height: 26px; background-color: <?= esc($pColor) ?>;">
+                                                <i class="mdi mdi-folder"></i>
+                                            </div>
+                                            <span class="fw-semibold font-13 text-dark"><?= esc($pName) ?></span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="fw-semibold text-dark d-block"><?= esc($log['task_name']) ?></span>
+                                        <?php if (!empty($log['notes'])): ?>
+                                            <small class="text-muted font-11 text-truncate d-block" style="max-width: 280px;"><?= esc($log['notes']) ?></small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success-lighten text-success font-13 px-2 py-1">
+                                            <i class="mdi mdi-timer-outline me-1"></i><?= $durationFormatted ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php if ($isBillable): ?>
+                                            <span class="badge bg-primary-lighten text-primary font-11"><i class="mdi mdi-check me-1"></i>Billable</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary-lighten text-secondary font-11">Non-billable</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <button type="button" class="btn btn-xs btn-outline-primary btn-retrack me-1" 
+                                                data-project-id="<?= $log['project_id'] ?? '' ?>" 
+                                                data-task-name="<?= esc($log['task_name']) ?>" 
+                                                title="Re-track this task">
+                                            <i class="mdi mdi-play"></i> Re-track
+                                        </button>
+                                        <button type="button" class="btn btn-xs btn-outline-danger btn-delete-log" 
+                                                data-id="<?= $log['id'] ?>" 
+                                                title="Delete this worklog">
+                                            <i class="mdi mdi-trash-can-outline"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php if (isset($pager)): ?>
+            <div class="card-footer bg-white border-top py-2 d-flex justify-content-between align-items-center">
+                <small class="text-muted font-12">Showing paginated worklogs</small>
+                <div><?= $pager->links('time_logs', 'bootstrap_full') ?></div>
+            </div>
+        <?php endif; ?>
+    </div>
+
+</div>
+
+<!-- Manual Entry Modal -->
+<div class="modal fade" id="manualEntryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="mdi mdi-plus-circle text-primary me-2"></i> Log Manual Time Session
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="<?= site_url('time/manual') ?>" method="POST" id="manualTimeForm">
+                <?= csrf_field() ?>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="manual_project_id" class="form-label font-13 fw-semibold">Target Project <span class="text-danger">*</span></label>
+                        <select class="form-select" id="manual_project_id" name="project_id" required>
                             <option value="">Select Project...</option>
                             <?php foreach ($projects as $proj): ?>
                                 <option value="<?= $proj['id'] ?>" <?= (!empty($selectedProjectId) && $selectedProjectId == $proj['id']) ? 'selected' : '' ?>>
@@ -78,518 +383,508 @@
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-lg-6 col-md-5">
-                        <label for="quickTaskInput" class="form-label font-12 fw-semibold text-muted mb-1">TASK DESCRIPTION</label>
-                        <input type="text" class="form-control" id="quickTaskInput" placeholder="What are you working on right now?">
-                    </div>
-                    <div class="col-lg-2 col-md-2 d-grid align-self-end">
-                        <button class="btn btn-success" id="startTimerBtn" style="height: 38px;">
-                            <i class="mdi mdi-play me-1"></i> Start
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Time Tracking Metrics -->
-<div class="row g-3 mb-4">
-    <div class="col-md-6 col-xl-3">
-        <div class="card widget-flat h-100 shadow-sm border-0">
-            <div class="card-body">
-                <div class="float-end">
-                    <div class="avatar-sm bg-info-lighten text-info rounded d-flex align-items-center justify-content-center">
-                        <i class="mdi mdi-clock-check-outline font-22"></i>
-                    </div>
-                </div>
-                <h6 class="text-muted text-uppercase mt-0 font-12 fw-semibold">Today</h6>
-                <h3 class="my-2" id="todayTime"><?= esc($todayTime ?? '0.0') ?> <span class="font-14 text-muted fw-normal">hrs</span></h3>
-                <p class="mb-0 text-muted font-13">
-                    <span class="text-info me-1"><i class="mdi mdi-calendar-today"></i></span>
-                    <span>Logged today</span>
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6 col-xl-3">
-        <div class="card widget-flat h-100 shadow-sm border-0">
-            <div class="card-body">
-                <div class="float-end">
-                    <div class="avatar-sm bg-primary-lighten text-primary rounded d-flex align-items-center justify-content-center">
-                        <i class="mdi mdi-calendar-week font-22"></i>
-                    </div>
-                </div>
-                <h6 class="text-muted text-uppercase mt-0 font-12 fw-semibold">This Week</h6>
-                <h3 class="my-2 text-primary" id="weekTime"><?= esc($weekTime ?? '0.0') ?> <span class="font-14 text-muted fw-normal">hrs</span></h3>
-                <p class="mb-0 text-muted font-13">
-                    <span class="text-primary me-1"><i class="mdi mdi-timeline-clock"></i></span>
-                    <span>Current week</span>
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6 col-xl-3">
-        <div class="card widget-flat h-100 shadow-sm border-0">
-            <div class="card-body">
-                <div class="float-end">
-                    <div class="avatar-sm bg-warning-lighten text-warning rounded d-flex align-items-center justify-content-center">
-                        <i class="mdi mdi-calendar-month font-22"></i>
-                    </div>
-                </div>
-                <h6 class="text-muted text-uppercase mt-0 font-12 fw-semibold">This Month</h6>
-                <h3 class="my-2 text-warning" id="monthTime"><?= esc($monthTime ?? '0.0') ?> <span class="font-14 text-muted fw-normal">hrs</span></h3>
-                <p class="mb-0 text-muted font-13">
-                    <span class="text-warning me-1"><i class="mdi mdi-calendar-range"></i></span>
-                    <span>Monthly total</span>
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6 col-xl-3">
-        <div class="card widget-flat h-100 shadow-sm border-0">
-            <div class="card-body">
-                <div class="float-end">
-                    <div class="avatar-sm bg-success-lighten text-success rounded d-flex align-items-center justify-content-center">
-                        <i class="mdi mdi-speedometer font-22"></i>
-                    </div>
-                </div>
-                <h6 class="text-muted text-uppercase mt-0 font-12 fw-semibold">Avg Daily</h6>
-                <h3 class="my-2 text-success" id="avgDaily"><?= esc($avgDaily ?? '0.0') ?> <span class="font-14 text-muted fw-normal">hrs</span></h3>
-                <p class="mb-0 text-muted font-13">
-                    <span class="text-success me-1"><i class="mdi mdi-trending-up"></i></span>
-                    <span>Daily velocity</span>
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Time Logs & Reports -->
-<div class="row g-4 mb-4">
-    <!-- Time Entries Table -->
-    <div class="col-lg-8">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
-                <h5 class="header-title mb-0">
-                    <i class="uil-history me-1 text-primary"></i> Recent Time Entries
-                </h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover table-centered mb-0" id="timeEntriesTable">
-                        <thead class="table-light font-12 text-uppercase">
-                            <tr>
-                                <th>Date / Time</th>
-                                <th>Project</th>
-                                <th>Task Description</th>
-                                <th>Duration</th>
-                            </tr>
-                        <tbody id="timeLogsTableBody">
-                        <?php if (empty($time_logs)): ?>
-                            <tr id="emptyLogsRow">
-                                <td colspan="4" class="text-center py-4 text-muted">
-                                    <i class="mdi mdi-timer-off-outline font-24 d-block mb-1"></i>
-                                    No time entries recorded yet.
-                                </td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($time_logs as $log): ?>
-                            <tr>
-                                <td class="font-13">
-                                    <span class="fw-semibold text-body"><?= date('M d, Y', strtotime($log['start_time'])) ?></span><br>
-                                    <span class="text-muted font-12">
-                                        <?= date('H:i', strtotime($log['start_time'])) ?> - <?= !empty($log['end_time']) ? date('H:i', strtotime($log['end_time'])) : 'In Progress' ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar-xs rounded-circle me-2 d-flex align-items-center justify-content-center text-white font-10" 
-                                             style="width: 24px; height: 24px; background-color: <?= esc($log['project_color'] ?? '#3e60d5') ?>;">
-                                            <i class="fas fa-folder"></i>
-                                        </div>
-                                        <span class="fw-semibold font-13 text-body"><?= esc($log['project_name'] ?? 'General') ?></span>
-                                    </div>
-                                </td>
-                                <td class="font-13 text-body"><?= esc($log['task_name']) ?></td>
-                                <td>
-                                    <span class="badge bg-success-lighten text-success font-13">
-                                        <?= round(($log['duration'] ?? 0) / 3600, 2) ?> hrs
-                                    </span>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <?php if (isset($pager)): ?>
-            <div class="card-footer bg-transparent border-top py-2">
-                <?= $pager->links('time_logs', 'bootstrap_full') ?>
-            </div>
-            <?php endif; ?>
-        </div>
-    </div>
-
-    <!-- Project Breakdown & Reports -->
-    <div class="col-lg-4">
-        <div class="card shadow-sm border-0 h-100" id="projectBreakdownCard">
-            <div class="card-header bg-transparent border-bottom py-3">
-                <h5 class="header-title mb-0">
-                    <i class="uil-chart-pie me-1 text-primary"></i> Project Time Breakdown
-                </h5>
-            </div>
-            <div class="card-body p-3">
-                <div class="time-breakdown d-flex flex-column gap-3">
-                    <?php if (empty($project_breakdown)): ?>
-                        <p class="text-center py-4 text-muted">No time logged for projects yet.</p>
-                    <?php else: ?>
-                        <?php 
-                        $totalDuration = array_sum(array_column($project_breakdown, 'total_duration'));
-                        foreach ($project_breakdown as $item): 
-                            $percent = ($totalDuration > 0) ? round(($item['total_duration'] / $totalDuration) * 100) : 0;
-                        ?>
-                        <div class="breakdown-item">
-                            <div class="d-flex justify-content-between align-items-center mb-1 font-13">
-                                <span class="fw-semibold text-body"><?= esc($item['name'] ?? 'General') ?></span>
-                                <span class="text-muted"><?= round(($item['total_duration'] ?? 0) / 3600, 1) ?> hrs (<?= $percent ?>%)</span>
-                            </div>
-                            <div class="progress" style="height: 6px;">
-                                <div class="progress-bar rounded" style="width: <?= $percent ?>%; background-color: <?= esc($item['color'] ?? '#3e60d5') ?>;"></div>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php if (($breakdown_total_pages ?? 1) > 1): ?>
-            <div class="card-footer bg-transparent border-top py-2 d-flex justify-content-between align-items-center">
-                <button class="btn btn-sm btn-outline-secondary <?= $breakdown_current_page <= 1 ? 'disabled' : '' ?>" 
-                        onclick="window.location.search = '?page_breakdown=<?= $breakdown_current_page - 1 ?>'">
-                    <i class="mdi mdi-chevron-left me-1"></i> Prev
-                </button>
-                <span class="font-12 text-muted">Page <?= $breakdown_current_page ?> of <?= $breakdown_total_pages ?></span>
-                <button class="btn btn-sm btn-outline-secondary <?= $breakdown_current_page >= $breakdown_total_pages ? 'disabled' : '' ?>"
-                        onclick="window.location.search = '?page_breakdown=<?= $breakdown_current_page + 1 ?>'">
-                    Next <i class="mdi mdi-chevron-right ms-1"></i>
-                </button>
-            </div>
-            <?php endif; ?>
-        </div>
-    </div>
-</div>
-
-<!-- Manual Entry Modal -->
-<div class="modal fade" id="manualEntryModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title text-white"><i class="mdi mdi-clock-outline me-1"></i> Manual Time Entry</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-4">
-                <form id="manualEntryForm" action="<?= site_url('time/manual') ?>" method="POST">
-                    <?= csrf_field() ?>
                     <div class="mb-3">
-                        <label for="entryProject" class="form-label fw-semibold">Project <span class="text-danger">*</span></label>
-                        <select class="form-select" id="entryProject" name="project_id" required>
-                            <option value="">Select Project</option>
-                            <?php foreach ($projects as $project): ?>
-                                <option value="<?= $project['id'] ?>" <?= (!empty($selectedProjectId) && $selectedProjectId == $project['id']) ? 'selected' : '' ?>>
-                                    <?= esc($project['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label for="manual_task_name" class="form-label font-13 fw-semibold">Task Description <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="manual_task_name" name="task_name" placeholder="What task did you accomplish?" required>
                     </div>
-                    <div class="mb-3">
-                        <label for="entryTask" class="form-label fw-semibold">Task Description <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="entryTask" name="task_name" placeholder="What did you work on?" required>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label for="entryDate" class="form-label fw-semibold">Date</label>
-                            <input type="date" class="form-control" id="entryDate" name="date" value="<?= date('Y-m-d') ?>">
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label for="manual_date" class="form-label font-13 fw-semibold">Date</label>
+                            <input type="date" class="form-control" id="manual_date" name="date" value="<?= date('Y-m-d') ?>" required>
                         </div>
-                        <div class="col-md-6">
-                            <label for="entryDuration" class="form-label fw-semibold">Duration (Hours)</label>
-                            <div class="input-group">
-                                <input type="number" class="form-control" id="entryDuration" name="duration" value="1.0" step="0.25" min="0.25">
-                                <span class="input-group-text">hrs</span>
-                            </div>
+                        <div class="col-6">
+                            <label for="manual_duration" class="form-label font-13 fw-semibold">Duration (Hours) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="manual_duration" name="duration" step="0.25" min="0.1" value="1.0" required>
                         </div>
                     </div>
+
+                    <!-- Quick Preset Duration Pills -->
                     <div class="mb-3">
-                        <label for="entryNotes" class="form-label fw-semibold">Notes (Optional)</label>
-                        <textarea class="form-control" id="entryNotes" name="notes" rows="2" placeholder="Additional context about this session..."></textarea>
+                        <label class="form-label font-12 text-muted mb-1">Quick Duration Presets:</label>
+                        <div class="d-flex flex-wrap gap-1">
+                            <button type="button" class="btn btn-xs btn-outline-secondary modal-chip-btn" data-hours="0.25">15m</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary modal-chip-btn" data-hours="0.5">30m</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary modal-chip-btn" data-hours="1.0">1h</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary modal-chip-btn" data-hours="2.0">2h</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary modal-chip-btn" data-hours="4.0">4h</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary modal-chip-btn" data-hours="8.0">8h</button>
+                        </div>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveEntryBtn">Save Log</button>
-            </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="manual_is_billable" name="is_billable" value="1" checked>
+                            <label class="form-check-label font-13 fw-semibold" for="manual_is_billable">Billable session to client</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label for="manual_notes" class="form-label font-13 fw-semibold">Worklog Notes / Details (Optional)</label>
+                        <textarea class="form-control" id="manual_notes" name="notes" rows="2" placeholder="Add any details, PR numbers, or context..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveManualTimeBtn">
+                        <i class="mdi mdi-check me-1"></i> Save Worklog
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
-<!-- Toast Container -->
-<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
-<?= $this->endSection() ?>
-
-<?= $this->section('js') ?>
 <script>
-$(document).ready(function() {
+document.addEventListener('DOMContentLoaded', function() {
+    function getCsrfInfo() {
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') 
+                   || document.querySelector('input[name="csrf_token"]')?.value 
+                   || '';
+        const header = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content') 
+                    || 'X-CSRF-TOKEN';
+        return { token, header };
+    }
+
+    // 1. ApexCharts - 7-Day Velocity
+    const trendLabels = <?= json_encode($trendLabels) ?>;
+    const trendHours = <?= json_encode($trendHours) ?>;
+
+    if (document.getElementById('effort-velocity-chart')) {
+        const velocityOptions = {
+            series: [{
+                name: 'Hours Tracked',
+                data: trendHours
+            }],
+            chart: {
+                type: 'bar',
+                height: 250,
+                toolbar: { show: false },
+                fontFamily: 'inherit'
+            },
+            plotOptions: {
+                bar: {
+                    borderRadius: 6,
+                    columnWidth: '40%',
+                    distributed: true
+                }
+            },
+            colors: ['#727cf5', '#0acf97', '#fa5c7c', '#ffbc00', '#39afd1', '#727cf5', '#0acf97'],
+            dataLabels: { enabled: false },
+            legend: { show: false },
+            xaxis: {
+                categories: trendLabels,
+                labels: { style: { fontSize: '11px', colors: '#6c757d' } },
+                axisBorder: { show: false },
+                axisTicks: { show: false }
+            },
+            yaxis: {
+                min: 0,
+                forceNiceScale: true,
+                labels: {
+                    formatter: function(val) { return val + 'h'; },
+                    style: { fontSize: '11px', colors: '#6c757d' }
+                }
+            },
+            grid: {
+                borderColor: '#f1f3fa',
+                strokeDashArray: 4
+            }
+        };
+
+        const velocityChart = new ApexCharts(document.getElementById('effort-velocity-chart'), velocityOptions);
+        velocityChart.render();
+    }
+
+    // 2. ApexCharts - Project Effort Donut
+    const projectLabels = <?= json_encode($chartProjectLabels ?? []) ?>;
+    const projectHours = <?= json_encode($chartProjectHours ?? []) ?>;
+    const projectColors = <?= json_encode($chartProjectColors ?? []) ?>;
+
+    if (document.getElementById('project-effort-donut') && projectHours.length > 0 && projectHours.some(h => h > 0)) {
+        const donutOptions = {
+            series: projectHours,
+            labels: projectLabels,
+            chart: {
+                type: 'donut',
+                height: 250,
+                fontFamily: 'inherit'
+            },
+            colors: projectColors.length > 0 ? projectColors : ['#727cf5', '#0acf97', '#ffbc00', '#fa5c7c', '#39afd1'],
+            legend: {
+                position: 'bottom',
+                fontSize: '11px',
+                markers: { radius: 10 }
+            },
+            dataLabels: { enabled: false },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '70%',
+                        labels: {
+                            show: true,
+                            total: {
+                                show: true,
+                                label: 'Total Hours',
+                                fontSize: '11px',
+                                color: '#6c757d',
+                                formatter: function(w) {
+                                    return w.globals.seriesTotals.reduce((a, b) => a + b, 0).toFixed(1) + 'h';
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        const donutChart = new ApexCharts(document.getElementById('project-effort-donut'), donutOptions);
+        donutChart.render();
+    }
+
+    // 3. Live Stopwatch Logic
     let timerInterval = null;
-    let currentLogId = localStorage.getItem('active_timer_log_id');
-    let startTimestamp = localStorage.getItem('active_timer_start');
+    let startTime = null;
+    let activeLogId = localStorage.getItem('active_time_log_id');
+    let activeTaskName = localStorage.getItem('active_task_name');
+    let activeProjectName = localStorage.getItem('active_project_name');
+    let activeStartTimestamp = localStorage.getItem('active_start_time');
 
-    if (currentLogId && startTimestamp) {
-        resumeActiveTimer();
+    const activeSection = document.getElementById('activeTimerSection');
+    const quickSection = document.getElementById('quickStartSection');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const currentTaskEl = document.getElementById('currentTask');
+    const activeProjBadge = document.getElementById('activeProjectBadge');
+    const sessionStartEl = document.getElementById('sessionStartTime');
+
+    function updateTimerDisplay() {
+        if (!startTime) return;
+        const now = new Date().getTime();
+        const diff = Math.max(0, Math.floor((now - startTime) / 1000));
+        const hours = Math.floor(diff / 3600).toString().padStart(2, '0');
+        const minutes = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
+        const seconds = (diff % 60).toString().padStart(2, '0');
+        if (timerDisplay) timerDisplay.textContent = `${hours}:${minutes}:${seconds}`;
     }
 
-    // Start timer
-    $('#startTimerBtn').on('click', async function() {
-        const project = $('#quickProjectSelect').val();
-        const task = $('#quickTaskInput').val().trim();
-        const projectName = $('#quickProjectSelect option:selected').text().trim() || 'General';
+    if (activeLogId && activeStartTimestamp) {
+        startTime = parseInt(activeStartTimestamp);
+        if (activeSection) activeSection.style.display = 'block';
+        if (quickSection) quickSection.style.display = 'none';
+        if (currentTaskEl) currentTaskEl.textContent = activeTaskName || 'Active Session';
+        if (activeProjBadge) activeProjBadge.textContent = activeProjectName || 'Project';
+        if (sessionStartEl) sessionStartEl.innerHTML = `<i class="mdi mdi-clock-start me-1"></i>Started at ${new Date(startTime).toLocaleTimeString()}`;
+        timerInterval = setInterval(updateTimerDisplay, 1000);
+        updateTimerDisplay();
+    }
 
-        if (!project || !task) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Required Information',
-                text: 'Please select a project and enter a task description before starting the timer.'
+    // Quick Start Timer Button
+    const startTimerBtn = document.getElementById('startTimerBtn');
+    if (startTimerBtn) {
+        startTimerBtn.addEventListener('click', function() {
+            const projectSelect = document.getElementById('quickProjectSelect');
+            const taskInput = document.getElementById('quickTaskInput');
+            const projectId = projectSelect.value;
+            const taskName = taskInput.value.trim() || 'Work session';
+            const selectedOpt = projectSelect.options[projectSelect.selectedIndex];
+            const projectName = selectedOpt ? selectedOpt.text.trim() : 'Project';
+
+            const { token, header } = getCsrfInfo();
+            const fd = new FormData();
+            if (projectId) fd.append('project_id', projectId);
+            fd.append('task_name', taskName);
+            if (token) fd.append('csrf_token', token);
+
+            const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+            if (token && header) headers[header] = token;
+
+            startTimerBtn.disabled = true;
+            startTimerBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+            fetch('<?= site_url('time/start') ?>', {
+                method: 'POST',
+                body: fd,
+                headers: headers
+            })
+            .then(r => r.json())
+            .then(res => {
+                startTimerBtn.disabled = false;
+                startTimerBtn.innerHTML = '<i class="mdi mdi-play me-1"></i> Start Timer';
+
+                if (res.status === 'success' || res.success) {
+                    activeLogId = res.id;
+                    activeTaskName = taskName;
+                    activeProjectName = projectName;
+                    startTime = new Date().getTime();
+
+                    localStorage.setItem('active_time_log_id', activeLogId);
+                    localStorage.setItem('active_task_name', activeTaskName);
+                    localStorage.setItem('active_project_name', activeProjectName);
+                    localStorage.setItem('active_start_time', startTime.toString());
+
+                    if (activeSection) activeSection.style.display = 'block';
+                    if (quickSection) quickSection.style.display = 'none';
+                    if (currentTaskEl) currentTaskEl.textContent = activeTaskName;
+                    if (activeProjBadge) activeProjBadge.textContent = activeProjectName;
+                    if (sessionStartEl) sessionStartEl.innerHTML = `<i class="mdi mdi-clock-start me-1"></i>Started at ${new Date(startTime).toLocaleTimeString()}`;
+
+                    clearInterval(timerInterval);
+                    timerInterval = setInterval(updateTimerDisplay, 1000);
+                    updateTimerDisplay();
+
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Timer started for "${taskName}"`, timer: 2000, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Could not start timer.' });
+                }
+            })
+            .catch(err => {
+                startTimerBtn.disabled = false;
+                startTimerBtn.innerHTML = '<i class="mdi mdi-play me-1"></i> Start Timer';
+                Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Request failed.' });
             });
-            return;
-        }
-
-        const btn = $(this);
-        btn.prop('disabled', true).html('<i class="mdi mdi-spin mdi-loading me-1"></i> Starting...');
-
-        const response = await dispatchAsyncAction('<?= site_url('time/start') ?>', {
-            project_id: project,
-            task_name: task
-        });
-
-        btn.prop('disabled', false).html('<i class="mdi mdi-play me-1"></i> Start');
-
-        if (response && (response.status === 'success' || response.success)) {
-            currentLogId = response.id;
-            startTimestamp = Date.now();
-            
-            localStorage.setItem('active_timer_log_id', currentLogId);
-            localStorage.setItem('active_timer_start', startTimestamp);
-            localStorage.setItem('active_timer_task', task);
-            localStorage.setItem('active_timer_project_name', response.project_name || projectName);
-
-            showActiveTimerUI(task, 0);
-            startTimerInterval(0);
-            window.dispatchEvent(new Event('active_timer_updated'));
-
-            if (typeof Toast !== 'undefined') {
-                Toast.fire({ icon: 'success', title: `Timer started for "${task}"` });
-            }
-        } else {
-            Swal.fire({ icon: 'error', title: 'Error', text: response.message || 'Failed to start timer.' });
-        }
-    });
-
-    // Stop timer with zero-reload
-    $('#stopTimerBtn').on('click', async function() {
-        if (!currentLogId) return;
-
-        const btn = $(this);
-        btn.prop('disabled', true).html('<i class="mdi mdi-spin mdi-loading me-1"></i> Stopping...');
-
-        const res = await dispatchAsyncAction('<?= site_url('time/stop') ?>/' + currentLogId);
-        btn.prop('disabled', false).html('<i class="mdi mdi-stop-circle me-1"></i> Stop Timer');
-
-        if (res && (res.status === 'success' || res.success)) {
-            clearInterval(timerInterval);
-            const task = localStorage.getItem('active_timer_task') || 'Work session';
-            const durationSec = res.duration || Math.floor((Date.now() - parseInt(startTimestamp || Date.now(), 10)) / 1000);
-            const durationHrs = (durationSec / 3600).toFixed(2);
-            const projectName = localStorage.getItem('active_timer_project_name') || 'Current Project';
-
-            localStorage.removeItem('active_timer_log_id');
-            localStorage.removeItem('active_timer_start');
-            localStorage.removeItem('active_timer_task');
-            localStorage.removeItem('active_timer_project_name');
-            currentLogId = null;
-            startTimestamp = null;
-
-            $('#activeTimerSection').hide();
-            $('#quickStartSection').show();
-            window.dispatchEvent(new Event('active_timer_stopped'));
-
-            $('#emptyLogsRow').remove();
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-            const newRow = `
-                <tr>
-                    <td class="font-13">
-                        <span class="fw-semibold text-body">${dateStr}</span><br>
-                        <span class="text-muted font-12">${timeStr}</span>
-                    </td>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <div class="avatar-xs rounded-circle me-2 d-flex align-items-center justify-content-center text-white font-10" style="width: 24px; height: 24px; background-color: #3e60d5;">
-                                <i class="fas fa-folder"></i>
-                            </div>
-                            <span class="fw-semibold font-13 text-body">${$('<div>').text(projectName).html()}</span>
-                        </div>
-                    </td>
-                    <td class="font-13 text-body">${$('<div>').text(task).html()}</td>
-                    <td>
-                        <span class="badge bg-success-lighten text-success font-13">${durationHrs} hrs</span>
-                    </td>
-                </tr>`;
-            $('#timeLogsTableBody').prepend(newRow);
-
-            if (typeof Toast !== 'undefined') {
-                Toast.fire({ icon: 'success', title: `Recorded ${durationHrs} hrs for "${task}"` });
-            }
-        }
-    });
-
-    window.addEventListener('active_timer_stopped', function() {
-        if (timerInterval) clearInterval(timerInterval);
-        currentLogId = null;
-        startTimestamp = null;
-        $('#activeTimerSection').hide();
-        $('#quickStartSection').show();
-    });
-
-    // Manual entry form submission
-    $('#manualEntryForm').on('submit', async function(e) {
-        e.preventDefault();
-        const form = this;
-        const btn = $('#saveEntryBtn');
-        btn.prop('disabled', true).html('<i class="mdi mdi-spin mdi-loading me-1"></i> Saving...');
-
-        const formData = new FormData(form);
-        const projectName = $('#entryProject option:selected').text().trim() || 'General';
-        const taskName = formData.get('task_name') || 'Work session';
-        const duration = parseFloat(formData.get('duration') || 1.0).toFixed(2);
-        const dateVal = formData.get('date') || '';
-
-        const res = await dispatchAsyncAction(form.action, formData);
-        btn.prop('disabled', false).text('Save Log');
-
-        if (res && (res.success || res.status === 'success')) {
-            const modalEl = document.getElementById('manualEntryModal');
-            if (modalEl) {
-                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-                if (modal) modal.hide();
-            }
-            
-            // Clean up any stale backdrops and restore scrolling
-            setTimeout(() => {
-                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-                document.body.classList.remove('modal-open');
-                document.body.style.removeProperty('overflow');
-                document.body.style.removeProperty('padding-right');
-            }, 200);
-
-            form.reset();
-
-            $('#emptyLogsRow').remove();
-            const pName = res.project_name || projectName;
-            const pColor = res.project_color || '#3e60d5';
-
-            const newRow = `
-                <tr>
-                    <td class="font-13">
-                        <span class="fw-semibold text-body">${dateVal || 'Today'}</span><br>
-                        <span class="text-muted font-12">Logged</span>
-                    </td>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <div class="avatar-xs rounded-circle me-2 d-flex align-items-center justify-content-center text-white font-10" style="width: 24px; height: 24px; background-color: ${pColor};">
-                                <i class="fas fa-folder"></i>
-                            </div>
-                            <span class="fw-semibold font-13 text-body">${$('<div>').text(pName).html()}</span>
-                        </div>
-                    </td>
-                    <td class="font-13 text-body">${$('<div>').text(taskName).html()}</td>
-                    <td>
-                        <span class="badge bg-success-lighten text-success font-13">${duration} hrs</span>
-                    </td>
-                </tr>`;
-            $('#timeLogsTableBody').prepend(newRow);
-
-            if (typeof Toast !== 'undefined') {
-                Toast.fire({ icon: 'success', title: `Manual log recorded (${duration} hrs)` });
-            }
-        } else {
-            Swal.fire({ icon: 'error', title: 'Error', text: (res && res.message) ? res.message : 'Failed to save log.' });
-        }
-    });
-
-    $('#saveEntryBtn').on('click', function() {
-        $('#manualEntryForm').submit();
-    });
-
-    function resumeActiveTimer() {
-        const task = localStorage.getItem('active_timer_task');
-        const elapsedSeconds = Math.floor((Date.now() - parseInt(startTimestamp)) / 1000);
-        showActiveTimerUI(task, elapsedSeconds);
-        startTimerInterval(elapsedSeconds);
-    }
-
-    function showActiveTimerUI(task, initialSeconds) {
-        $('#quickStartSection').hide();
-        $('#activeTimerSection').show();
-        $('#currentTask').text(task);
-        updateTimerDisplay(initialSeconds);
-    }
-
-    function startTimerInterval(initialSeconds) {
-        let seconds = initialSeconds;
-        clearInterval(timerInterval);
-        timerInterval = setInterval(function() {
-            seconds++;
-            updateTimerDisplay(seconds);
-        }, 1000);
-    }
-
-    function updateTimerDisplay(totalSeconds) {
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-
-        $('#timerDisplay').text(
-            `${hours.toString().padStart(2, '0')}:` +
-            `${minutes.toString().padStart(2, '0')}:` +
-            `${seconds.toString().padStart(2, '0')}`
-        );
-    }
-
-    function showToast(message, type = 'info') {
-        const toastId = 'toast-' + Date.now();
-        const toastHtml = `
-            <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        ${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-            </div>
-        `;
-        $('.toast-container').append(toastHtml);
-        const toastEl = document.getElementById(toastId);
-        const toast = new bootstrap.Toast(toastEl);
-        toast.show();
-        $(toastEl).on('hidden.bs.toast', function() {
-            $(this).remove();
         });
     }
+
+    // Stop Timer Button
+    const stopTimerBtn = document.getElementById('stopTimerBtn');
+    if (stopTimerBtn) {
+        stopTimerBtn.addEventListener('click', function() {
+            if (!activeLogId) return;
+
+            stopTimerBtn.disabled = true;
+            stopTimerBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Recording...';
+
+            const { token, header } = getCsrfInfo();
+            const fd = new FormData();
+            if (token) fd.append('csrf_token', token);
+
+            const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+            if (token && header) headers[header] = token;
+
+            fetch('<?= site_url('time/stop/') ?>' + activeLogId, {
+                method: 'POST',
+                body: fd,
+                headers: headers
+            })
+            .then(r => r.json())
+            .then(res => {
+                stopTimerBtn.disabled = false;
+                stopTimerBtn.innerHTML = '<i class="mdi mdi-stop-circle me-1"></i> Stop & Record';
+
+                if (res.status === 'success' || res.success) {
+                    clearInterval(timerInterval);
+                    localStorage.removeItem('active_time_log_id');
+                    localStorage.removeItem('active_task_name');
+                    localStorage.removeItem('active_project_name');
+                    localStorage.removeItem('active_start_time');
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Worklog Recorded!',
+                        text: res.message || 'Session logged successfully.',
+                        confirmButtonColor: '#727cf5'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Could not stop timer.' });
+                }
+            })
+            .catch(err => {
+                stopTimerBtn.disabled = false;
+                stopTimerBtn.innerHTML = '<i class="mdi mdi-stop-circle me-1"></i> Stop & Record';
+                Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Request failed.' });
+            });
+        });
+    }
+
+    // 4. Quick Preset Chips (Stopwatch bar)
+    document.querySelectorAll('.quick-chip-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const minutes = parseInt(this.getAttribute('data-preset') || '30');
+            const projectSelect = document.getElementById('quickProjectSelect');
+            const taskInput = document.getElementById('quickTaskInput');
+
+            const modal = new bootstrap.Modal(document.getElementById('manualEntryModal'));
+            document.getElementById('manual_duration').value = (minutes / 60).toFixed(2);
+            if (projectSelect.value) {
+                document.getElementById('manual_project_id').value = projectSelect.value;
+            }
+            if (taskInput.value) {
+                document.getElementById('manual_task_name').value = taskInput.value;
+            }
+            modal.show();
+        });
+    });
+
+    // 5. Modal Preset Chips
+    document.querySelectorAll('.modal-chip-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('manual_duration').value = this.getAttribute('data-hours');
+            document.querySelectorAll('.modal-chip-btn').forEach(b => b.classList.remove('btn-secondary'));
+            this.classList.add('btn-secondary');
+        });
+    });
+
+    // 6. Manual Log Form Submit (AJAX)
+    const manualForm = document.getElementById('manualTimeForm');
+    if (manualForm) {
+        manualForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('saveManualTimeBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+            const fd = new FormData(manualForm);
+            fetch(manualForm.action, {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(res => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="mdi mdi-check me-1"></i> Save Worklog';
+
+                if (res.status === 'success' || res.success) {
+                    const modalEl = document.getElementById('manualEntryModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: res.message || 'Worklog saved.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    setTimeout(() => window.location.reload(), 800);
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Failed to save log.' });
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="mdi mdi-check me-1"></i> Save Worklog';
+                Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Request failed.' });
+            });
+        });
+    }
+
+    // 7. Search & Project Filter on Table
+    const searchInput = document.getElementById('searchLogsInput');
+    const filterProj = document.getElementById('filterProjectSelect');
+
+    function filterTable() {
+        const query = (searchInput ? searchInput.value : '').toLowerCase();
+        const selectedProj = (filterProj ? filterProj.value : '').toLowerCase();
+        const rows = document.querySelectorAll('.time-log-row');
+
+        rows.forEach(row => {
+            const task = row.getAttribute('data-task') || '';
+            const proj = row.getAttribute('data-project') || '';
+            const matchesQuery = task.includes(query) || proj.includes(query);
+            const matchesProj = !selectedProj || proj === selectedProj;
+
+            row.style.display = (matchesQuery && matchesProj) ? '' : 'none';
+        });
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterTable);
+    if (filterProj) filterProj.addEventListener('change', filterTable);
+
+    // 8. Re-track Task Button
+    document.addEventListener('click', function(e) {
+        const retrackBtn = e.target.closest('.btn-retrack');
+        if (!retrackBtn) return;
+
+        const projectId = retrackBtn.getAttribute('data-project-id');
+        const taskName = retrackBtn.getAttribute('data-task-name');
+
+        if (projectId) {
+            const projSelect = document.getElementById('quickProjectSelect');
+            if (projSelect) projSelect.value = projectId;
+        }
+        if (taskName) {
+            const taskInput = document.getElementById('quickTaskInput');
+            if (taskInput) taskInput.value = taskName;
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const startBtn = document.getElementById('startTimerBtn');
+        if (startBtn) startBtn.click();
+    });
+
+    // 9. AJAX Delete Time Log
+    document.addEventListener('click', function(e) {
+        const delBtn = e.target.closest('.btn-delete-log');
+        if (!delBtn) return;
+
+        const logId = delBtn.getAttribute('data-id');
+        if (!logId) return;
+
+        Swal.fire({
+            title: 'Delete Worklog?',
+            text: 'Are you sure you want to permanently delete this logged work session?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#fa5c7c',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="mdi mdi-trash-can me-1"></i> Yes, delete log'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const tr = delBtn.closest('tr');
+                const origHtml = delBtn.innerHTML;
+                delBtn.disabled = true;
+                delBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+                const { token, header } = getCsrfInfo();
+                const fd = new FormData();
+                if (token) fd.append('csrf_token', token);
+
+                const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+                if (token && header) headers[header] = token;
+
+                fetch('<?= site_url('time/delete/') ?>' + logId, {
+                    method: 'POST',
+                    body: fd,
+                    headers: headers
+                })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status === 'success' || res.success) {
+                        if (tr) {
+                            tr.style.transition = 'all 0.3s ease';
+                            tr.style.opacity = '0';
+                            tr.style.transform = 'scale(0.95)';
+                            setTimeout(() => {
+                                tr.remove();
+                                const rows = document.querySelectorAll('.time-log-row');
+                                if (rows.length === 0) {
+                                    const tbody = document.getElementById('timeLogsTableBody');
+                                    if (tbody) {
+                                        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">All logs deleted.</td></tr>`;
+                                    }
+                                }
+                            }, 300);
+                        }
+                        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: res.message || 'Log deleted.', timer: 2000, showConfirmButton: false });
+                    } else {
+                        delBtn.disabled = false;
+                        delBtn.innerHTML = origHtml;
+                        Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Could not delete log.' });
+                    }
+                })
+                .catch(err => {
+                    delBtn.disabled = false;
+                    delBtn.innerHTML = origHtml;
+                    Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Request failed.' });
+                });
+            }
+        });
+    });
 });
 </script>
 

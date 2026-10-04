@@ -87,4 +87,38 @@ class TimeApiController extends BaseController
         
         return $this->response->setJSON(['status' => 'error', 'success' => false, 'message' => 'Time log not found'], 404);
     }
+
+    public function delete($id)
+    {
+        $userId = auth()->id();
+        $timeModel = new TimeLogModel();
+        $log = $timeModel->find($id);
+
+        if ($log) {
+            // Check ownership or admin privileges
+            $currentUser = auth()->user();
+            $isAdminOrManager = $currentUser && ($currentUser->inGroup('admin', 'manager') || is_solo_mode());
+            if ((int)$log['user_id'] !== (int)$userId && !$isAdminOrManager) {
+                return $this->response->setJSON([
+                    'status'  => 'error',
+                    'success' => false,
+                    'message' => 'Unauthorized to delete this time entry.'
+                ], 403);
+            }
+
+            $timeModel->delete($id);
+
+            return $this->response->setJSON([
+                'status'  => 'success',
+                'success' => true,
+                'message' => 'Time entry deleted successfully.'
+            ]);
+        }
+
+        return $this->response->setJSON([
+            'status'  => 'error',
+            'success' => false,
+            'message' => 'Time entry not found.'
+        ], 404);
+    }
 }

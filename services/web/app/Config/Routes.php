@@ -78,6 +78,7 @@ $routes->group('', ['filter' => 'session'], function($routes) {
     $routes->post('/time/manual', 'User\TimeTrackerController::logManual');
     $routes->post('/time/start', 'Api\TimeApiController::start');
     $routes->post('/time/stop/(:num)', 'Api\TimeApiController::stop/$1');
+    $routes->post('/time/delete/(:num)', 'Api\TimeApiController::delete/$1');
     $routes->get('/time/report', 'User\TimeReportController::index');
     $routes->get('/time/report/pdf', 'User\TimeReportController::pdf');
     $routes->get('/time/report/csv', 'User\TimeReportController::csv');
@@ -111,6 +112,7 @@ $routes->group('api', ['filter' => 'session'], function($routes) {
     // Time
     $routes->post('time/start', 'Api\TimeApiController::start');
     $routes->post('time/stop/(:num)', 'Api\TimeApiController::stop/$1');
+    $routes->post('time/delete/(:num)', 'Api\TimeApiController::delete/$1');
     
     // Calendar
     $routes->get('calendar/events', 'Api\CalendarApiController::index');
