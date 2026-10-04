@@ -8,10 +8,78 @@ class ReportController extends BaseController
 {
     public function index()
     {
-        $reportModel = new \App\Models\ReportModel();
-        $reports = $reportModel->orderBy('created_at', 'DESC')->findAll(10);
+        $db = \Config\Database::connect();
         
-        return view('manager/reports/index', ['reports' => $reports]);
+        // 1. Ensure reports table exists
+        if (!$db->tableExists('reports')) {
+            $forge = \Config\Database::forge();
+            $forge->addField([
+                'id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'user_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
+                'name' => ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true],
+                'type' => ['type' => 'VARCHAR', 'constraint' => '50', 'default' => 'pdf'],
+                'parameters' => ['type' => 'JSON', 'null' => true],
+                'file_path' => ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true],
+                'status' => ['type' => 'VARCHAR', 'constraint' => '20', 'default' => 'completed'],
+                'created_at' => ['type' => 'DATETIME', 'null' => true],
+                'updated_at' => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->createTable('reports', true);
+        }
+
+        // 2. Synchronize any generated report files on disk into DB
+        $diskFiles = glob(WRITEPATH . 'reports/report_*.*');
+        if (!empty($diskFiles) && $db->tableExists('reports')) {
+            $existingRows = $db->table('reports')->select('file_path')->get()->getResultArray();
+            $loggedPaths = array_column($existingRows, 'file_path');
+
+            // Find valid user ID for FK compatibility
+            $defaultUserId = (int)(auth()->id() ?? 1);
+            if ($db->tableExists('users')) {
+                $userExists = $db->table('users')->where('id', $defaultUserId)->countAllResults();
+                if ($userExists == 0) {
+                    $firstU = $db->table('users')->select('id')->orderBy('id', 'ASC')->get()->getRowArray();
+                    $defaultUserId = $firstU ? (int)$firstU['id'] : null;
+                }
+            }
+
+            foreach ($diskFiles as $df) {
+                $base = basename($df);
+                if (!in_array($base, $loggedPaths, true)) {
+                    $ext = strtolower(pathinfo($df, PATHINFO_EXTENSION));
+                    $mtime = filemtime($df);
+                    $db->table('reports')->insert([
+                        'user_id'    => $defaultUserId,
+                        'name'       => 'Team Performance Report',
+                        'type'       => $ext ?: 'pdf',
+                        'parameters' => json_encode(['start' => null, 'end' => null]),
+                        'file_path'  => $base,
+                        'status'     => 'completed',
+                        'created_at' => date('Y-m-d H:i:s', $mtime),
+                        'updated_at' => date('Y-m-d H:i:s', $mtime),
+                    ]);
+                }
+            }
+        }
+
+        $reportModel = new \App\Models\ReportModel();
+        $reports = $reportModel->orderBy('created_at', 'DESC')->findAll(50);
+        
+        $pdfCount = 0;
+        $csvCount = 0;
+        foreach ($reports as $r) {
+            $t = strtolower($r['type'] ?? 'pdf');
+            if ($t === 'pdf') $pdfCount++;
+            if ($t === 'csv') $csvCount++;
+        }
+
+        return view('manager/reports/index', [
+            'reports'      => $reports,
+            'totalReports' => count($reports),
+            'pdfCount'     => $pdfCount,
+            'csvCount'     => $csvCount,
+        ]);
     }
 
     public function generate()

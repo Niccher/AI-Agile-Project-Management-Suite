@@ -9,6 +9,53 @@ use App\Models\ReportModel;
 
 class ReportService
 {
+    protected static function ensureReportsTableExists($db)
+    {
+        if (!$db->tableExists('reports')) {
+            $forge = \Config\Database::forge();
+            $forge->addField([
+                'id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'user_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
+                'name' => ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true],
+                'type' => ['type' => 'VARCHAR', 'constraint' => '50', 'default' => 'pdf'],
+                'parameters' => ['type' => 'JSON', 'null' => true],
+                'file_path' => ['type' => 'VARCHAR', 'constraint' => '255', 'null' => true],
+                'status' => ['type' => 'VARCHAR', 'constraint' => '20', 'default' => 'completed'],
+                'created_at' => ['type' => 'DATETIME', 'null' => true],
+                'updated_at' => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->createTable('reports', true);
+        }
+    }
+
+    protected static function resolveValidUserId($db, int $generatedBy): ?int
+    {
+        if ($generatedBy > 0 && $db->tableExists('users')) {
+            $userExists = $db->table('users')->where('id', $generatedBy)->countAllResults();
+            if ($userExists > 0) {
+                return $generatedBy;
+            }
+        }
+
+        $sessionUserId = (int)(auth()->id() ?? session('user_id') ?? 0);
+        if ($sessionUserId > 0 && $db->tableExists('users')) {
+            $userExists = $db->table('users')->where('id', $sessionUserId)->countAllResults();
+            if ($userExists > 0) {
+                return $sessionUserId;
+            }
+        }
+
+        if ($db->tableExists('users')) {
+            $firstUser = $db->table('users')->select('id')->orderBy('id', 'ASC')->get()->getRowArray();
+            if ($firstUser) {
+                return (int)$firstUser['id'];
+            }
+        }
+
+        return null;
+    }
+
     public static function generatePdf(string $title, string $htmlContent, int $generatedBy, array $params = [])
     {
         $options = new Options();
@@ -32,34 +79,32 @@ class ReportService
         
         file_put_contents($filepath, $dompdf->output());
 
-        $periodStart = !empty($params['start']) ? $params['start'] : null;
-        $periodEnd = !empty($params['end']) ? $params['end'] : null;
-
         $reportId = 0;
         try {
             $db = \Config\Database::connect();
-            if ($db->tableExists('reports')) {
-                $reportFields = $db->getFieldNames('reports') ?? [];
-                $insertData = [
-                    'name'       => $title,
-                    'type'       => 'pdf',
-                    'parameters' => json_encode($params),
-                    'file_path'  => $filename,
-                    'status'     => 'completed',
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ];
-                if (in_array('user_id', $reportFields, true)) {
-                    $insertData['user_id'] = $generatedBy;
-                } elseif (in_array('created_by', $reportFields, true)) {
-                    $insertData['created_by'] = $generatedBy;
-                }
+            self::ensureReportsTableExists($db);
+            
+            $validUserId = self::resolveValidUserId($db, $generatedBy);
+            $reportFields = $db->getFieldNames('reports') ?? [];
+            $insertData = [
+                'name'       => $title,
+                'type'       => 'pdf',
+                'parameters' => json_encode($params),
+                'file_path'  => $filename,
+                'status'     => 'completed',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
+            if (in_array('user_id', $reportFields, true)) {
+                $insertData['user_id'] = $validUserId;
+            } elseif (in_array('created_by', $reportFields, true)) {
+                $insertData['created_by'] = $validUserId;
+            }
 
-                $validData = array_intersect_key($insertData, array_flip($reportFields));
-                if (!empty($validData)) {
-                    $db->table('reports')->insert($validData);
-                    $reportId = (int)$db->insertID();
-                }
+            $validData = array_intersect_key($insertData, array_flip($reportFields));
+            if (!empty($validData)) {
+                $db->table('reports')->insert($validData);
+                $reportId = (int)$db->insertID();
             }
         } catch (\Throwable $e) {
             log_message('error', 'Report logging error: ' . $e->getMessage());
@@ -94,28 +139,29 @@ class ReportService
         $reportId = 0;
         try {
             $db = \Config\Database::connect();
-            if ($db->tableExists('reports')) {
-                $reportFields = $db->getFieldNames('reports') ?? [];
-                $insertData = [
-                    'name'       => 'Team Performance Report',
-                    'type'       => 'csv',
-                    'parameters' => json_encode($params),
-                    'file_path'  => $filename,
-                    'status'     => 'completed',
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ];
-                if (in_array('user_id', $reportFields, true)) {
-                    $insertData['user_id'] = $generatedBy;
-                } elseif (in_array('created_by', $reportFields, true)) {
-                    $insertData['created_by'] = $generatedBy;
-                }
+            self::ensureReportsTableExists($db);
 
-                $validData = array_intersect_key($insertData, array_flip($reportFields));
-                if (!empty($validData)) {
-                    $db->table('reports')->insert($validData);
-                    $reportId = (int)$db->insertID();
-                }
+            $validUserId = self::resolveValidUserId($db, $generatedBy);
+            $reportFields = $db->getFieldNames('reports') ?? [];
+            $insertData = [
+                'name'       => 'Team Performance Report',
+                'type'       => 'csv',
+                'parameters' => json_encode($params),
+                'file_path'  => $filename,
+                'status'     => 'completed',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
+            if (in_array('user_id', $reportFields, true)) {
+                $insertData['user_id'] = $validUserId;
+            } elseif (in_array('created_by', $reportFields, true)) {
+                $insertData['created_by'] = $validUserId;
+            }
+
+            $validData = array_intersect_key($insertData, array_flip($reportFields));
+            if (!empty($validData)) {
+                $db->table('reports')->insert($validData);
+                $reportId = (int)$db->insertID();
             }
         } catch (\Throwable $e) {
             log_message('error', 'Report logging error: ' . $e->getMessage());
