@@ -17,6 +17,16 @@ class TimeTrackerController extends BaseUserController
         $isAdmin = $currentUser && $currentUser->inGroup('admin');
         $isManager = $currentUser && ($currentUser->inGroup('manager') || $isAdmin || is_solo_mode());
 
+        // Scope & User Filter
+        $scope = $this->request->getVar('scope') ?? ($isManager ? 'team' : 'me');
+        $selectedUserIdVar = $this->request->getVar('user_id');
+        $selectedUserId = ($selectedUserIdVar !== null && $selectedUserIdVar !== '') ? (int)$selectedUserIdVar : null;
+
+        if (!$isManager) {
+            $scope = 'me';
+            $selectedUserId = $this->userId;
+        }
+
         // Fetch accessible projects
         $projects = $projectModel->getAccessibleProjects($this->userId, $isManager);
         $data['projects'] = $projects;
@@ -33,11 +43,41 @@ class TimeTrackerController extends BaseUserController
         $data['selectedProjectId'] = $projectId;
         $data['activeProject'] = $activeProject;
         $data['user'] = $this->currentUser;
+        $data['isManager'] = $isManager;
+        $data['scope'] = $scope;
+        $data['selectedUserId'] = $selectedUserId;
+
+        // Fetch team members for manager filtering
+        $hasFirstName = $db->fieldExists('first_name', 'users');
+        $userNameSelect = $hasFirstName 
+            ? "COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''), u.username, 'User') as user_display_name"
+            : "COALESCE(u.username, 'User') as user_display_name";
+
+        $teamMembers = [];
+        try {
+            $teamMembers = $db->table('users u')
+                ->select("u.id, u.username, {$userNameSelect}, u.email")
+                ->orderBy('user_display_name', 'ASC')
+                ->get()->getResultArray();
+        } catch (\Throwable $e) {}
+        $data['teamMembers'] = $teamMembers;
+
+        // Helper closure to apply user filtering to query builders
+        $applyUserFilter = function($query, $userCol = 'user_id') use ($scope, $selectedUserId, $isManager) {
+            if ($selectedUserId) {
+                $query->where($userCol, $selectedUserId);
+            } elseif (!$isManager || $scope === 'me') {
+                $query->where($userCol, $this->userId);
+            }
+            return $query;
+        };
 
         // Base time log builder
-        $logsQuery = $timeModel->select('time_logs.*, projects.name as project_name, projects.slug as project_slug, projects.color as project_color')
+        $logsQuery = $timeModel->select("time_logs.*, {$userNameSelect}, u.username as user_username, projects.name as project_name, projects.slug as project_slug, projects.color as project_color")
             ->join('projects', 'projects.id = time_logs.project_id', 'left')
-            ->where('time_logs.user_id', $this->userId);
+            ->join('users u', 'u.id = time_logs.user_id', 'left');
+
+        $applyUserFilter($logsQuery, 'time_logs.user_id');
 
         if ($projectId) {
             $logsQuery->where('time_logs.project_id', $projectId);
@@ -46,8 +86,8 @@ class TimeTrackerController extends BaseUserController
         // 1. Stats Calculation
         $todayQuery = $db->table('time_logs')
             ->selectSum('duration')
-            ->where('user_id', $this->userId)
             ->where('DATE(start_time)', date('Y-m-d'));
+        $applyUserFilter($todayQuery, 'user_id');
         if ($projectId) {
             $todayQuery->where('project_id', $projectId);
         }
@@ -57,8 +97,8 @@ class TimeTrackerController extends BaseUserController
 
         $weekQuery = $db->table('time_logs')
             ->selectSum('duration')
-            ->where('user_id', $this->userId)
             ->where('start_time >=', date('Y-m-d', strtotime('monday this week')));
+        $applyUserFilter($weekQuery, 'user_id');
         if ($projectId) {
             $weekQuery->where('project_id', $projectId);
         }
@@ -67,8 +107,8 @@ class TimeTrackerController extends BaseUserController
 
         $monthQuery = $db->table('time_logs')
             ->selectSum('duration')
-            ->where('user_id', $this->userId)
             ->where('start_time >=', date('Y-m-01'));
+        $applyUserFilter($monthQuery, 'user_id');
         if ($projectId) {
             $monthQuery->where('project_id', $projectId);
         }
@@ -77,16 +117,16 @@ class TimeTrackerController extends BaseUserController
 
         $data['avgDaily'] = 0;
         $daysQuery = $db->table('time_logs')
-            ->select('COUNT(DISTINCT DATE(start_time)) as days')
-            ->where('user_id', $this->userId);
+            ->select('COUNT(DISTINCT DATE(start_time)) as days');
+        $applyUserFilter($daysQuery, 'user_id');
         if ($projectId) {
             $daysQuery->where('project_id', $projectId);
         }
         $daysLogged = $daysQuery->get()->getRow()->days ?? 1;
 
         $totalSecondsQuery = $db->table('time_logs')
-            ->selectSum('duration')
-            ->where('user_id', $this->userId);
+            ->selectSum('duration');
+        $applyUserFilter($totalSecondsQuery, 'user_id');
         if ($projectId) {
             $totalSecondsQuery->where('project_id', $projectId);
         }
@@ -103,8 +143,8 @@ class TimeTrackerController extends BaseUserController
         if ($hasBillable) {
             $billableQuery = $db->table('time_logs')
                 ->selectSum('duration')
-                ->where('user_id', $this->userId)
                 ->where('is_billable', 1);
+            $applyUserFilter($billableQuery, 'user_id');
             if ($projectId) {
                 $billableQuery->where('project_id', $projectId);
             }
@@ -114,7 +154,8 @@ class TimeTrackerController extends BaseUserController
         $data['billableRate'] = $totalSeconds > 0 ? round(($billableSeconds / $totalSeconds) * 100) : 100;
 
         // Total log count
-        $countQuery = $db->table('time_logs')->where('user_id', $this->userId);
+        $countQuery = $db->table('time_logs');
+        $applyUserFilter($countQuery, 'user_id');
         if ($projectId) {
             $countQuery->where('project_id', $projectId);
         }
@@ -130,8 +171,8 @@ class TimeTrackerController extends BaseUserController
 
             $dQuery = $db->table('time_logs')
                 ->selectSum('duration')
-                ->where('user_id', $this->userId)
                 ->where('DATE(start_time)', $d);
+            $applyUserFilter($dQuery, 'user_id');
             if ($projectId) {
                 $dQuery->where('project_id', $projectId);
             }
@@ -144,10 +185,12 @@ class TimeTrackerController extends BaseUserController
         // 3. Project Time Breakdown
         $breakdownQuery = $db->table('time_logs')
             ->select('COALESCE(projects.name, "General") as name, COALESCE(projects.color, "#727cf5") as color, SUM(time_logs.duration) as total_duration, COUNT(time_logs.id) as sessions_count')
-            ->join('projects', 'projects.id = time_logs.project_id', 'left')
-            ->where('time_logs.user_id', $this->userId)
-            ->groupBy('time_logs.project_id')
-            ->orderBy('total_duration', 'DESC');
+            ->join('projects', 'projects.id = time_logs.project_id', 'left');
+        $applyUserFilter($breakdownQuery, 'time_logs.user_id');
+        if ($projectId) {
+            $breakdownQuery->where('time_logs.project_id', $projectId);
+        }
+        $breakdownQuery->groupBy('time_logs.project_id')->orderBy('total_duration', 'DESC');
         
         $projectBreakdowns = $breakdownQuery->get()->getResultArray();
         $chartProjectLabels = [];
@@ -169,7 +212,30 @@ class TimeTrackerController extends BaseUserController
         $data['chartProjectColors'] = $chartProjectColors;
         $data['total_all_duration'] = array_sum(array_column($projectBreakdowns, 'total_duration')) ?: 1;
 
-        // 4. Time Entries
+        // 4. Team Members Time Leaderboard (for Manager/Admin)
+        $userBreakdowns = [];
+        if ($isManager) {
+            try {
+                $userBreakdownQuery = $db->table('time_logs')
+                    ->select("time_logs.user_id, {$userNameSelect}, u.username, SUM(time_logs.duration) as total_duration, COUNT(time_logs.id) as sessions_count")
+                    ->join('users u', 'u.id = time_logs.user_id', 'left');
+                if ($projectId) {
+                    $userBreakdownQuery->where('time_logs.project_id', $projectId);
+                }
+                $userBreakdowns = $userBreakdownQuery->groupBy('time_logs.user_id')
+                    ->orderBy('total_duration', 'DESC')
+                    ->get()->getResultArray();
+
+                foreach ($userBreakdowns as &$ub) {
+                    $ubSecs = (int)($ub['total_duration'] ?? 0);
+                    $ub['hours'] = round($ubSecs / 3600, 1);
+                }
+                unset($ub);
+            } catch (\Throwable $e) {}
+        }
+        $data['user_breakdown'] = $userBreakdowns;
+
+        // 5. Time Entries Pagination
         $data['time_logs'] = $logsQuery->orderBy('time_logs.start_time', 'DESC')
             ->paginate(15, 'time_logs');
         $data['pager'] = $timeModel->pager;
@@ -195,6 +261,14 @@ class TimeTrackerController extends BaseUserController
         $notes = $input['notes'] ?? $this->request->getVar('notes') ?? '';
         $isBillable = isset($input['is_billable']) ? (int)$input['is_billable'] : (isset($_POST['is_billable']) ? 1 : 1);
 
+        // Allow Admin/Manager to assign log to another user
+        $targetUserId = $this->userId;
+        $currentUser = auth()->user();
+        $isManager = $currentUser && ($currentUser->inGroup('manager') || $currentUser->inGroup('admin') || is_solo_mode());
+        if ($isManager && !empty($input['user_id'])) {
+            $targetUserId = (int)$input['user_id'];
+        }
+
         if (empty($taskName)) {
             $taskName = 'Work session';
         }
@@ -204,7 +278,7 @@ class TimeTrackerController extends BaseUserController
         $durationSeconds = max(60, (int)round($durationHours * 3600));
 
         $dataToInsert = [
-            'user_id'    => $this->userId,
+            'user_id'    => $targetUserId,
             'project_id' => $projectId,
             'task_name'  => $taskName,
             'start_time' => $startTime,

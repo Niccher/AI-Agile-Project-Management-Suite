@@ -9,27 +9,46 @@
 
 <div class="container-fluid py-3">
 
-    <!-- Page Header & Export Actions -->
+    <!-- Page Header & Scope Switcher -->
     <div class="row mb-3 align-items-center">
         <div class="col-md-6">
             <h4 class="page-title mb-1 fw-bold text-dark">
                 <i class="uil-stopwatch text-primary me-2"></i> Time Tracking & Worklogs
             </h4>
-            <p class="text-muted font-13 mb-0">
-                Track live work sessions, analyze team effort distribution, and export client-ready timesheets.
+            <p class="text-muted font-13 mb-0 d-flex align-items-center flex-wrap gap-2">
+                <span>Track live work sessions, inspect team effort allocation, and export timesheets.</span>
+                <?php if ($isManager): ?>
+                    <span class="badge bg-primary-lighten text-primary font-11 px-2 py-1">
+                        <i class="mdi mdi-shield-account-outline me-1"></i>Manager / Admin Mode
+                    </span>
+                <?php endif; ?>
             </p>
         </div>
         <div class="col-md-6 text-md-end mt-3 mt-md-0">
-            <div class="d-inline-flex gap-2 flex-wrap">
+            <div class="d-inline-flex gap-2 flex-wrap align-items-center justify-content-md-end">
+                <?php if ($isManager): ?>
+                    <!-- Scope Switch Buttons -->
+                    <div class="btn-group me-1">
+                        <a href="<?= site_url('time?scope=team' . (!empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '')) ?>" 
+                           class="btn btn-sm <?= ($scope === 'team') ? 'btn-primary' : 'btn-outline-primary' ?>">
+                            <i class="mdi mdi-account-group me-1"></i> Team Overview
+                        </a>
+                        <a href="<?= site_url('time?scope=me' . (!empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '')) ?>" 
+                           class="btn btn-sm <?= ($scope === 'me') ? 'btn-primary' : 'btn-outline-primary' ?>">
+                            <i class="mdi mdi-account me-1"></i> My Worklogs
+                        </a>
+                    </div>
+                <?php endif; ?>
+
                 <button type="button" class="btn btn-primary rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#manualEntryModal">
-                    <i class="mdi mdi-plus-circle-outline me-1"></i> Log Manual Time
+                    <i class="mdi mdi-plus-circle-outline me-1"></i> Log Time
                 </button>
                 <div class="btn-group">
                     <a href="<?= site_url('time/report/pdf' . (!empty($selectedProjectId) ? '?project_id=' . $selectedProjectId : '')) ?>" class="btn btn-outline-secondary rounded-pill shadow-sm" title="Export PDF Timesheet" target="_blank">
-                        <i class="mdi mdi-file-pdf-box text-danger me-1"></i> PDF Timesheet
+                        <i class="mdi mdi-file-pdf-box text-danger me-1"></i> PDF
                     </a>
                     <a href="<?= site_url('time/report/csv' . (!empty($selectedProjectId) ? '?project_id=' . $selectedProjectId : '')) ?>" class="btn btn-outline-secondary rounded-pill shadow-sm ms-1" title="Export CSV Data">
-                        <i class="mdi mdi-file-delimited text-success me-1"></i> CSV Export
+                        <i class="mdi mdi-file-delimited text-success me-1"></i> CSV
                     </a>
                 </div>
             </div>
@@ -46,7 +65,7 @@
                         <div class="col-lg-5">
                             <div class="d-flex align-items-center gap-2 mb-2">
                                 <span class="badge bg-danger text-white font-12 px-2 py-1 d-inline-flex align-items-center">
-                                    <span class="spinner-grow spinner-grow-sm me-1" style="width: 8px; height: 8px;"></span> RECORDING
+                                    <span class="spinner-grow spinner-grow-sm me-1" style="width: 8px; height: 8px;"></span> LIVE TIMER
                                 </span>
                                 <span class="badge bg-light text-dark font-12" id="activeProjectBadge">Project</span>
                             </div>
@@ -120,17 +139,19 @@
                             <i class="mdi mdi-clock-check-outline font-22"></i>
                         </div>
                     </div>
-                    <h6 class="text-muted text-uppercase font-12 fw-semibold mt-0" title="Today's Time">Today's Worklog</h6>
+                    <h6 class="text-muted text-uppercase font-12 fw-semibold mt-0" title="Today's Time">
+                        <?= ($isManager && $scope === 'team') ? 'Team Today' : "Today's Worklog" ?>
+                    </h6>
                     <h3 class="mt-2 mb-1 fw-bold text-dark" id="todayTime"><?= esc($todayTime ?? '0.0') ?> <span class="font-14 text-muted fw-normal">hrs</span></h3>
                     <?php 
-                        $targetHours = 8.0;
+                        $targetHours = ($isManager && $scope === 'team') ? max(8.0, count($teamMembers) * 8.0) : 8.0;
                         $todayPercent = min(100, round((($todayTime ?? 0) / $targetHours) * 100));
                     ?>
                     <div class="progress progress-sm my-2" style="height: 5px;">
                         <div class="progress-bar bg-info" role="progressbar" style="width: <?= $todayPercent ?>%"></div>
                     </div>
                     <p class="mb-0 text-muted font-11">
-                        <span class="text-info fw-semibold"><?= $todayPercent ?>%</span> of standard 8.0h daily target
+                        <span class="text-info fw-semibold"><?= $todayPercent ?>%</span> of target (<?= $targetHours ?>h)
                     </p>
                 </div>
             </div>
@@ -145,7 +166,9 @@
                             <i class="mdi mdi-calendar-week font-22"></i>
                         </div>
                     </div>
-                    <h6 class="text-muted text-uppercase font-12 fw-semibold mt-0" title="This Week">This Week</h6>
+                    <h6 class="text-muted text-uppercase font-12 fw-semibold mt-0" title="This Week">
+                        <?= ($isManager && $scope === 'team') ? 'Team This Week' : 'This Week' ?>
+                    </h6>
                     <h3 class="mt-2 mb-1 fw-bold text-primary" id="weekTime"><?= esc($weekTime ?? '0.0') ?> <span class="font-14 text-muted fw-normal">hrs</span></h3>
                     <div class="d-flex align-items-center gap-1 mt-2 font-12">
                         <span class="badge bg-primary-lighten text-primary"><i class="mdi mdi-speedometer me-1"></i><?= esc($avgDaily ?? '0.0') ?>h/day avg</span>
@@ -163,10 +186,12 @@
                             <i class="mdi mdi-calendar-month font-22"></i>
                         </div>
                     </div>
-                    <h6 class="text-muted text-uppercase font-12 fw-semibold mt-0" title="This Month">This Month</h6>
+                    <h6 class="text-muted text-uppercase font-12 fw-semibold mt-0" title="This Month">
+                        <?= ($isManager && $scope === 'team') ? 'Team Month' : 'This Month' ?>
+                    </h6>
                     <h3 class="mt-2 mb-1 fw-bold text-warning" id="monthTime"><?= esc($monthTime ?? '0.0') ?> <span class="font-14 text-muted fw-normal">hrs</span></h3>
                     <p class="mb-0 text-muted font-11 mt-2">
-                        <span class="text-dark fw-semibold"><i class="mdi mdi-counter me-1"></i><?= esc($totalLogsCount ?? 0) ?></span> total logged sessions
+                        <span class="text-dark fw-semibold"><i class="mdi mdi-counter me-1"></i><?= esc($totalLogsCount ?? 0) ?></span> total sessions logged
                     </p>
                 </div>
             </div>
@@ -181,10 +206,10 @@
                             <i class="mdi mdi-currency-usd font-22"></i>
                         </div>
                     </div>
-                    <h6 class="text-muted text-uppercase font-12 fw-semibold mt-0" title="Billable Ratio">Billable Efficiency</h6>
+                    <h6 class="text-muted text-uppercase font-12 fw-semibold mt-0" title="Billable Ratio">Billable Ratio</h6>
                     <h3 class="mt-2 mb-1 fw-bold text-success"><?= esc($billableRate ?? 100) ?>%</h3>
                     <p class="mb-0 text-muted font-11 mt-2">
-                        <span class="text-success fw-semibold"><i class="mdi mdi-check-circle me-1"></i><?= esc($billableHours ?? $totalHours) ?> hrs</span> billable to clients
+                        <span class="text-success fw-semibold"><i class="mdi mdi-check-circle me-1"></i><?= esc($billableHours ?? $totalHours) ?> hrs</span> billable effort
                     </p>
                 </div>
             </div>
@@ -194,7 +219,7 @@
     <!-- Interactive Visual Analytics Row (ApexCharts) -->
     <div class="row g-3 mb-4">
         <!-- 7-Day Velocity Chart -->
-        <div class="col-xl-8 col-lg-7">
+        <div class="col-xl-7 col-lg-6">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
                     <h5 class="mb-0 fw-bold font-15 text-dark">
@@ -209,7 +234,7 @@
         </div>
 
         <!-- Project Effort Allocation (Donut Chart) -->
-        <div class="col-xl-4 col-lg-5">
+        <div class="col-xl-5 col-lg-6">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
                     <h5 class="mb-0 fw-bold font-15 text-dark">
@@ -233,27 +258,95 @@
         </div>
     </div>
 
-    <!-- Worklogs Table & Search Filter -->
+    <!-- Team Members Effort Leaderboard (Only for Admin/Manager in Team Scope) -->
+    <?php if ($isManager && !empty($user_breakdown)): ?>
+        <div class="card shadow-sm border-0 mb-4 border-start border-primary border-3">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold font-15 text-dark">
+                    <i class="mdi mdi-account-group text-primary me-2"></i> Team Members Effort Contribution
+                </h5>
+                <span class="badge bg-primary-lighten text-primary font-11"><?= count($user_breakdown) ?> Active Contributors</span>
+            </div>
+            <div class="card-body p-3">
+                <div class="row g-3">
+                    <?php foreach ($user_breakdown as $ub): ?>
+                        <?php 
+                            $ubName = $ub['user_display_name'] ?? ($ub['username'] ?? 'User');
+                            $ubHrs = $ub['hours'] ?? 0;
+                            $ubSessions = $ub['sessions_count'] ?? 0;
+                            $ubTotalDuration = array_sum(array_column($user_breakdown, 'hours')) ?: 1;
+                            $ubPercent = min(100, round(($ubHrs / $ubTotalDuration) * 100));
+                            $isSelectedUser = ($selectedUserId && (int)$selectedUserId === (int)$ub['user_id']);
+                        ?>
+                        <div class="col-md-6 col-xl-3">
+                            <div class="p-3 border rounded h-100 <?= $isSelectedUser ? 'border-primary bg-primary-lighten' : 'bg-light-subtle' ?>">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-xs bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 font-11 fw-bold" style="width: 30px; height: 30px;">
+                                            <?= strtoupper(substr($ubName, 0, 1)) ?>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0 font-13 fw-semibold text-dark text-truncate" style="max-width: 120px;"><?= esc($ubName) ?></h6>
+                                            <small class="text-muted font-11">@<?= esc($ub['username'] ?? 'user') ?></small>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-success-lighten text-success font-12 fw-bold"><?= $ubHrs ?>h</span>
+                                </div>
+                                <div class="progress progress-sm mb-1" style="height: 5px;">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: <?= $ubPercent ?>%"></div>
+                                </div>
+                                <div class="d-flex justify-content-between font-11 text-muted">
+                                    <span><?= $ubSessions ?> session<?= $ubSessions !== 1 ? 's' : '' ?></span>
+                                    <span><?= $ubPercent ?>% share</span>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <!-- Worklogs Table & Filter Bar -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white py-3 border-bottom">
             <div class="row align-items-center g-2">
-                <div class="col-md-5">
+                <div class="col-md-4">
                     <h5 class="mb-0 fw-bold font-15 text-dark">
                         <i class="mdi mdi-format-list-bulleted text-primary me-2"></i> Recorded Worklogs & Timesheets
                     </h5>
                 </div>
-                <div class="col-md-7">
-                    <div class="d-flex flex-wrap gap-2 justify-content-md-end">
-                        <div class="input-group input-group-sm" style="max-width: 250px;">
-                            <span class="input-group-text bg-light border-end-0"><i class="mdi mdi-magnify text-muted"></i></span>
-                            <input type="text" class="form-control border-start-0" id="searchLogsInput" placeholder="Search worklogs...">
-                        </div>
+                <div class="col-md-8">
+                    <div class="d-flex flex-wrap gap-2 justify-content-md-end align-items-center">
+                        <?php if ($isManager && !empty($teamMembers)): ?>
+                            <!-- Filter by User Dropdown -->
+                            <select class="form-select form-select-sm w-auto" id="filterUserSelect" onchange="window.location.href=this.value;">
+                                <option value="<?= site_url('time?scope=team' . (!empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '')) ?>" <?= (empty($selectedUserId) && $scope === 'team') ? 'selected' : '' ?>>
+                                    👥 All Team Members
+                                </option>
+                                <?php foreach ($teamMembers as $tm): ?>
+                                    <?php 
+                                        $tmName = $tm['user_display_name'] ?? $tm['username'];
+                                        $tmUrl = site_url('time?scope=team&user_id=' . $tm['id'] . (!empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : ''));
+                                    ?>
+                                    <option value="<?= esc($tmUrl) ?>" <?= ((int)$selectedUserId === (int)$tm['id']) ? 'selected' : '' ?>>
+                                        <?= esc($tmName) ?> (@<?= esc($tm['username']) ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+
                         <select class="form-select form-select-sm w-auto" id="filterProjectSelect">
                             <option value="">All Projects</option>
                             <?php foreach ($projects as $p): ?>
                                 <option value="<?= strtolower(esc($p['name'])) ?>"><?= esc($p['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
+
+                        <div class="input-group input-group-sm" style="max-width: 220px;">
+                            <span class="input-group-text bg-light border-end-0"><i class="mdi mdi-magnify text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0" id="searchLogsInput" placeholder="Search worklogs...">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -264,6 +357,9 @@
                     <thead class="table-light font-12 text-uppercase text-muted">
                         <tr>
                             <th class="ps-4">Date & Time Range</th>
+                            <?php if ($isManager): ?>
+                                <th>Team Member</th>
+                            <?php endif; ?>
                             <th>Project</th>
                             <th>Task Description</th>
                             <th>Duration</th>
@@ -274,12 +370,12 @@
                     <tbody id="timeLogsTableBody">
                         <?php if (empty($time_logs)): ?>
                             <tr id="emptyLogsRow">
-                                <td colspan="6" class="text-center py-5 text-muted">
+                                <td colspan="<?= $isManager ? '7' : '6' ?>" class="text-center py-5 text-muted">
                                     <div class="avatar-lg bg-light rounded-circle mx-auto d-flex align-items-center justify-content-center mb-2">
                                         <i class="mdi mdi-timer-off-outline font-28 text-muted"></i>
                                     </div>
-                                    <h6 class="fw-semibold">No time entries recorded yet</h6>
-                                    <p class="text-muted font-12 mb-0">Use the stopwatch above or click "Log Manual Time" to record your work session.</p>
+                                    <h6 class="fw-semibold">No time entries found</h6>
+                                    <p class="text-muted font-12 mb-0">Use the stopwatch above or click "Log Time" to record a new work session.</p>
                                 </td>
                             </tr>
                         <?php else: ?>
@@ -294,14 +390,25 @@
                                     $durationFormatted = ($hrs > 0 ? "{$hrs}h " : "") . "{$mins}m";
                                     if ($durationSec < 60) $durationFormatted = "< 1m";
                                     $isBillable = isset($log['is_billable']) ? (int)$log['is_billable'] : 1;
+                                    $logUser = $log['user_display_name'] ?? ($log['user_username'] ?? 'User');
                                 ?>
-                                <tr class="time-log-row" data-id="<?= $log['id'] ?>" data-project="<?= strtolower(esc($pName)) ?>" data-task="<?= strtolower(esc($log['task_name'])) ?>">
+                                <tr class="time-log-row" data-id="<?= $log['id'] ?>" data-project="<?= strtolower(esc($pName)) ?>" data-task="<?= strtolower(esc($log['task_name'])) ?>" data-user="<?= strtolower(esc($logUser)) ?>">
                                     <td class="ps-4 font-13">
                                         <span class="fw-semibold text-dark d-block"><?= date('M d, Y', strtotime($log['start_time'])) ?></span>
                                         <small class="text-muted font-11">
                                             <i class="mdi mdi-clock-outline me-1"></i><?= date('H:i', strtotime($log['start_time'])) ?> - <?= !empty($log['end_time']) ? date('H:i', strtotime($log['end_time'])) : 'In Progress' ?>
                                         </small>
                                     </td>
+                                    <?php if ($isManager): ?>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-xs bg-primary-lighten text-primary rounded-circle d-flex align-items-center justify-content-center me-2 font-11 fw-bold" style="width: 24px; height: 24px;">
+                                                    <?= strtoupper(substr($logUser, 0, 1)) ?>
+                                                </div>
+                                                <span class="font-12 fw-semibold text-dark"><?= esc($logUser) ?></span>
+                                            </div>
+                                        </td>
+                                    <?php endif; ?>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="avatar-xs rounded me-2 d-flex align-items-center justify-content-center text-white font-11 fw-bold" 
@@ -372,6 +479,22 @@
             <form action="<?= site_url('time/manual') ?>" method="POST" id="manualTimeForm">
                 <?= csrf_field() ?>
                 <div class="modal-body">
+                    <?php if ($isManager && !empty($teamMembers)): ?>
+                        <div class="mb-3">
+                            <label for="manual_user_id" class="form-label font-13 fw-semibold">Assign to Team Member</label>
+                            <select class="form-select" id="manual_user_id" name="user_id">
+                                <option value="<?= auth()->id() ?>">Myself (<?= esc(auth()->user()->username ?? 'Me') ?>)</option>
+                                <?php foreach ($teamMembers as $tm): ?>
+                                    <?php if ($tm['id'] != auth()->id()): ?>
+                                        <option value="<?= $tm['id'] ?>">
+                                            <?= esc($tm['user_display_name'] ?? $tm['username']) ?> (@<?= esc($tm['username']) ?>)
+                                        </option>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="mb-3">
                         <label for="manual_project_id" class="form-label font-13 fw-semibold">Target Project <span class="text-danger">*</span></label>
                         <select class="form-select" id="manual_project_id" name="project_id" required>
@@ -773,7 +896,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 7. Search & Project Filter on Table
+    // 7. Search & Filter on Table
     const searchInput = document.getElementById('searchLogsInput');
     const filterProj = document.getElementById('filterProjectSelect');
 
@@ -785,7 +908,8 @@ document.addEventListener('DOMContentLoaded', function() {
         rows.forEach(row => {
             const task = row.getAttribute('data-task') || '';
             const proj = row.getAttribute('data-project') || '';
-            const matchesQuery = task.includes(query) || proj.includes(query);
+            const user = row.getAttribute('data-user') || '';
+            const matchesQuery = task.includes(query) || proj.includes(query) || user.includes(query);
             const matchesProj = !selectedProj || proj === selectedProj;
 
             row.style.display = (matchesQuery && matchesProj) ? '' : 'none';
@@ -865,7 +989,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (rows.length === 0) {
                                     const tbody = document.getElementById('timeLogsTableBody');
                                     if (tbody) {
-                                        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">All logs deleted.</td></tr>`;
+                                        tbody.innerHTML = `<tr><td colspan="<?= $isManager ? '7' : '6' ?>" class="text-center py-4 text-muted">All logs deleted.</td></tr>`;
                                     }
                                 }
                             }, 300);
