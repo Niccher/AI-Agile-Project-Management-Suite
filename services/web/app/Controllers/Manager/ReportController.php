@@ -25,8 +25,11 @@ class ReportController extends BaseController
             $end = !empty($endInput) ? $endInput : null;
 
             $db = \Config\Database::connect();
+            $hasFirstName = $db->fieldExists('first_name', 'users');
+            $userCols = $hasFirstName ? 'users.username, users.first_name, users.last_name' : 'users.username';
+
             $builder = $db->table('tasks')
-                ->select('projects.name as project_name, tasks.title as task_title, users.username, users.first_name, users.last_name, tasks.status, COALESCE(SUM(time_logs.duration)/3600, 0) as logged_hours')
+                ->select("projects.name as project_name, tasks.title as task_title, {$userCols}, tasks.status, COALESCE(SUM(time_logs.duration)/3600, 0) as logged_hours")
                 ->join('projects', 'projects.id = tasks.project_id', 'left')
                 ->join('users', 'users.id = tasks.assigned_to', 'left')
                 ->join('time_logs', 'time_logs.project_id = tasks.project_id AND time_logs.task_name = tasks.title', 'left')
@@ -46,13 +49,13 @@ class ReportController extends BaseController
             foreach ($rows as $row) {
                 $assignee = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
                 if (empty($assignee)) {
-                    $assignee = $row['username'] ?: 'Unassigned';
+                    $assignee = $row['username'] ?? 'Unassigned';
                 }
                 $data[] = [
                     $row['project_name'] ?: 'Workspace',
                     $row['task_title'],
                     $assignee,
-                    ucfirst($row['status']),
+                    ucfirst($row['status'] ?? 'Todo'),
                     number_format((float)$row['logged_hours'], 1)
                 ];
             }

@@ -50,13 +50,19 @@ class AnalyticsController extends BaseUserController
             $monthStart = $month . '-01';
             $monthEnd = date('Y-m-t', strtotime($monthStart));
             
-            $started = $projectModel->where('user_id', $this->userId)
-                ->where('created_at >=', $monthStart)
+            $startedQuery = (new ProjectModel());
+            if (!$isAdmin) {
+                $startedQuery->where('user_id', $this->userId);
+            }
+            $started = $startedQuery->where('created_at >=', $monthStart)
                 ->where('created_at <=', $monthEnd . ' 23:59:59')
                 ->countAllResults();
             
-            $done = $projectModel->where('user_id', $this->userId)
-                ->where('updated_at >=', $monthStart)
+            $doneQuery = (new ProjectModel());
+            if (!$isAdmin) {
+                $doneQuery->where('user_id', $this->userId);
+            }
+            $done = $doneQuery->where('updated_at >=', $monthStart)
                 ->where('updated_at <=', $monthEnd . ' 23:59:59')
                 ->where('status', 'completed')
                 ->countAllResults();
@@ -69,18 +75,34 @@ class AnalyticsController extends BaseUserController
         }
 
         // Project health distribution
-        $good = $projectModel->where('user_id', $this->userId)->where('status', 'in_progress')->where('progress >=', 50)->countAllResults();
-        $warning = $projectModel->where('user_id', $this->userId)->where('status', 'in_progress')->where('progress <', 50)->where('progress >', 0)->countAllResults();
-        $danger = $projectModel->where('user_id', $this->userId)->whereIn('status', ['planning', 'on_hold'])->countAllResults();
-        $archived = $projectModel->where('user_id', $this->userId)->where('is_archived', 1)->countAllResults();
+        $goodQuery = (new ProjectModel())->where('status', 'in_progress')->where('progress >=', 50);
+        $warningQuery = (new ProjectModel())->where('status', 'in_progress')->where('progress <', 50)->where('progress >', 0);
+        $dangerQuery = (new ProjectModel())->whereIn('status', ['planning', 'on_hold']);
+        $archivedQuery = (new ProjectModel())->where('is_archived', 1);
+
+        if (!$isAdmin) {
+            $goodQuery->where('user_id', $this->userId);
+            $warningQuery->where('user_id', $this->userId);
+            $dangerQuery->where('user_id', $this->userId);
+            $archivedQuery->where('user_id', $this->userId);
+        }
+
+        $good = $goodQuery->countAllResults();
+        $warning = $warningQuery->countAllResults();
+        $danger = $dangerQuery->countAllResults();
+        $archived = $archivedQuery->countAllResults();
         $healthTotal = max($good + $warning + $danger + $archived, 1);
 
         // Time distribution by project
-        $timeDistribution = $db->table('time_logs')
+        $tdBuilder = $db->table('time_logs')
             ->select('projects.name, projects.color, COALESCE(SUM(time_logs.duration), 0) as total_duration')
-            ->join('projects', 'projects.id = time_logs.project_id', 'left')
-            ->where('time_logs.user_id', $this->userId)
-            ->groupBy('time_logs.project_id')
+            ->join('projects', 'projects.id = time_logs.project_id', 'left');
+
+        if (!$isAdmin) {
+            $tdBuilder->where('time_logs.user_id', $this->userId);
+        }
+
+        $timeDistribution = $tdBuilder->groupBy('time_logs.project_id, projects.name, projects.color')
             ->orderBy('total_duration', 'DESC')
             ->limit(5)
             ->get()->getResultArray();
@@ -207,8 +229,19 @@ class AnalyticsController extends BaseUserController
         $teamRoster = [];
         if ($isAdmin) {
             try {
+                $hasFirstName = $db->fieldExists('first_name', 'users');
+                $hasActive = $db->fieldExists('active', 'users');
+                $selectFields = ['users.id', 'users.username'];
+                if ($hasFirstName) {
+                    $selectFields[] = 'users.first_name';
+                    $selectFields[] = 'users.last_name';
+                }
+                if ($hasActive) {
+                    $selectFields[] = 'users.active';
+                }
+
                 $users = $db->table('users')
-                    ->select('users.id, users.username, users.first_name, users.last_name, users.active')
+                    ->select(implode(', ', $selectFields))
                     ->get()->getResultArray();
 
                 $thirtyDaysAgo = date('Y-m-d H:i:s', strtotime('-30 days'));

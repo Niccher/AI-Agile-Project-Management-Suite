@@ -92,10 +92,16 @@ class CalendarApiController extends BaseController
         // 3. Tasks & Deadlines
         try {
             if ($db->tableExists('tasks')) {
+                $hasFirstName = $db->fieldExists('first_name', 'users');
+                $assigneeSelect = $hasFirstName 
+                    ? 'COALESCE(NULLIF(TRIM(CONCAT(assignee.first_name, " ", assignee.last_name)), ""), assignee.username, "Unassigned") as assignee_name'
+                    : 'COALESCE(assignee.username, "Unassigned") as assignee_name';
+                $creatorSelect = $hasFirstName 
+                    ? 'COALESCE(NULLIF(TRIM(CONCAT(creator.first_name, " ", creator.last_name)), ""), creator.username, "Unknown") as creator_name'
+                    : 'COALESCE(creator.username, "Unknown") as creator_name';
+
                 $taskBuilder = $db->table('tasks')
-                    ->select('tasks.*, projects.name as project_name, projects.slug as project_slug, projects.color as project_color,
-                              COALESCE(NULLIF(TRIM(CONCAT(assignee.first_name, " ", assignee.last_name)), ""), assignee.username, "Unassigned") as assignee_name,
-                              COALESCE(NULLIF(TRIM(CONCAT(creator.first_name, " ", creator.last_name)), ""), creator.username, "Unknown") as creator_name')
+                    ->select("tasks.*, projects.name as project_name, projects.slug as project_slug, projects.color as project_color, {$assigneeSelect}, {$creatorSelect}")
                     ->join('projects', 'projects.id = tasks.project_id', 'left')
                     ->join('users assignee', 'assignee.id = tasks.assigned_to', 'left')
                     ->join('users creator', 'creator.id = tasks.user_id', 'left')

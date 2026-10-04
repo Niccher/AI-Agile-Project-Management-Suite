@@ -19,21 +19,26 @@ class TeamDashboardController extends BaseController
         
         // 2. Performance Leaderboard (Rank workers by approved/completed tasks)
         $leaderboard = [];
+        $hasFirstName = $db->fieldExists('first_name', 'users');
+        $nameSelect = $hasFirstName 
+            ? "COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''), u.username, 'Team Member') as display_name"
+            : "COALESCE(u.username, 'Team Member') as display_name";
+        $groupBy = $hasFirstName ? "u.id, u.first_name, u.last_name, u.username" : "u.id, u.username";
+        $ownerSelect = $hasFirstName 
+            ? "COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.username) as owner_name"
+            : "u.username as owner_name";
+
         try {
             $leaderboardQuery = $db->query("
                 SELECT 
                     u.id as user_id,
-                    COALESCE(
-                        NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
-                        u.username,
-                        'Team Member'
-                    ) as display_name,
+                    {$nameSelect},
                     u.username,
                     COUNT(CASE WHEN t.status IN ('approved', 'done') THEN 1 END) as completed_tasks,
                     COUNT(t.id) as total_tasks
                 FROM users u
                 LEFT JOIN tasks t ON (t.assigned_to = u.id OR (t.assigned_to IS NULL AND t.user_id = u.id))
-                GROUP BY u.id, u.first_name, u.last_name, u.username
+                GROUP BY {$groupBy}
                 ORDER BY completed_tasks DESC, total_tasks DESC
                 LIMIT 10
             ");
@@ -46,7 +51,7 @@ class TeamDashboardController extends BaseController
         $projectsWithMembers = [];
         try {
             $projects = $db->table('projects')
-                ->select('projects.*, COALESCE(NULLIF(TRIM(CONCAT(u.first_name, " ", u.last_name)), ""), u.username) as owner_name')
+                ->select("projects.*, {$ownerSelect}")
                 ->join('users u', 'u.id = projects.user_id', 'left')
                 ->orderBy('projects.id', 'DESC')
                 ->get()->getResultArray();
@@ -56,18 +61,14 @@ class TeamDashboardController extends BaseController
                 $members = $db->query("
                     SELECT 
                         u.id as user_id,
-                        COALESCE(
-                            NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
-                            u.username,
-                            'Team Member'
-                        ) as display_name,
+                        {$nameSelect},
                         u.username,
                         COUNT(t.id) as task_count,
                         COUNT(CASE WHEN t.status IN ('approved', 'done') THEN 1 END) as completed_task_count
                     FROM users u
                     JOIN tasks t ON (t.assigned_to = u.id OR (t.assigned_to IS NULL AND t.user_id = u.id))
                     WHERE t.project_id = ?
-                    GROUP BY u.id, u.first_name, u.last_name, u.username
+                    GROUP BY {$groupBy}
                     ORDER BY completed_task_count DESC, task_count DESC
                 ", [$proj['id']])->getResultArray();
 
