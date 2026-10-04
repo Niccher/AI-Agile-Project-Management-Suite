@@ -16,6 +16,8 @@ class TeamDashboardController extends BaseController
         $totalTasks = (new TaskModel())->countAllResults();
         $approvedTasks = (new TaskModel())->whereIn('status', ['approved', 'done'])->countAllResults();
         $pendingTasks = (new TaskModel())->whereIn('status', ['todo', 'in_progress', 'review', 'blocked'])->countAllResults();
+        $completionRate = $totalTasks > 0 ? round(($approvedTasks / $totalTasks) * 100) : 0;
+        $pendingRate = $totalTasks > 0 ? round(($pendingTasks / $totalTasks) * 100) : 0;
         
         // 2. Performance Leaderboard (Rank workers by approved/completed tasks)
         $leaderboard = [];
@@ -43,6 +45,13 @@ class TeamDashboardController extends BaseController
                 LIMIT 10
             ");
             $leaderboard = $leaderboardQuery->getResultArray();
+            foreach ($leaderboard as &$entry) {
+                $t = (int)($entry['total_tasks'] ?? 0);
+                $c = (int)($entry['completed_tasks'] ?? 0);
+                $entry['completion_rate'] = $t > 0 ? round(($c / $t) * 100) : 0;
+                $entry['active_tasks'] = max(0, $t - $c);
+            }
+            unset($entry);
         } catch (\Throwable $e) {
             log_message('error', 'Team leaderboard query error: ' . $e->getMessage());
         }
@@ -114,6 +123,8 @@ class TeamDashboardController extends BaseController
             'totalTasks' => $totalTasks,
             'approvedTasks' => $approvedTasks,
             'pendingTasks' => $pendingTasks,
+            'completionRate' => $completionRate,
+            'pendingRate' => $pendingRate,
             'leaderboard' => $leaderboard,
             'projectsWithMembers' => $projectsWithMembers
         ]);
