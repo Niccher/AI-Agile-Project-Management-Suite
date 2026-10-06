@@ -1,19 +1,38 @@
-# API Contract Reference
+# REST API Contract Reference
 
-The **ML Chege Jira** REST API provides endpoints for model management, telemetry monitoring, AI task enhancements, sprint retrospectives, and background report jobs.
-
-All requests (except `/api/v1/health`) require the authentication header:
-```http
-X-API-Key: chege_jira_ml_super_secret_key_2026
-```
+The **ML Backend** (`ml-chege-jira`) exposes an asynchronous REST API under the `/api/v1` namespace for local LLM inference, background job execution, and telemetry.
 
 ---
 
-## 1. Health & Status
+## 🔐 Authentication
+
+All endpoints (except `GET /api/v1/health`) require authentication using the shared `ML_API_KEY`. Requests can pass the key using either:
+
+1. **Custom Header (Recommended):**
+   ```http
+   X-API-Key: chege_jira_ml_super_secret_key_2026
+   ```
+2. **Authorization Header:**
+   ```http
+   Authorization: Bearer chege_jira_ml_super_secret_key_2026
+   ```
+
+Requests failing validation receive:
+```json
+{
+  "detail": "Invalid or missing API key"
+}
+```
+*(HTTP 403 Forbidden)*
+
+---
+
+## 1. Health & Service Vitals
 
 ### `GET /api/v1/health`
-Performs an end-to-end liveness probe checking model loading and database reachability.
+Liveness probe checking database connectivity and loaded model state.
 
+- **Security:** Public (No API key required)
 - **Response `200 OK`:**
 ```json
 {
@@ -31,22 +50,22 @@ Performs an end-to-end liveness probe checking model loading and database reacha
 ## 2. Telemetry & Hardware
 
 ### `GET /api/v1/admin/telemetry`
-Returns real-time container CPU, RAM, Disk, MySQL connection, and Redis statistics.
+Returns live system metrics from the host container via `psutil`.
 
 - **Response `200 OK`:**
 ```json
 {
   "status": "online",
-  "timestamp": "2026-09-15T19:30:00Z",
-  "cpu_percent": 12.5,
+  "timestamp": "2026-10-06T08:30:00Z",
+  "cpu_percent": 14.2,
   "cpu_cores": 4,
   "ram_used_bytes": 1073741824,
   "ram_total_bytes": 8589934592,
   "ram_used_human": "1.00 GB",
   "ram_percent": 12.5,
-  "disk_percent": 24.0,
+  "disk_percent": 28.4,
   "db_connected": true,
-  "db_threads": 2
+  "db_threads": 3
 }
 ```
 
@@ -55,74 +74,130 @@ Returns real-time container CPU, RAM, Disk, MySQL connection, and Redis statisti
 ## 3. Model Management
 
 ### `GET /api/v1/models`
-Lists all available models in the registry, their disk presence, file sizes, and download status.
+Lists all supported model entries and their download status in `/app/models`.
 
-### `POST /api/v1/models/switch`
-Dynamically switches the active in-memory model.
-- **Payload:**
+### `GET /api/v1/models/active`
+Returns runtime details of the currently loaded in-memory GGUF model.
+
+### `POST /api/v1/models/load`
+Dynamically loads or hot-swaps an in-memory model.
+- **Request Body:**
 ```json
 {
-  "model_key": "mistral-7b"
+  "model_name": "mistral-7b"
+}
+```
+- **Response `200 OK`:**
+```json
+{
+  "success": true,
+  "message": "Model mistral-7b loaded successfully",
+  "active_model": "mistral-7b"
 }
 ```
 
 ---
 
-## 4. AI Enhancement Endpoints
+## 4. Agile AI Resources
 
-### `POST /api/v1/tasks/enhance`
-Refines task descriptions and generates Gherkin acceptance criteria.
-- **Payload:**
+### `POST /api/v1/tasks/{task_id}/enhancements`
+Reads task specifications from MySQL, generates Gherkin acceptance criteria via LLM, and persists the record into `ai_task_enhancements`.
+
+- **Request Body:**
 ```json
 {
-  "task_id": 42,
-  "title": "Build user notification bell",
-  "description": "Need a dropdown showing unread alerts",
-  "tech_stack": "PHP, CodeIgniter 4, Bootstrap"
+  "model": "phi3-mini",
+  "temperature": 0.2,
+  "max_tokens": 1024
 }
 ```
-
-- **Response `200 OK`:**
+- **Response `201 Created`:**
 ```json
 {
   "success": true,
-  "task_id": 42,
-  "enhanced_description": "Comprehensive specification...",
-  "acceptance_criteria": [
-    "Given an authenticated user, when notifications exist, badge count is visible",
-    "When clicked, popup shows 8 most recent alerts"
-  ]
+  "data": {
+    "id": 14,
+    "task_id": 42,
+    "summary": "Implement automated sprint burndown calculations",
+    "acceptance_criteria": [
+      "Given an active sprint, when story points change, velocity updates within 500ms",
+      "Burndown trendline charts ideal vs actual remaining points"
+    ],
+    "story_points": 5,
+    "priority": "high"
+  },
+  "meta": {
+    "model_used": "phi3-mini",
+    "tokens_used": 348,
+    "duration_ms": 1280.5
+  }
 }
 ```
 
-### `POST /api/v1/sprints/retrospective`
-Analyzes velocity, completed vs pending story points, and produces actionable retrospective summaries.
+### `POST /api/v1/tasks/{task_id}/priority-suggestions`
+Predicts priority rating (`low`, `medium`, `high`, `critical`) based on project velocity and complexity.
 
-### `POST /api/v1/time-reports/summarize`
-Detects timesheet anomalies, unbilled activity patterns, and generates executive summaries.
+### `POST /api/v1/sprints/{sprint_id}/summaries`
+Consolidates all sprint tasks, burndown snapshots, and blockers into an executive retrospective report.
+
+- **Request Body:**
+```json
+{
+  "model": "mistral-7b",
+  "custom_focus": "Identify bottlenecks in Code Review stage"
+}
+```
+- **Response `201 Created`:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 8,
+    "sprint_id": 12,
+    "executive_summary": "Sprint 14 completed 42 of 48 committed story points...",
+    "key_achievements": ["Delivered user notification bell", "Upgraded MySQL to 8.4"],
+    "blockers_identified": ["Redis socket timeout during load test"],
+    "action_items": ["Implement 50ms pre-flight socket probe"]
+  }
+}
+```
+
+### `POST /api/v1/projects/{project_id}/wiki-pages`
+Generates a markdown documentation page grounded in project tasks and architecture.
+
+### `POST /api/v1/time-reports`
+Analyzes team member timelog records across a date range and surfaces work discrepancies.
+
+### `POST /api/v1/qa`
+Executes retrieval-augmented questions and answers against project wiki articles.
 
 ---
 
 ## 5. Asynchronous Background Jobs
 
 ### `POST /api/v1/async-tasks/generate`
-Dispatches a long-running generation task without blocking the HTTP request.
-- **Payload:**
-```json
-{
-  "task_type": "sprint_summary",
-  "entity_id": 12,
-  "parameters": {}
-}
-```
+Offloads heavy prompt generations to a background thread tracked in Redis.
+
 - **Response `202 Accepted`:**
 ```json
 {
-  "job_id": "job_8dfa91b2",
-  "status": "queued",
-  "created_at": "2026-09-15T19:30:00Z"
+  "task_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "status": "pending",
+  "message": "Task queued successfully"
 }
 ```
 
-### `GET /api/v1/async-tasks/status/{job_id}`
-Checks the execution progress and retrieves final output.
+### `GET /api/v1/async-tasks/{task_id}`
+Returns current job execution state and generated result.
+
+- **Response `200 OK`:**
+```json
+{
+  "task_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "status": "completed",
+  "result": {
+    "summary": "Executive retrospective details...",
+    "velocity_score": 88.5
+  }
+}
+```

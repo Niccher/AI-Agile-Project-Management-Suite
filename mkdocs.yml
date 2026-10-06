@@ -1,0 +1,94 @@
+site_name: AI-Agile-Project-Management-Suite
+site_description: Enterprise Agile Project Management Platform with On-Premise Local LLM Copilot
+site_author: Chege Jira Engineering Team
+site_url: https://github.com/Niccher/AI-Agile-Project-Management-Suite
+
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    # Scheme mode: Auto dark / light
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - toc:
+      permalink: true
+
+nav:
+  - "Engineering Home": README.md
+  - "User & Operator Guide":
+      - "Setup & Run": user/setup-and-run.md
+      - "Configuration": user/configuration.md
+      - "Operator Troubleshooting": user/troubleshooting.md
+  - "Architecture":
+      - "System Overview": architecture/overview.md
+      - "Communication & Networking": architecture/communication.md
+      - "Data & Storage": architecture/data-and-storage.md
+      - "Dual-Engine Resilience & Failover": architecture/resilience-and-failover.md
+      - "Deployment Architecture": architecture/deployment.md
+      - "Threat Model & Security": architecture/threat-model.md
+  - "API Reference":
+      - "REST API Contract": api/contract.md
+      - "OpenAPI 3.0 Specification": api/openapi.yaml
+  - "Services":
+      - "CodeIgniter 4 WebApp": services/codeigniter.md
+      - "FastAPI ML Backend": services/fastapi.md
+      - "Local LLM Inference & Models": services/ml.md
+      - "WebApp Architecture Overview": services/webapp.md
+  - "Engineering":
+      - "Local Development": engineering/local-development.md
+      - "Making Changes": engineering/making-changes.md
+      - "Database & Migrations": engineering/database.md
+      - "Testing Guide": engineering/testing.md
+      - "CI/CD Pipelines": engineering/ci.md
+      - "Contributing": engineering/contributing.md
+      - "Security Guidelines": engineering/security.md
+      - "Release Management": engineering/release.md
+      - "Engineering Troubleshooting": engineering/troubleshooting.md
+  - "Runbooks":
+      - "Service Restart": runbooks/restart.md
+      - "Backup & Restore": runbooks/backup-and-restore.md
+  - "Architecture Decision Records":
+      - "0001: On-Premise Quantized LLM Inference": adr/0001-on-premise-quantized-llm-inference.md
+      - "0002: Dual-Engine Session Resilience": adr/0002-dual-engine-redis-mysql-session-resilience.md
+      - "0003: Unified Database Sharing": adr/0003-unified-relational-database-sharing.md

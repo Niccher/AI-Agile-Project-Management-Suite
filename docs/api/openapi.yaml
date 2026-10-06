@@ -1,21 +1,23 @@
 openapi: 3.0.3
 info:
-  title: ML Chege Jira API
-  description: High-performance local LLM inference microservice and async AI worker backend for Chege Jira WebApp.
+  title: AI-Agile-Project-Management-Suite ML Backend API
+  description: High-performance local LLM inference microservice and async AI worker backend powered by llama-cpp-python.
   version: 0.1.0
 servers:
   - url: http://localhost:8000/api/v1
-    description: Local development container
-  - url: https://api.your-domain.com/api/v1
-    description: GCP Production cluster
+    description: Local Docker container environment
+  - url: https://api.chege-jira.local/api/v1
+    description: Production internal service URL
 
 security:
   - ApiKeyAuth: []
+  - BearerAuth: []
 
 paths:
   /health:
     get:
-      summary: Health check liveness probe
+      summary: Health check & liveness probe
+      description: Returns service readiness, database connection state, and active LLM status.
       security: []
       responses:
         '200':
@@ -31,13 +33,26 @@ paths:
                   version:
                     type: string
                     example: 0.1.0
+                  app_env:
+                    type: string
+                    example: production
+                  default_model:
+                    type: string
+                    example: phi3-mini
+                  model_loaded:
+                    type: boolean
+                    example: true
+                  database_connected:
+                    type: boolean
+                    example: true
 
   /admin/telemetry:
     get:
-      summary: Get live container hardware metrics
+      summary: Real-time container hardware telemetry
+      description: Retrieves live CPU, RAM, Disk, MySQL connections, and thread usage.
       responses:
         '200':
-          description: Telemetry statistics
+          description: Live hardware telemetry
           content:
             application/json:
               schema:
@@ -45,21 +60,47 @@ paths:
                 properties:
                   status:
                     type: string
+                    example: online
+                  timestamp:
+                    type: string
+                    format: date-time
                   cpu_percent:
                     type: number
+                    example: 14.2
+                  cpu_cores:
+                    type: integer
+                    example: 4
+                  ram_used_bytes:
+                    type: integer
+                    example: 1073741824
                   ram_percent:
                     type: number
+                    example: 12.5
+                  disk_percent:
+                    type: number
+                    example: 28.4
+                  db_connected:
+                    type: boolean
+                    example: true
 
   /models:
     get:
-      summary: List all registered LLMs and disk status
+      summary: List registered models
+      description: Returns list of supported GGUF models and disk presence.
       responses:
         '200':
           description: Model registry list
 
-  /tasks/enhance:
+  /models/active:
+    get:
+      summary: Get active in-memory model metadata
+      responses:
+        '200':
+          description: Active model details
+
+  /models/load:
     post:
-      summary: Enhance task description with AI
+      summary: Dynamic in-memory model hot-swapping
       requestBody:
         required: true
         content:
@@ -67,41 +108,130 @@ paths:
             schema:
               type: object
               required:
-                - task_id
-                - title
+                - model_name
               properties:
-                task_id:
-                  type: integer
-                title:
+                model_name:
                   type: string
-                description:
-                  type: string
-                tech_stack:
-                  type: string
+                  example: mistral-7b
       responses:
         '200':
-          description: Enhanced task details
+          description: Model loaded successfully
+
+  /tasks/{task_id}/enhancements:
+    post:
+      summary: Enhance task specification with acceptance criteria
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model:
+                  type: string
+                  example: phi3-mini
+                temperature:
+                  type: number
+                  example: 0.2
+                max_tokens:
+                  type: integer
+                  example: 1024
+      responses:
+        '201':
+          description: Task enhancement created
+        '404':
+          description: Task not found
+
+    get:
+      summary: List enhancement history for task
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: History of task enhancements
+
+  /tasks/{task_id}/priority-suggestions:
+    post:
+      summary: Predict agile task priority
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: Suggested priority generated
+
+  /sprints/{sprint_id}/summaries:
+    post:
+      summary: Generate executive sprint retrospective
+      parameters:
+        - name: sprint_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: Sprint summary created
+
+  /projects/{project_id}/wiki-pages:
+    post:
+      summary: Auto-generate project wiki documentation page
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: Wiki page generated
+
+  /time-reports:
+    post:
+      summary: Analyze developer time logs
+      responses:
+        '201':
+          description: Time report narrative generated
+
+  /qa:
+    post:
+      summary: Retrieval-augmented project question answering
+      responses:
+        '200':
+          description: Answer generated
 
   /async-tasks/generate:
     post:
-      summary: Queue long-running background AI job
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - task_type
-                - entity_id
-              properties:
-                task_type:
-                  type: string
-                entity_id:
-                  type: integer
+      summary: Enqueue asynchronous generation job
       responses:
         '202':
-          description: Task accepted and queued
+          description: Task accepted and enqueued
+
+  /async-tasks/{task_id}:
+    get:
+      summary: Check asynchronous task status
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task execution state and result
 
 components:
   securitySchemes:
@@ -109,3 +239,6 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer

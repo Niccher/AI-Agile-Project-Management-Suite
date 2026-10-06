@@ -1,6 +1,6 @@
 # Deployment Architecture
 
-This document describes how to deploy the **AI-Agile-Project-Management-Suite** across bare-metal VPS, on-premise servers, and Google Cloud Platform (GCP) containers.
+This document describes deployment topologies across self-hosted Docker environments, on-premise VPS instances, and Google Cloud Platform (GCP) container services.
 
 ---
 
@@ -19,25 +19,25 @@ make deploy
 ```
 
 The script executes 13 automated stages:
-1. Detects host IP and sets `APP_URL`.
-2. Checks system RAM, CPU, Swap, and Disk.
-3. Verifies Git status and remotes.
-4. Generates or patches `.env` with production keys.
-5. Removes stale containers to eliminate name conflicts.
-6. Builds Docker images using BuildKit.
-7. Waits for MySQL health on internal port 3306.
-8. Waits for Redis health on internal port 6379.
-9. Runs CodeIgniter database migrations and seeders (`DemoSeeder`).
-10. Validates ML microservice health (`/api/v1/health`).
-11. Validates WebApp server responsiveness.
-12. Enforces file permissions on `services/web/writable/` and prunes build cache.
-13. Generates the deployment summary table and execution timeline.
+1. **IP Detection:** Discovers local LAN/host IP and sets `APP_URL`.
+2. **Resource Pre-flight:** Checks system RAM, CPU architecture, Swap, and Disk.
+3. **Git Sanity Check:** Verifies working tree cleanliness and remote tracking.
+4. **Environment Configuration:** Generates or patches `.env` with production keys.
+5. **Conflict Resolution:** Stops stale containers to eliminate naming conflicts.
+6. **Container Build:** Compiles Docker images using BuildKit cache.
+7. **Database Readiness:** Waits for internal MySQL health on port 3306.
+8. **Cache Readiness:** Waits for internal Redis health on port 6379.
+9. **Database Migrations:** Runs CodeIgniter database migrations and `DemoSeeder`.
+10. **ML Microservice Readiness:** Validates ML microservice health (`/api/v1/health`).
+11. **WebApp Readiness:** Validates WebApp server responsiveness.
+12. **Container Permissions:** Enforces file ownership on `services/web/writable/` and prunes cache.
+13. **Deployment Summary:** Renders endpoints table and execution duration metrics.
 
 ---
 
-## ☁ Target 2: Google Cloud Platform (GCP Container Deployment)
+## ☁ Target 2: Google Cloud Platform (GCP Containers)
 
-Deploying the monorepo to Google Cloud Platform using **GCP Cloud Run**, **Google Kubernetes Engine (GKE)**, or **GCP Compute Engine Container-Optimized OS**:
+When deploying to Google Cloud Platform, services map to serverless container runtimes with private VPC networking:
 
 ```text
 Google Cloud Project (GCP)
@@ -51,14 +51,14 @@ Google Cloud Project (GCP)
 ### 1. Build & Push to GCP Artifact Registry
 
 ```bash
-# Configure Docker with GCP
+# Configure Docker credential helper with GCP
 gcloud auth configure-docker us-central1-docker.pkg.dev
 
-# Build & Push WebApp Image
+# Build & Push WebApp Container
 docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/chege-repo/webapp:latest -f services/web/Dockerfile services/web
 docker push us-central1-docker.pkg.dev/$PROJECT_ID/chege-repo/webapp:latest
 
-# Build & Push ML Backend Image
+# Build & Push ML Backend Container
 docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/chege-repo/ml-backend:latest -f services/ml/Dockerfile services/ml
 docker push us-central1-docker.pkg.dev/$PROJECT_ID/chege-repo/ml-backend:latest
 ```
@@ -67,7 +67,7 @@ docker push us-central1-docker.pkg.dev/$PROJECT_ID/chege-repo/ml-backend:latest
 
 Both Cloud Run services connect to Cloud SQL and Memorystore via a **Serverless VPC Access Connector**:
 
-1. **WebApp Container Deployment:**
+1. **Deploy WebApp Service:**
    ```bash
    gcloud run deploy chege-webapp \
      --image=us-central1-docker.pkg.dev/$PROJECT_ID/chege-repo/webapp:latest \
@@ -77,7 +77,7 @@ Both Cloud Run services connect to Cloud SQL and Memorystore via a **Serverless 
      --allow-unauthenticated
    ```
 
-2. **ML Backend Container Deployment:**
+2. **Deploy ML Copilot Service:**
    ```bash
    gcloud run deploy chege-ml \
      --image=us-central1-docker.pkg.dev/$PROJECT_ID/chege-repo/ml-backend:latest \
@@ -87,3 +87,12 @@ Both Cloud Run services connect to Cloud SQL and Memorystore via a **Serverless 
      --cpu=4 \
      --set-env-vars="DB_HOST=10.x.x.x,DB_NAME=db_chege_jira,REDIS_URL=redis://10.y.y.y:6379/0,API_KEY=your_production_secret"
    ```
+
+---
+
+## 🔒 Production Hardening Checklist
+
+- [ ] **SSL/TLS Termination:** Terminate HTTPS via Nginx reverse proxy with automated Let's Encrypt certificates (`certbot`).
+- [ ] **Firewall Isolation:** Enforce `ufw` or cloud security groups allowing external traffic only on ports 80 and 443.
+- [ ] **Secret Management:** Remove all default passwords from `.env` prior to launch.
+- [ ] **Log Rotation:** Configure Docker log rotation daemon (`max-size: 50m`, `max-file: 3`) to prevent disk exhaustion.

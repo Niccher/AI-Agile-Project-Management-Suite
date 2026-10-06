@@ -76,12 +76,12 @@ sequenceDiagram
 ### 1. Ultra-Fast 50ms Pre-Flight Probe & Memoization
 In standard implementations, connecting to an unresponsive Redis server triggers PHP default connection timeouts (typically 1,000ms – 2,000ms), introducing noticeable UI lag. 
 
-[`ResilientSessionHandler`](file:///home/niccher/Music/hosts/AI-Agile-Project-Management-Suite/services/web/app/Session/Handlers/ResilientSessionHandler.php) eliminates this with:
+[`ResilientSessionHandler`](../../services/web/app/Session/Handlers/ResilientSessionHandler.php) eliminates this with:
 - **Strict 50ms Socket Probe**: Uses `@fsockopen($host, $port, $errno, $errstr, 0.05)`. If the TCP handshake fails within 50ms, execution drops to MySQL immediately.
 - **Request-Lifecycle Static Memoization**: The probe outcome is stored in `private static ?bool $redisAlive`. Subsequent session or cache queries during the same HTTP request execute with 0ms probe overhead.
 
 ### 2. MySQL Schema (`ci_sessions`)
-Fallback sessions are held in the MySQL relational table created by migration [`2026-09-15-000000_CreateSessionsTable.php`](file:///home/niccher/Music/hosts/AI-Agile-Project-Management-Suite/services/web/app/Database/Migrations/2026-09-15-000000_CreateSessionsTable.php):
+Fallback sessions are held in the MySQL relational table created by migration [`2020-12-28-223119_CreateSessionsTable.php`](../../services/web/app/Database/Migrations/2020-12-28-223119_CreateSessionsTable.php):
 ```sql
 CREATE TABLE `ci_sessions` (
     `id` VARCHAR(128) NOT NULL,
@@ -94,7 +94,7 @@ CREATE TABLE `ci_sessions` (
 ```
 
 ### 3. Session Garbage Collection (`php spark session:gc`)
-During sustained Redis outages, active sessions accumulate in MySQL. The CLI command [`SessionGc.php`](file:///home/niccher/Music/hosts/AI-Agile-Project-Management-Suite/services/web/app/Commands/SessionGc.php) safely prunes expired records:
+During sustained Redis outages, active sessions accumulate in MySQL. The CLI command [`SessionGc.php`](../../services/web/app/Commands/SessionGc.php) safely prunes expired records:
 ```bash
 # Inside web container
 php spark session:gc
