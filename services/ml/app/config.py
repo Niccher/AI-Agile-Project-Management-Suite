@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     N_THREADS: int = 4
     N_CTX: int = 4096
 
+    # S3 / MinIO Object Storage
+    S3_ENDPOINT: str = "http://minio:9000"
+    S3_ACCESS_KEY: str = "minio_admin"
+    S3_SECRET_KEY: str = "minio_super_secret_2026"
+    S3_REGION: str = "us-east-1"
+    S3_BUCKET_ATTACHMENTS: str = "agile-attachments"
+
     # Model Mapping (key -> filename)
     MODEL_FILES: dict[str, str] = {
         "mistral-7b": "mistral-7b-instruct-v0.2.Q4_K_M.gguf",

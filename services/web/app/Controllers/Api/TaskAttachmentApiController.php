@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\TaskAttachmentModel;
 use App\Models\TaskModel;
 use App\Services\ActivityLogger;
+use App\Services\StorageService;
 
 class TaskAttachmentApiController extends BaseController
 {
@@ -20,6 +21,13 @@ class TaskAttachmentApiController extends BaseController
         'image/svg+xml',
         'application/pdf',
     ];
+
+    protected StorageService $storage;
+
+    public function __construct()
+    {
+        $this->storage = new StorageService();
+    }
 
     public function list(int $taskId)
     {
@@ -82,7 +90,7 @@ class TaskAttachmentApiController extends BaseController
             ]);
         }
 
-        // 3. Move file to writable/uploads/tasks/
+        // 3. Move file to writable/uploads/tasks/ (local cache & fallback)
         $uploadDir = WRITEPATH . 'uploads/tasks/';
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
@@ -96,6 +104,16 @@ class TaskAttachmentApiController extends BaseController
                 'status'  => 'error',
                 'message' => 'Failed to save uploaded file.',
             ]);
+        }
+
+        $localFilePath = $uploadDir . $safeFileName;
+        $bucket = (string) env('S3_BUCKET_ATTACHMENTS', 'agile-attachments');
+        $s3Key  = "tasks/{$taskId}/{$safeFileName}";
+
+        // 4. Mirror to MinIO S3 Object Storage if enabled
+        if ($this->storage->isEnabled()) {
+            $this->storage->ensureBucket($bucket);
+            $this->storage->uploadFile($bucket, $s3Key, $localFilePath, $detectedMime);
         }
 
         $userId = auth()->id();
@@ -134,9 +152,31 @@ class TaskAttachmentApiController extends BaseController
             return $this->response->setStatusCode(404)->setBody('Attachment not found');
         }
 
+        $bucket = (string) env('S3_BUCKET_ATTACHMENTS', 'agile-attachments');
+        $s3Key  = "tasks/{$attachment['task_id']}/{$attachment['file_name']}";
+
+        // 1. Check MinIO S3 Object Storage
+        if ($this->storage->isEnabled()) {
+            // Direct pre-signed URL offload
+            if ($this->storage->useDirectPresigned()) {
+                $presignedUrl = $this->storage->getPresignedUrl($bucket, $s3Key, 900, $attachment['original_name']);
+                return $this->response->redirect($presignedUrl, 'auto', 302);
+            }
+
+            // Internal streaming proxy (when MinIO host port is private)
+            $s3Object = $this->storage->getObject($bucket, $s3Key);
+            if ($s3Object !== null) {
+                return $this->response
+                    ->setHeader('Content-Type', $attachment['mime_type'])
+                    ->setHeader('Content-Disposition', 'inline; filename="' . addslashes($attachment['original_name']) . '"')
+                    ->setBody($s3Object['body']);
+            }
+        }
+
+        // 2. Fallback to Local Filesystem
         $filePath = WRITEPATH . 'uploads/tasks/' . $attachment['file_name'];
         if (!file_exists($filePath)) {
-            return $this->response->setStatusCode(404)->setBody('File does not exist on disk');
+            return $this->response->setStatusCode(404)->setBody('File does not exist on disk or object store');
         }
 
         return $this->response
@@ -162,6 +202,14 @@ class TaskAttachmentApiController extends BaseController
             return $this->response->setJSON(['status' => 'error', 'message' => 'Permission denied']);
         }
 
+        // Delete from S3
+        if ($this->storage->isEnabled()) {
+            $bucket = (string) env('S3_BUCKET_ATTACHMENTS', 'agile-attachments');
+            $s3Key  = "tasks/{$attachment['task_id']}/{$attachment['file_name']}";
+            $this->storage->deleteObject($bucket, $s3Key);
+        }
+
+        // Delete from local disk
         $filePath = WRITEPATH . 'uploads/tasks/' . $attachment['file_name'];
         if (file_exists($filePath)) {
             @unlink($filePath);

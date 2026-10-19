@@ -27,6 +27,10 @@ This document defines trust boundaries, sensitive data assets, STRIDE threat ana
 │  - X-API-Key & Bearer Token Authentication             │
 │  - Local Sandboxed CPU/GPU Execution                   │
 │                                                        │
+│  MinIO S3 Object Storage (Ports 9000/9001)             │
+│  - AWSv4 HMAC-SHA256 Signature Authentication          │
+│  - Short-Lived Pre-Signed URLs (1-hour expiration)    │
+│                                                        │
 │  MySQL Database (Port 3306 - No Host Binding)          │
 │  Redis In-Memory Engine (Port 6379 - No Host Binding)  │
 └────────────────────────────────────────────────────────┘
@@ -38,11 +42,11 @@ This document defines trust boundaries, sensitive data assets, STRIDE threat ana
 
 | Threat Category | Potential Attack Vector | Impact | Mitigations Implemented in Code |
 | :--- | :--- | :--- | :--- |
-| **Spoofing** | Forging inter-service HTTP requests from untrusted network clients to the ML backend. | Unauthorized triggering of heavy LLM inference jobs. | `app/core/security.py` enforces `X-API-Key` or `Authorization: Bearer` on every protected endpoint. Unauthenticated calls receive HTTP 403 Forbidden. |
+| **Spoofing** | Forging inter-service HTTP requests from untrusted network clients to the ML backend or MinIO S3 API. | Unauthorized triggering of heavy LLM inference jobs or object exfiltration. | `app/core/security.py` enforces `X-API-Key` on ML endpoints. MinIO requires AWS Signature v4 (`AWS4-HMAC-SHA256`) signatures generated using private credentials. |
 | **Tampering** | SQL injection attempts via task filters or Kanban search terms. | Data corruption, unauthorized data modification. | Strict CodeIgniter 4 Query Builder parameterization and SQLAlchemy prepared statements. Direct raw string interpolation is prohibited. |
 | **Repudiation** | Users altering or deleting logged timelogs, sprint completions, or tasks without attribution. | Disputed engineering hours and unverified sprint changes. | System writes changes to `audit_logs` migration table (`2026-03-13-010000_CreateAuditLogsTable.php`) tracking timestamp, user ID, IP address, and changed fields. |
-| **Information Disclosure** | Sniffing internal database traffic or leaking proprietary prompts. | Exposure of trade secrets and user credentials. | MySQL (3306) and Redis (6379) ports are unexposed on the host interface. All LLM inference executes locally via GGUF weights; zero prompts leave the container. |
-| **Denial of Service** | Flooding ML endpoints with unbounded token generation requests, starving host CPU cores. | CPU exhaustion, system unresponsiveness. | `N_CTX=4096` token ceilings, `N_THREADS=4` core caps, and asynchronous task offloading via Redis `TaskManager`. In-flight jobs are bounded by thread locks. |
+| **Information Disclosure** | Unauthorized downloading of confidential task attachments or database backups. | Leaked intellectual property or company data. | `TaskAttachmentApiController.php` verifies project and task permissions *before* issuing 1-hour pre-signed S3 download URLs. S3 buckets are private by default. |
+| **Denial of Service** | Flooding ML endpoints with unbounded token generation requests, or uploading excessive multi-GB files. | CPU/RAM exhaustion, disk saturation. | `N_CTX=4096` token ceilings, `N_THREADS=4` core caps, Redis `TaskManager` lockouts, and WebApp 20MB file upload limits with MIME validation. |
 | **Elevation of Privilege** | Insecure Direct Object References (IDOR) where a standard user edits another team's tasks or views private wikis. | Unauthorized administrative access or project leakage. | Role-Based Access Control (RBAC) enforced via Shield filters. Controllers check `$project->manager_id` and `$task->assignee_id` before mutations. |
 
 ---

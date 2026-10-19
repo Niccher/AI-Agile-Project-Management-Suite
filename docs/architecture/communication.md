@@ -13,8 +13,11 @@ This document specifies inter-service communication protocols, payload formats, 
 | **WebApp** | `ml-chege-jira` | HTTP REST (JSON) | `X-API-Key` Header | `http://ml-chege-jira:8000` | Inter-service calls from `LlmService.php` |
 | **WebApp** | `shared-redis` | Redis TCP Socket | None (Internal Network) | `redis:6379` | 50ms pre-flight socket probe; session & cache |
 | **WebApp** | `shared-mysql` | MySQL Protocol | Password Credentials | `mysql:3306` | CodeIgniter relational queries |
+| **WebApp** | `shared-minio` | HTTP S3 REST (AWSv4) | AWS4-HMAC-SHA256 | `http://minio:9000` | Pure-PHP client; uploads attachments, avatars, backups |
+| **Browser Client** | `shared-minio` | HTTP/HTTPS | Pre-signed URL HMAC | `http://localhost:9000` | Direct binary downloads (when `S3_DIRECT_PRESIGNED=true`) |
 | **ML Backend** | `shared-mysql` | Async MySQL Protocol | Password Credentials | `mysql:3306` | Async SQLAlchemy queries for entity extraction |
 | **ML Backend** | `shared-redis` | Redis TCP Socket | None (Internal Network) | `redis://redis:6379/0` | Async task state & job tracking |
+| **ML Backend** | `shared-minio` | HTTP S3 REST (boto3) | S3 Credentials | `http://minio:9000` | Reads task attachments for AI summarization & QA tests |
 
 ---
 
@@ -110,6 +113,47 @@ sequenceDiagram
     Llama-->>ML: Generated acceptance criteria & refined description
     ML-->>Web: HTTP 200 OK {"task_id": 42, "enhanced_description": "...", "criteria": [...]}
     Web-->>Dev: Populate Task Form with Generated Criteria
+```
+
+---
+
+### 4. S3 Object Storage: Upload & Dual-Delivery Download Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Web Browser / Client
+    participant Controller as TaskAttachmentApiController
+    participant Storage as StorageService (Pure-PHP AWSv4)
+    participant MinIO as MinIO S3 (:9000/:9001)
+    participant Disk as Local Disk (writable/uploads/)
+
+    Note over User,MinIO: File Upload Flow
+    User->>Controller: POST /api/tasks/10/attachments (multipart/form-data)
+    Controller->>Disk: Store temporary file (move_uploaded_file)
+    Controller->>Storage: uploadFile(bucket, s3Key, localPath, mime)
+    Storage->>MinIO: PUT /agile-attachments/s3Key (AWS4-HMAC-SHA256)
+    MinIO-->>Storage: HTTP 200 OK (ETag header)
+    Controller->>Controller: Save s3_key, file_size in database
+    Controller-->>User: HTTP 201 Created {"success": true, "attachment_id": 99}
+
+    Note over User,MinIO: File Download Flow (Dual-Delivery Mode)
+    User->>Controller: GET /api/tasks/attachments/99/download
+    Controller->>Controller: Validate task view permission
+
+    alt S3_DIRECT_PRESIGNED=true (Offload Bandwidth)
+        Controller->>Storage: getPresignedUrl(bucket, s3Key, expires=3600)
+        Storage-->>Controller: Presigned S3 GET URL with signature query params
+        Controller-->>User: HTTP 307 Temporary Redirect -> http://localhost:9000/agile-attachments/...
+        User->>MinIO: GET /agile-attachments/s3Key?X-Amz-Signature=...
+        MinIO-->>User: HTTP 200 OK (File bytes delivered directly)
+    else S3_DIRECT_PRESIGNED=false (Streaming Proxy Mode)
+        Controller->>Storage: getObject(bucket, s3Key)
+        Storage->>MinIO: GET /agile-attachments/s3Key (AWS4-HMAC-SHA256)
+        MinIO-->>Storage: HTTP 200 OK (Binary stream)
+        Storage-->>Controller: Binary data stream
+        Controller-->>User: HTTP 200 OK (Content-Disposition: attachment)
+    end
 ```
 
 ---

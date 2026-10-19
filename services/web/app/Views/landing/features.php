@@ -102,6 +102,36 @@
                     </p>
                 </div>
             </div>
+
+            <!-- Feature 7 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card feature-card p-4">
+                    <div class="avatar-sm mb-3">
+                        <span class="avatar-title bg-primary-lighten text-primary rounded-circle font-20">
+                            <i class="mdi mdi-robot-outline"></i>
+                        </span>
+                    </div>
+                    <h4 class="fw-bold">On-Premise AI Copilot</h4>
+                    <p class="text-muted font-14">
+                        Local quantized LLMs (Phi-3, Mistral) synthesize sprint retrospectives, refine user stories, and generate test criteria with 100% data privacy.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Feature 8 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card feature-card p-4">
+                    <div class="avatar-sm mb-3">
+                        <span class="avatar-title bg-success-lighten text-success rounded-circle font-20">
+                            <i class="mdi mdi-cloud-upload-outline"></i>
+                        </span>
+                    </div>
+                    <h4 class="fw-bold">MinIO S3 Object Storage</h4>
+                    <p class="text-muted font-14">
+                        S3-compatible object storage with pre-signed URL downloads, automated database snapshots, and seamless migration to AWS S3 or Cloudflare R2.
+                    </p>
+                </div>
+            </div>
         </div>
 
         <div class="text-center mt-5 pt-3">

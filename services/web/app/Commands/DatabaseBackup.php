@@ -130,6 +130,14 @@ class DatabaseBackup extends BaseCommand
             // Prune backups older than 30 days
             self::pruneOldBackups($backupDir, 30);
 
+            // Mirror to MinIO S3 Object Storage if configured
+            $storage = new \App\Services\StorageService();
+            if ($storage->isEnabled()) {
+                $bucket = (string) env('S3_BUCKET_BACKUPS', 'agile-backups');
+                $storage->ensureBucket($bucket);
+                $storage->uploadFile($bucket, "mysql/{$finalName}", $finalPath, 'application/gzip');
+            }
+
             return [
                 'status'   => 'success',
                 'filename' => $finalName,

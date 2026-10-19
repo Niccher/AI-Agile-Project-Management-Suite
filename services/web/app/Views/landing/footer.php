@@ -28,15 +28,15 @@
                     <h5 class="text-white mb-3">Open Source</h5>
                     <ul class="list-unstyled text-muted mb-0">
                         <li class="mb-2"><a href="<?= site_url('community') ?>" class="text-muted">Community &amp; Contributing</a></li>
-                        <li class="mb-2"><a href="https://github.com/Niccher/Chege-Jira-WebApp" target="_blank" class="text-muted"><i class="mdi mdi-github me-1"></i> GitHub Repository</a></li>
-                        <li class="mb-2"><span class="badge bg-success-lighten text-success">MIT License</span></li>
+                        <li class="mb-2"><a href="https://github.com/Niccher/AI-Agile-Project-Management-Suite" target="_blank" class="text-muted"><i class="mdi mdi-github me-1"></i> GitHub Repository</a></li>
+                        <li class="mb-2"><span class="badge bg-success-lighten text-success">Apache 2.0 License</span></li>
                     </ul>
                 </div>
             </div>
             
             <div class="row mt-5 pt-3 border-top border-secondary">
                 <div class="col-12 text-center">
-                    <p class="text-muted mb-0">&copy; <?= date('Y') ?> <?= esc(setting('App.siteName')) ?>. Released under the MIT Open Source License.</p>
+                    <p class="text-muted mb-0">&copy; <?= date('Y') ?> <?= esc(setting('App.siteName')) ?>. Released under the Apache 2.0 Open Source License.</p>
                 </div>
             </div>
         </div>

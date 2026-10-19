@@ -17,7 +17,7 @@
 
 The platform orchestrates agile sprints, Kanban boards, timelogs, Wiki documentation, management approvals, and automated AI assistance powered by local quantized GGUF models (`llama-cpp-python`).
 
-Stack: **CodeIgniter 4 (PHP 8.3)**, **FastAPI (Python 3.12)**, **MySQL 8.4**, **Redis 7**.
+Stack: **CodeIgniter 4 (PHP 8.3)**, **FastAPI (Python 3.12)**, **MySQL 8.4**, **Redis 7**, **MinIO S3**.
 
 **If you only need to run the system, this page is enough.**  
 Software engineers: [docs/README.md](docs/README.md).
@@ -30,6 +30,7 @@ Software engineers: [docs/README.md](docs/README.md).
 | :--- | :--- | :--- |
 | **Web Dashboard** | [http://localhost](http://localhost) (Port 80) | Username: `admin`<br>Password: `admin_password_123` |
 | **ML API Swagger** | [http://localhost:8000/docs](http://localhost:8000/docs) (Port 8000) | Header: `X-API-Key: chege_jira_ml_super_secret_key_2026` |
+| **MinIO S3 & Console** | [http://localhost:9001](http://localhost:9001) (Console: 9001, S3: 9000) | User: `minio_admin`<br>Password: `minio_super_secret_2026` |
 | **Health Probe** | `GET http://localhost/health` | Returns HTTP 200 `{"status":"healthy"}` |
 | **MySQL Database** | `mysql:3306` | Internal Docker network only (`db_chege_jira`) |
 | **Redis Cache/Queue** | `redis:6379` | Internal Docker network only |
@@ -59,10 +60,10 @@ Software engineers: [docs/README.md](docs/README.md).
    ```
 
 3. **What the pipeline does automatically:**
-   - Detects host/LAN IP and patches `.env` (`WEB_PORT=80`, `ML_PORT=8000`)
+   - Detects host/LAN IP and patches `.env` (`WEB_PORT=80`, `ML_PORT=8000`, `MINIO_PORT=9000`)
    - Pre-flight system checks (CPU, RAM, swap, disk)
-   - Builds and boots the 4-container stack (MySQL, Redis, ML FastAPI, WebApp)
-   - Waits for MySQL & Redis readiness, runs migrations and seeds demo agile projects
+   - Builds and boots the unified container stack (MySQL, Redis, MinIO, ML FastAPI, WebApp)
+   - Waits for MySQL, Redis & MinIO readiness, provisions storage buckets, runs migrations, and seeds demo data
    - Enforces file permissions and verifies service health
 
 4. **To stop the system:**

@@ -26,7 +26,7 @@
                         We welcome pull requests for bug fixes, performance optimizations, and new features. Check out our contributing guide on GitHub.
                     </p>
                     <div class="mt-auto">
-                        <a href="https://github.com/Niccher/Chege-Jira-WebApp" target="_blank" class="btn btn-outline-dark rounded-pill px-3">
+                        <a href="https://github.com/Niccher/AI-Agile-Project-Management-Suite" target="_blank" class="btn btn-outline-dark rounded-pill px-3">
                             <i class="mdi mdi-source-branch me-1"></i> View Repository
                         </a>
                     </div>
@@ -46,14 +46,14 @@
                         Encountered a bug or have a feature idea? File an issue on our GitHub issue tracker to help us continuously improve the platform.
                     </p>
                     <div class="mt-auto">
-                        <a href="https://github.com/Niccher/Chege-Jira-WebApp/issues" target="_blank" class="btn btn-outline-danger rounded-pill px-3">
+                        <a href="https://github.com/Niccher/AI-Agile-Project-Management-Suite/issues" target="_blank" class="btn btn-outline-danger rounded-pill px-3">
                             <i class="mdi mdi-alert-circle-outline me-1"></i> Open Issue
                         </a>
                     </div>
                 </div>
             </div>
 
-            <!-- Card 3: MIT License -->
+            <!-- Card 3: Apache 2.0 License -->
             <div class="col-md-4">
                 <div class="card feature-card text-center p-4">
                     <div class="avatar-md mx-auto mb-3">
@@ -61,12 +61,12 @@
                             <i class="mdi mdi-scale-balance font-28"></i>
                         </span>
                     </div>
-                    <h4 class="fw-bold">MIT Open License</h4>
+                    <h4 class="fw-bold">Apache 2.0 License</h4>
                     <p class="text-muted font-14 mb-4">
-                        <?= esc(setting('App.siteName')) ?> is 100% free under the permissive MIT license. Use it internally, modify it, or deploy it for commercial projects.
+                        <?= esc(setting('App.siteName')) ?> is 100% free and open-source under the Apache 2.0 license. Use it internally, modify it, or deploy it for commercial projects.
                     </p>
                     <div class="mt-auto">
-                        <a href="https://github.com/Niccher/Chege-Jira-WebApp/blob/master/LICENSE" target="_blank" class="btn btn-outline-primary rounded-pill px-3">
+                        <a href="https://github.com/Niccher/AI-Agile-Project-Management-Suite/blob/master/LICENSE" target="_blank" class="btn btn-outline-primary rounded-pill px-3">
                             <i class="mdi mdi-file-document-outline me-1"></i> Read License
                         </a>
                     </div>

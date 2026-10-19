@@ -241,7 +241,7 @@
     <div class="container py-lg-4">
         <h2 class="fw-bold text-white mb-3 display-6">Ready to Take Back Control of Your Engineering Workflow?</h2>
         <p class="lead text-white-50 w-75 mx-auto mb-4 font-16">
-            Join thousands of teams choosing self-hosted agility over bloated enterprise subscriptions. Free forever under the MIT license.
+            Join thousands of teams choosing self-hosted agility over bloated enterprise subscriptions. Free forever under the Apache 2.0 open-source license.
         </p>
         <div class="d-flex justify-content-center gap-2">
             <a href="<?= site_url('auth/register') ?>" class="btn btn-primary btn-lg rounded-pill px-4">

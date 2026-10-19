@@ -37,8 +37,20 @@ class SettingsController extends BaseUserController
         $avatar = $this->request->getFile('avatar');
         if ($avatar && $avatar->isValid() && !$avatar->hasMoved()) {
             $newName = $avatar->getRandomName();
-            $avatar->move(WRITEPATH . 'uploads/avatars', $newName);
+            $uploadDir = WRITEPATH . 'uploads/avatars';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            $avatar->move($uploadDir, $newName);
             $data['avatar'] = $newName; // Just store filename, controller handles path
+
+            // Mirror to MinIO S3 Object Storage
+            $storage = new \App\Services\StorageService();
+            if ($storage->isEnabled()) {
+                $bucket = (string) env('S3_BUCKET_AVATARS', 'agile-avatars');
+                $storage->ensureBucket($bucket);
+                $storage->uploadFile($bucket, "avatars/{$newName}", $uploadDir . '/' . $newName, $avatar->getClientMimeType() ?: 'image/jpeg');
+            }
         }
 
         // Gather preferences

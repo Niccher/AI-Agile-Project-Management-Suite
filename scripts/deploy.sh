@@ -190,6 +190,10 @@ WEB_PORT=$(grep -E "^WEB_PORT=" .env | cut -d'=' -f2 | tr -d ' "' || echo "80")
 [ -z "$WEB_PORT" ] && WEB_PORT="80"
 ML_PORT=$(grep -E "^ML_PORT=" .env | cut -d'=' -f2 | tr -d ' "' || echo "8000")
 [ -z "$ML_PORT" ] && ML_PORT="8000"
+MINIO_PORT=$(grep -E "^MINIO_PORT=" .env | cut -d'=' -f2 | tr -d ' "' || echo "9000")
+[ -z "$MINIO_PORT" ] && MINIO_PORT="9000"
+MINIO_CONSOLE_PORT=$(grep -E "^MINIO_CONSOLE_PORT=" .env | cut -d'=' -f2 | tr -d ' "' || echo "9001")
+[ -z "$MINIO_CONSOLE_PORT" ] && MINIO_CONSOLE_PORT="9001"
 
 # Auto-update BASE_URL if bound to specific port
 if [ "$WEB_PORT" = "80" ]; then
@@ -211,6 +215,8 @@ set_env() {
 
 set_env "WEB_PORT" "$WEB_PORT"
 set_env "ML_PORT" "$ML_PORT"
+set_env "MINIO_PORT" "$MINIO_PORT"
+set_env "MINIO_CONSOLE_PORT" "$MINIO_CONSOLE_PORT"
 set_env "APP_URL" "$BASE_URL"
 set_env "app.baseURL" "$BASE_URL"
 set_env "BASE_URL" "$BASE_URL"
@@ -219,17 +225,21 @@ set_env "DB_NAME" "db_chege_jira"
 set_env "ML_SERVICE_URL" "http://ml-chege-jira:8000"
 set_env "ML_API_KEY" "chege_jira_ml_super_secret_key_2026"
 set_env "DEFAULT_MODEL" "phi3-mini"
+set_env "S3_ENDPOINT" "http://minio:9000"
+set_env "S3_PUBLIC_ENDPOINT" "http://${DETECTED_IP}:${MINIO_PORT}"
 
 log "app.baseURL               -> ${BASE_URL}"
 log "WEB_PORT                  -> ${WEB_PORT} (Standard HTTP)"
 log "ML_PORT                   -> ${ML_PORT} (AI Microservice API)"
+log "MINIO_PORT                -> ${MINIO_PORT} (S3 Object Storage)"
+log "MINIO_CONSOLE_PORT        -> ${MINIO_CONSOLE_PORT} (MinIO Web Console)"
 
 # Mirror .env to services/web/.env for native CI4 DotEnv discovery
 cp .env services/web/.env 2>/dev/null || true
 
 # ── 5. Stop Old Containers & Clear Conflicts ──────────────────
 section "5. Conflict Resolution & Container Cleanup"
-CONTAINER_NAMES=("chege-jira-webapp" "ml-chege-jira" "shared-mysql" "shared-redis" "shared-phpmyadmin")
+CONTAINER_NAMES=("chege-jira-webapp" "ml-chege-jira" "shared-mysql" "shared-redis" "shared-phpmyadmin" "shared-minio")
 
 for cname in "${CONTAINER_NAMES[@]}"; do
     if docker ps -a --format '{{.Names}}' | grep -Eq "^${cname}\$"; then
@@ -277,6 +287,30 @@ for i in $(seq 1 15); do
     sleep 2
 done
 $REDIS_HEALTHY || { echo ""; warn "Redis did not report healthy within timeout. Check: docker compose logs redis"; }
+
+# ── 7c. Wait for MinIO Health (:9000) ─────────────────────────
+section "7c. Waiting for MinIO S3 Health & Storage Provisioning"
+printf "   Checking shared-minio health"
+MINIO_HEALTHY=false
+for i in $(seq 1 20); do
+    M_STATUS=$(docker inspect --format='{{.State.Health.Status}}' shared-minio 2>/dev/null || echo "missing")
+    if [ "$M_STATUS" = "healthy" ]; then
+        echo ""
+        log "MinIO S3 object storage is healthy and accepting API requests"
+        MINIO_HEALTHY=true
+        break
+    fi
+    printf "."
+    sleep 2
+done
+$MINIO_HEALTHY || { echo ""; warn "MinIO did not report healthy within timeout. Check: docker compose logs minio"; }
+
+if $MINIO_HEALTHY; then
+    log "Auto-provisioning MinIO storage buckets..."
+    docker compose exec -T chege-jira php spark storage:migrate-to-s3 --dry-run 2>&1 \
+        && log "MinIO buckets verified and auto-provisioned" \
+        || warn "MinIO bucket auto-provisioning had notices"
+fi
 
 # ── 8. Run Database Migrations & Seeding ──────────────────────
 section "8. Running Database Migrations & Seeding"
@@ -374,6 +408,8 @@ if [[ "$FINAL_WEB" =~ ^(200|301|302|307)$ ]]; then
     echo -e "  ${BOLD}ML Health Probe      :${RESET}  http://${DETECTED_IP}:${ML_PORT}/api/v1/health"
     echo -e "  ${BOLD}MySQL Database       :${RESET}  mysql:3306 (Docker internal only)"
     echo -e "  ${BOLD}Redis Cache/Queue    :${RESET}  redis:6379 (Docker internal only)"
+    echo -e "  ${BOLD}MinIO S3 API Endpoint:${RESET}  http://${DETECTED_IP}:${MINIO_PORT}"
+    echo -e "  ${BOLD}MinIO Web Console    :${RESET}  http://${DETECTED_IP}:${MINIO_CONSOLE_PORT}"
     echo ""
     finish_deployment
 

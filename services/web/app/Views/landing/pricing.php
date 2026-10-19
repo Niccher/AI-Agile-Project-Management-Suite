@@ -106,7 +106,7 @@
                     </ul>
 
                     <div class="mt-auto">
-                        <a href="https://github.com/Niccher/Chege-Jira-WebApp/issues" target="_blank" class="btn btn-outline-dark btn-lg rounded-pill w-100">
+                        <a href="https://github.com/Niccher/AI-Agile-Project-Management-Suite/issues" target="_blank" class="btn btn-outline-dark btn-lg rounded-pill w-100">
                             <i class="mdi mdi-github me-1"></i> Contact on GitHub
                         </a>
                     </div>
@@ -118,7 +118,7 @@
         <div class="row mt-5 pt-3 justify-content-center text-center">
             <div class="col-lg-8">
                 <h4 class="fw-bold mb-2">Frequently Asked About Pricing</h4>
-                <p class="text-muted font-14">Are there any hidden costs? No. The code is 100% open source under the MIT license. You only pay for your own hosting provider (VPS, server, or cloud).</p>
+                <p class="text-muted font-14">Are there any hidden costs? No. The code is 100% open source under the Apache 2.0 license. You only pay for your own hosting provider (VPS, server, or cloud).</p>
             </div>
         </div>
     </div>

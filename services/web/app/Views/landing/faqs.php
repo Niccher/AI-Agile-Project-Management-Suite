@@ -88,7 +88,7 @@
                         </h2>
                         <div id="faqFive" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#faqAccordion">
                             <div class="accordion-body text-muted font-14 lh-base">
-                                <strong>Yes.</strong> You have full, unrestricted access to your underlying MySQL database. You can run standard <code>mysqldump</code> commands or automated backup cron jobs at any time with zero vendor lock-in.
+                                <strong>Yes.</strong> You have full, unrestricted access to your underlying MySQL database and MinIO S3 object storage. You can run standard <code>mysqldump</code> commands, automated <code>php spark db:backup</code> with S3 cloud mirroring, or sync S3 buckets at any time with zero vendor lock-in.
                             </div>
                         </div>
                     </div>
@@ -99,7 +99,7 @@
                     <h4 class="text-white fw-bold mb-2">Have a question not answered here?</h4>
                     <p class="text-white-50 font-14 mb-3">Check out our community repository on GitHub or start a discussion.</p>
                     <div>
-                        <a href="https://github.com/Niccher/Chege-Jira-WebApp/issues" target="_blank" class="btn btn-light rounded-pill px-4">
+                        <a href="https://github.com/Niccher/AI-Agile-Project-Management-Suite/issues" target="_blank" class="btn btn-light rounded-pill px-4">
                             <i class="mdi mdi-github me-1"></i> Open GitHub Issue
                         </a>
                     </div>

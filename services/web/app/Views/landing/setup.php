@@ -123,12 +123,12 @@
                             <div class="tab-pane fade show active" id="docker-pane" role="tabpanel">
                                 <div class="d-flex align-items-center justify-content-between mb-3">
                                     <h4 class="fw-bold text-dark mb-0">
-                                        <i class="mdi mdi-docker text-primary me-2"></i> Option 1: Docker Compose (Recommended)
+                                        <i class="mdi mdi-docker text-primary me-2"></i> Option 1: One-Click Automated Deployment (Recommended)
                                     </h4>
                                     <span class="badge bg-success-lighten text-success font-12">Fastest (2 min)</span>
                                 </div>
                                 <p class="text-muted font-14 mb-4">
-                                    The recommended zero-configuration setup. Spins up Nginx, PHP 8.1-FPM, and MySQL in isolated containers with automatic database migrations and initial demo seeding.
+                                    The recommended zero-configuration deployment. Boots the unified container stack (Nginx + PHP 8.3, FastAPI ML microservice, MySQL 8.4, Redis 7, and MinIO S3 Object Storage) with automatic database migrations, bucket provisioning, and initial demo seeding.
                                 </p>
 
                                 <div class="mb-4">
@@ -143,47 +143,31 @@
                                             <span class="terminal-dot dot-green"></span>
                                             <span class="terminal-title">bash — clone</span>
                                         </div>
-                                        <pre class="terminal-body" id="cmd-clone"><code><span class="terminal-cmd">git clone</span> https://github.com/Niccher/Chege-Jira-WebApp.git
-<span class="terminal-cmd">cd</span> Chege-Jira-WebApp</code></pre>
+                                        <pre class="terminal-body" id="cmd-clone"><code><span class="terminal-cmd">git clone</span> https://github.com/Niccher/AI-Agile-Project-Management-Suite.git
+<span class="terminal-cmd">cd</span> AI-Agile-Project-Management-Suite</code></pre>
                                     </div>
                                 </div>
 
                                 <div class="mb-4">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <label class="fw-bold text-dark font-14">2. Copy environment template:</label>
-                                        <button class="btn-copy-cmd" onclick="copyCode('cmd-env', this)"><i class="mdi mdi-content-copy me-1"></i>Copy</button>
+                                        <label class="fw-bold text-dark font-14">2. Launch deployment pipeline:</label>
+                                        <button class="btn-copy-cmd" onclick="copyCode('cmd-deploy', this)"><i class="mdi mdi-content-copy me-1"></i>Copy</button>
                                     </div>
                                     <div class="terminal-window">
                                         <div class="terminal-header">
                                             <span class="terminal-dot dot-red"></span>
                                             <span class="terminal-dot dot-yellow"></span>
                                             <span class="terminal-dot dot-green"></span>
-                                            <span class="terminal-title">bash — env</span>
+                                            <span class="terminal-title">bash — deploy</span>
                                         </div>
-                                        <pre class="terminal-body" id="cmd-env"><code><span class="terminal-cmd">cp</span> env .env</code></pre>
-                                    </div>
-                                </div>
-
-                                <div class="mb-4">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <label class="fw-bold text-dark font-14">3. Launch container stack:</label>
-                                        <button class="btn-copy-cmd" onclick="copyCode('cmd-docker-up', this)"><i class="mdi mdi-content-copy me-1"></i>Copy</button>
-                                    </div>
-                                    <div class="terminal-window">
-                                        <div class="terminal-header">
-                                            <span class="terminal-dot dot-red"></span>
-                                            <span class="terminal-dot dot-yellow"></span>
-                                            <span class="terminal-dot dot-green"></span>
-                                            <span class="terminal-title">bash — docker</span>
-                                        </div>
-                                        <pre class="terminal-body" id="cmd-docker-up"><code><span class="terminal-cmd">docker-compose</span> up -d --build</code></pre>
+                                        <pre class="terminal-body" id="cmd-deploy"><code><span class="terminal-cmd">bash</span> scripts/deploy.sh</code></pre>
                                     </div>
                                 </div>
 
                                 <div class="alert alert-primary border-0 d-flex align-items-center" role="alert">
                                     <i class="mdi mdi-check-circle-outline font-22 text-primary me-3"></i>
                                     <div class="font-14">
-                                        Container startup automatically runs <code>php spark migrate --all</code> and <code>php spark db:seed DemoSeeder</code>. Once running, access the application at <a href="http://localhost:8080" class="fw-bold text-primary text-decoration-underline" target="_blank">http://localhost:8080</a>.
+                                        Pipeline automatically configures <code>.env</code>, verifies health for MySQL, Redis & MinIO, runs migrations, provisions S3 buckets, and seeds demo data. Access WebApp at <a href="http://localhost" class="fw-bold text-primary text-decoration-underline" target="_blank">http://localhost</a> (Port 80) and MinIO S3 Console at <a href="http://localhost:9001" class="fw-bold text-primary text-decoration-underline" target="_blank">http://localhost:9001</a>.
                                     </div>
                                 </div>
                             </div>
@@ -273,14 +257,14 @@
                                     </div>
                                     <div class="terminal-window">
                                         <pre class="terminal-body" id="cmd-manual-deps"><code><span class="terminal-comment"># Clone repository</span>
-<span class="terminal-cmd">git clone</span> https://github.com/Niccher/Chege-Jira-WebApp.git
-<span class="terminal-cmd">cd</span> Chege-Jira-WebApp
+<span class="terminal-cmd">git clone</span> https://github.com/Niccher/AI-Agile-Project-Management-Suite.git
+<span class="terminal-cmd">cd</span> AI-Agile-Project-Management-Suite
 
-<span class="terminal-comment"># Install Composer packages</span>
-<span class="terminal-cmd">composer install</span> --no-dev --optimize-autoloader
+<span class="terminal-comment"># Install Composer packages for WebApp</span>
+<span class="terminal-cmd">cd</span> services/web && <span class="terminal-cmd">composer install</span> --no-dev --optimize-autoloader && <span class="terminal-cmd">cd</span> ../..
 
-<span class="terminal-comment"># Copy & configure database in .env</span>
-<span class="terminal-cmd">cp</span> env .env</code></pre>
+<span class="terminal-comment"># Copy & configure database and S3 in .env</span>
+<span class="terminal-cmd">cp</span> .env.example .env</code></pre>
                                     </div>
                                 </div>
 
@@ -290,10 +274,9 @@
                                         <button class="btn-copy-cmd" onclick="copyCode('cmd-manual-migrate', this)"><i class="mdi mdi-content-copy me-1"></i>Copy</button>
                                     </div>
                                     <div class="terminal-window">
-                                        <pre class="terminal-body" id="cmd-manual-migrate"><code><span class="terminal-comment"># Execute migrations</span>
-<span class="terminal-cmd">php spark migrate</span> --all
-
-<span class="terminal-comment"># Seed demo accounts and projects</span>
+                                        <pre class="terminal-body" id="cmd-manual-migrate"><code><span class="terminal-comment"># Execute migrations and seed demo data</span>
+<span class="terminal-cmd">cd</span> services/web
+<span class="terminal-cmd">php spark migrate</span>
 <span class="terminal-cmd">php spark db:seed</span> DemoSeeder
 
 <span class="terminal-comment"># Set writable folder permissions</span>
@@ -324,12 +307,12 @@
                                 <div class="p-3 bg-light rounded border h-100 position-relative">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <span class="badge bg-danger-lighten text-danger">Administrator</span>
-                                        <button class="btn btn-outline-secondary btn-sm py-0 px-2 font-11" onclick="copyCreds('admin@chegejira.local', 'secret', this)">
+                                        <button class="btn btn-outline-secondary btn-sm py-0 px-2 font-11" onclick="copyCreds('admin@example.com', 'admin_password_123', this)">
                                             <i class="mdi mdi-content-copy me-1"></i>Copy Creds
                                         </button>
                                     </div>
-                                    <p class="mb-1 font-13"><strong>Email:</strong> <code>admin@chegejira.local</code></p>
-                                    <p class="mb-2 font-13"><strong>Password:</strong> <code>secret</code></p>
+                                    <p class="mb-1 font-13"><strong>Email:</strong> <code>admin@example.com</code></p>
+                                    <p class="mb-2 font-13"><strong>Password:</strong> <code>admin_password_123</code></p>
                                     <span class="text-muted font-11"><i class="mdi mdi-shield-crown-outline me-1"></i> Full access to Admin, Manager & User workspaces.</span>
                                 </div>
                             </div>
@@ -361,18 +344,18 @@
                         <div class="row font-14 text-muted g-3">
                             <div class="col-md-6">
                                 <ul class="list-unstyled mb-0">
-                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>PHP:</strong> 8.1 or 8.2+</li>
-                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>PHP Extensions:</strong> <code>intl</code>, <code>mbstring</code>, <code>mysqli</code>, <code>curl</code></li>
-                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Database:</strong> MySQL 8.0+ / MariaDB 10.5+</li>
-                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Session Store:</strong> Redis 6.0+ (Production Ready)</li>
+                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>PHP:</strong> 8.3+ (CodeIgniter 4.6.4 + Shield)</li>
+                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Database:</strong> MySQL 8.4 LTS</li>
+                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Session & Cache:</strong> Redis 7 (Dual-Engine HA)</li>
+                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Object Storage:</strong> MinIO S3-Compatible API (:9000/:9001)</li>
                                 </ul>
                             </div>
                             <div class="col-md-6">
                                 <ul class="list-unstyled mb-0">
-                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Web Server:</strong> Nginx or Apache with <code>mod_rewrite</code></li>
-                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Framework:</strong> CodeIgniter 4.6.4 + Shield</li>
+                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>AI Microservice:</strong> FastAPI / Python 3.12 (Port 8000)</li>
+                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>LLM Inference:</strong> Local Quantized GGUF (`llama-cpp-python`)</li>
+                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Web Server:</strong> Nginx + PHP-FPM (Port 80)</li>
                                     <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Frontend UI:</strong> Hyper SaaS Theme (Bootstrap 5)</li>
-                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Microservice:</strong> ML AI Container (FastAPI)</li>
                                 </ul>
                             </div>
                         </div>

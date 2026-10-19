@@ -20,6 +20,7 @@ flowchart TD
         ML[FastAPI ML Inference Backend :8000]
         MySQL[(MySQL 8.4 Relational Storage)]
         Redis[(Redis 7 Cache & Task Queue)]
+        MinIO[(MinIO S3 Object Storage :9000/:9001)]
     end
 
     Dev -->|Manage Kanban & Log Time| Web
@@ -29,15 +30,17 @@ flowchart TD
     Web -->|Internal REST JSON + API Key| ML
     Web -->|Store Relational State| MySQL
     Web -->|In-Memory Sessions & Cache| Redis
+    Web -->|Uploads, Avatars, Backups| MinIO
     ML -->|Direct Async Context Extraction| MySQL
     ML -->|Enqueue Background AI Jobs| Redis
+    ML -->|Read Attachments & Store Reports| MinIO
 ```
 
 ---
 
 ## 📦 Container Topology & Component Table
 
-All four containers participate in the private Docker bridge network `chege-shared-network`:
+All containers participate in the private Docker bridge network `chege-shared-network`:
 
 ```mermaid
 flowchart LR
@@ -49,22 +52,28 @@ flowchart LR
     subgraph "Public Edge (Exposed Ports)"
         NginxWeb["chege-jira-webapp\n(Nginx + PHP 8.3 / CI4)\nPort: 80"]
         FastApiML["ml-chege-jira\n(Python 3.12 / FastAPI)\nPort: 8000"]
+        MinioStore["shared-minio\n(MinIO S3 & Console)\nPorts: 9000 / 9001"]
     end
 
     subgraph "Private Network (chege-shared-network - No Host Ports)"
         MySQLDb["shared-mysql\n(MySQL 8.4)\nPort: 3306"]
         RedisCache["shared-redis\n(Redis 7)\nPort: 6379"]
         ModelStorage[("Local Volume:\nmodels/ (*.gguf)")]
+        MinioData[("Persistent Volume:\nminio-data")]
     end
 
     Browser -->|HTTP Port 80| NginxWeb
+    Browser -.->|Pre-Signed S3 Downloads| MinioStore
     ExtTool -->|HTTP Port 8000| FastApiML
     NginxWeb -->|HTTP JSON + X-API-Key| FastApiML
     NginxWeb -->|MySQL Protocol| MySQLDb
     NginxWeb -->|Redis TCP| RedisCache
+    NginxWeb -->|S3 AWSv4 REST API| MinioStore
     FastApiML -->|Async SQLAlchemy| MySQLDb
     FastApiML -->|Async Task State| RedisCache
     FastApiML -->|Local Read/Write| ModelStorage
+    FastApiML -->|S3 Boto3 API| MinioStore
+    MinioStore -->|Block Persistence| MinioData
 ```
 
 ### Container Directory & Runtime Mapping
@@ -75,6 +84,7 @@ flowchart LR
 | **`ml-chege-jira`** | `services/ml` | Python 3.12 + OpenBLAS | `8000` (or `$ML_PORT`) | **AI Copilot & Worker:** Executes local GGUF models, renders Jinja2 prompts, and manages background AI jobs. |
 | **`shared-mysql`** | Built-in Image (`mysql:8.4`) | MySQL 8.4 LTS | `3306` (Internal only) | **Relational Source of Truth:** Stores all agile entities, users, wiki versions, and AI interaction logs. |
 | **`shared-redis`** | Built-in Image (`redis:alpine`) | Redis 7 | `6379` (Internal only) | **In-Memory Cache & Job Queue:** Primary session engine for WebApp and async job tracker for ML backend. |
+| **`shared-minio`** | Built-in Image (`minio/minio`) | MinIO S3 API & Console | `9000` (API) / `9001` (Console) | **S3-Compatible Object Storage:** Stores task attachments, user avatars, and compressed database backup dumps. |
 
 ---
 

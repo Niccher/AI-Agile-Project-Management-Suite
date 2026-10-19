@@ -28,6 +28,19 @@ This guide details all environment variables operators and system administrators
 | `ADMIN_EMAIL` | WebApp Seeder | No | `admin@example.com` | Email address for default administrative account provisioned by `DemoSeeder`. |
 | `ADMIN_USERNAME` | WebApp Seeder | No | `admin` | Username for default administrative account. |
 | `ADMIN_PASSWORD` | WebApp Seeder | No | `admin_password_123` | Initial password for default administrative account. |
+| `MINIO_PORT` | Compose / MinIO | No | `9000` | Host port on which the MinIO S3 API service is published. |
+| `MINIO_CONSOLE_PORT` | Compose / MinIO | No | `9001` | Host port on which the MinIO Web Console is published. |
+| `MINIO_ROOT_USER` | MinIO | Yes | `minio_admin` | Administrative access key for the MinIO object storage service. |
+| `MINIO_ROOT_PASSWORD` | MinIO | Yes | `minio_super_secret_2026` | Administrative secret key for MinIO object storage. |
+| `S3_ENDPOINT` | WebApp & ML | Yes | `http://minio:9000` | Internal S3 API endpoint within the Docker network. |
+| `S3_PUBLIC_ENDPOINT` | WebApp | Yes | `http://localhost:9000` | Public S3 API URL used to formulate pre-signed download URLs for browser clients. |
+| `S3_ACCESS_KEY` | WebApp & ML | Yes | `minio_admin` | Access key ID for S3 operations. |
+| `S3_SECRET_KEY` | WebApp & ML | Yes | `minio_super_secret_2026` | Secret access key for S3 operations. |
+| `S3_REGION` | WebApp & ML | No | `us-east-1` | S3 signing region. |
+| `S3_BUCKET_ATTACHMENTS` | WebApp & ML | No | `agile-attachments` | S3 bucket name for task attachments and documentation files. |
+| `S3_BUCKET_AVATARS` | WebApp | No | `agile-avatars` | S3 bucket name for user avatars and profile graphics. |
+| `S3_BUCKET_BACKUPS` | WebApp | No | `agile-backups` | S3 bucket name for compressed database snapshots. |
+| `S3_DIRECT_PRESIGNED` | WebApp | No | `true` | When `true`, downloads issue 307 redirects to pre-signed S3 URLs; when `false`, web server acts as streaming proxy. |
 
 ---
 
