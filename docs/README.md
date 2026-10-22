@@ -35,5 +35,6 @@ If you are an operator or user looking for setup and execution instructions, ple
 | **Check version compatibility** | [engineering/release.md](engineering/release.md) | Monorepo version matrix and release train checklist. |
 | **Debug complex runtime faults** | [engineering/troubleshooting.md](engineering/troubleshooting.md) | Diagnostics matrix, inter-service curls, and Redis checks. |
 | **Perform rolling service restarts** | [runbooks/restart.md](runbooks/restart.md) | Standard Operating Procedures for safe restarts and recovery. |
+| **Inspect logs in real time** | [runbooks/log-inspection-and-debugging.md](runbooks/log-inspection-and-debugging.md) | Live Dozzle streaming, regex search patterns, and CLI fallbacks. |
 | **Backup and restore state** | [runbooks/backup-and-restore.md](runbooks/backup-and-restore.md) | MySQL database dumps, Redis snapshots, and media restoration. |
 | **Review architectural decisions** | [adr/0001-on-premise-quantized-llm-inference.md](adr/0001-on-premise-quantized-llm-inference.md) | Architecture Decision Records (ADRs 0001, 0002, 0003, 0004). |

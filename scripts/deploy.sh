@@ -194,6 +194,8 @@ MINIO_PORT=$(grep -E "^MINIO_PORT=" .env | cut -d'=' -f2 | tr -d ' "' || echo "9
 [ -z "$MINIO_PORT" ] && MINIO_PORT="9000"
 MINIO_CONSOLE_PORT=$(grep -E "^MINIO_CONSOLE_PORT=" .env | cut -d'=' -f2 | tr -d ' "' || echo "9001")
 [ -z "$MINIO_CONSOLE_PORT" ] && MINIO_CONSOLE_PORT="9001"
+DOZZLE_PORT=$(grep -E "^DOZZLE_PORT=" .env | cut -d'=' -f2 | tr -d ' "' || echo "8888")
+[ -z "$DOZZLE_PORT" ] && DOZZLE_PORT="8888"
 
 # Auto-update BASE_URL if bound to specific port
 if [ "$WEB_PORT" = "80" ]; then
@@ -217,6 +219,7 @@ set_env "WEB_PORT" "$WEB_PORT"
 set_env "ML_PORT" "$ML_PORT"
 set_env "MINIO_PORT" "$MINIO_PORT"
 set_env "MINIO_CONSOLE_PORT" "$MINIO_CONSOLE_PORT"
+set_env "DOZZLE_PORT" "$DOZZLE_PORT"
 set_env "APP_URL" "$BASE_URL"
 set_env "app.baseURL" "$BASE_URL"
 set_env "BASE_URL" "$BASE_URL"
@@ -233,13 +236,14 @@ log "WEB_PORT                  -> ${WEB_PORT} (Standard HTTP)"
 log "ML_PORT                   -> ${ML_PORT} (AI Microservice API)"
 log "MINIO_PORT                -> ${MINIO_PORT} (S3 Object Storage)"
 log "MINIO_CONSOLE_PORT        -> ${MINIO_CONSOLE_PORT} (MinIO Web Console)"
+log "DOZZLE_PORT               -> ${DOZZLE_PORT} (Dozzle Real-Time Log Viewer)"
 
 # Mirror .env to services/web/.env for native CI4 DotEnv discovery
 cp .env services/web/.env 2>/dev/null || true
 
 # ── 5. Stop Old Containers & Clear Conflicts ──────────────────
 section "5. Conflict Resolution & Container Cleanup"
-CONTAINER_NAMES=("chege-jira-webapp" "ml-chege-jira" "shared-mysql" "shared-redis" "shared-phpmyadmin" "shared-minio")
+CONTAINER_NAMES=("chege-jira-webapp" "ml-chege-jira" "shared-mysql" "shared-redis" "shared-phpmyadmin" "shared-minio" "shared-dozzle")
 
 for cname in "${CONTAINER_NAMES[@]}"; do
     if docker ps -a --format '{{.Names}}' | grep -Eq "^${cname}\$"; then
@@ -311,6 +315,22 @@ if $MINIO_HEALTHY; then
         && log "MinIO buckets verified and auto-provisioned" \
         || warn "MinIO bucket auto-provisioning had notices"
 fi
+
+# ── 7d. Check Dozzle Log Viewer Readiness ──────────────────────
+printf "   Checking shared-dozzle status"
+DOZZLE_HEALTHY=false
+for i in $(seq 1 10); do
+    STATUS=$(docker inspect --format='{{.State.Health.Status}}' shared-dozzle 2>/dev/null || echo "missing")
+    if [ "$STATUS" = "healthy" ]; then
+        echo ""
+        log "Dozzle Log Viewer is healthy and streaming container logs"
+        DOZZLE_HEALTHY=true
+        break
+    fi
+    printf "."
+    sleep 1
+done
+$DOZZLE_HEALTHY || { echo ""; log "Dozzle container initialized (monitoring logs on port ${DOZZLE_PORT})"; }
 
 # ── 8. Run Database Migrations & Seeding ──────────────────────
 section "8. Running Database Migrations & Seeding"
@@ -410,6 +430,7 @@ if [[ "$FINAL_WEB" =~ ^(200|301|302|307)$ ]]; then
     echo -e "  ${BOLD}Redis Cache/Queue    :${RESET}  redis:6379 (Docker internal only)"
     echo -e "  ${BOLD}MinIO S3 API Endpoint:${RESET}  http://${DETECTED_IP}:${MINIO_PORT}"
     echo -e "  ${BOLD}MinIO Web Console    :${RESET}  http://${DETECTED_IP}:${MINIO_CONSOLE_PORT}"
+    echo -e "  ${BOLD}Dozzle Log Viewer    :${RESET}  http://${DETECTED_IP}:${DOZZLE_PORT}"
     echo ""
     finish_deployment
 

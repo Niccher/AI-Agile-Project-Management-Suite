@@ -9,6 +9,7 @@
 #   - MySQL 8.4 Database  : Port 3306 (Internal to Docker network only)
 #   - Redis 7 Cache/Queue : Port 6379 (Internal to Docker network only)
 #   - MinIO Object Store  : http://localhost:${MINIO_PORT:-9000} (Console: :${MINIO_CONSOLE_PORT:-9001})
+#   - Dozzle Log Viewer   : http://localhost:${DOZZLE_PORT:-8888}
 
 services:
   # ==========================================
@@ -184,6 +185,33 @@ services:
         aliases:
           - minio
           - shared-minio
+
+  # ==========================================
+  # 6. Observability: Dozzle Real-Time Log Viewer
+  # ==========================================
+  dozzle:
+    image: amir20/dozzle:v8.11.8
+    container_name: shared-dozzle
+    restart: unless-stopped
+    ports:
+      - "${DOZZLE_PORT:-8888}:8080"
+    environment:
+      - DOZZLE_LEVEL=info
+      - DOZZLE_NO_ANALYTICS=true
+      - DOZZLE_AUTH_PROVIDER=${DOZZLE_AUTH_PROVIDER:-none}
+      - DOZZLE_USERNAME=${DOZZLE_USER:-admin}
+      - DOZZLE_PASSWORD=${DOZZLE_PASSWORD:-admin_password_123}
+      - DOZZLE_FILTER=name=chege|shared|ml
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD", "/dozzle", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - shared-network
 
 volumes:
   mysql-data:

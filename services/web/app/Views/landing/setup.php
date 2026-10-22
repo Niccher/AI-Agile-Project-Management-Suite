@@ -128,7 +128,7 @@
                                     <span class="badge bg-success-lighten text-success font-12">Fastest (2 min)</span>
                                 </div>
                                 <p class="text-muted font-14 mb-4">
-                                    The recommended zero-configuration deployment. Boots the unified container stack (Apache + PHP 8.4, FastAPI ML microservice, MySQL 8.4, Redis 7, and MinIO S3 Object Storage) with automatic database migrations, bucket provisioning, and initial demo seeding.
+                                    The recommended zero-configuration deployment. Boots the unified container stack (Apache + PHP 8.4, FastAPI ML microservice, MySQL 8.4, Redis 7, MinIO S3 Object Storage, and Dozzle Log Viewer) with automatic database migrations, bucket provisioning, and initial demo seeding.
                                 </p>
 
                                 <div class="mb-4">
@@ -348,6 +348,7 @@
                                     <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Database:</strong> MySQL 8.4 LTS</li>
                                     <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Session & Cache:</strong> Redis 7 (Dual-Engine HA)</li>
                                     <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Object Storage:</strong> MinIO S3-Compatible API (:9000/:9001)</li>
+                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Observability:</strong> Dozzle Real-Time Log Viewer (Port 8888)</li>
                                 </ul>
                             </div>
                             <div class="col-md-6">

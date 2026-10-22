@@ -41,6 +41,10 @@ This guide details all environment variables operators and system administrators
 | `S3_BUCKET_AVATARS` | WebApp | No | `agile-avatars` | S3 bucket name for user avatars and profile graphics. |
 | `S3_BUCKET_BACKUPS` | WebApp | No | `agile-backups` | S3 bucket name for compressed database snapshots. |
 | `S3_DIRECT_PRESIGNED` | WebApp | No | `true` | When `true`, downloads issue 307 redirects to pre-signed S3 URLs; when `false`, web server acts as streaming proxy. |
+| `DOZZLE_PORT` | Compose / Dozzle | Yes | `8888` | Host port on which the Dozzle Real-Time Log Viewer is bound and published. |
+| `DOZZLE_AUTH_PROVIDER` | Dozzle | No | `none` | Authentication provider mode (`none` for anonymous local development, `simple` for credential gating). |
+| `DOZZLE_USER` | Dozzle | No | `admin` | Username for Dozzle when `DOZZLE_AUTH_PROVIDER=simple`. |
+| `DOZZLE_PASSWORD` | Dozzle | No | `admin_password_123` | Password for Dozzle when `DOZZLE_AUTH_PROVIDER=simple`. |
 
 ---
 

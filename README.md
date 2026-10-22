@@ -17,7 +17,7 @@
 
 The platform orchestrates agile sprints, Kanban boards, timelogs, Wiki documentation, management approvals, and automated AI assistance powered by local quantized GGUF models (`llama-cpp-python`).
 
-Stack: **CodeIgniter 4 (PHP 8.4 Apache)**, **FastAPI (Python 3.12)**, **MySQL 8.4**, **Redis 7**, **MinIO S3**.
+Stack: **CodeIgniter 4 (PHP 8.4 Apache)**, **FastAPI (Python 3.12)**, **MySQL 8.4**, **Redis 7**, **MinIO S3**, **Dozzle**.
 
 **If you only need to run the system, this page is enough.**  
 Software engineers: [docs/README.md](docs/README.md).
@@ -31,6 +31,7 @@ Software engineers: [docs/README.md](docs/README.md).
 | **Web Dashboard** | [http://localhost](http://localhost) (Port 80) | Username: `admin`<br>Password: `admin_password_123` |
 | **ML API Swagger** | [http://localhost:8000/docs](http://localhost:8000/docs) (Port 8000) | Header: `X-API-Key: chege_jira_ml_super_secret_key_2026` |
 | **MinIO S3 & Console** | [http://localhost:9001](http://localhost:9001) (Console: 9001, S3: 9000) | User: `minio_admin`<br>Password: `minio_super_secret_2026` |
+| **Dozzle Log Viewer** | [http://localhost:8888](http://localhost:8888) (Port 8888) | Real-time container log streaming & resource stats |
 | **Health Probe** | `GET http://localhost/health` | Returns HTTP 200 `{"status":"healthy"}` |
 | **MySQL Database** | `mysql:3306` | Internal Docker network only (`db_chege_jira`) |
 | **Redis Cache/Queue** | `redis:6379` | Internal Docker network only |

@@ -53,6 +53,7 @@ flowchart LR
         ApacheWeb["chege-jira-webapp\n(Apache + PHP 8.4 / CI4)\nPort: 80"]
         FastApiML["ml-chege-jira\n(Python 3.12 / FastAPI)\nPort: 8000"]
         MinioStore["shared-minio\n(MinIO S3 & Console)\nPorts: 9000 / 9001"]
+        DozzleViewer["shared-dozzle\n(Dozzle Log Viewer)\nPort: 8888"]
     end
 
     subgraph "Private Network (chege-shared-network - No Host Ports)"
@@ -64,6 +65,7 @@ flowchart LR
 
     Browser -->|HTTP Port 80| ApacheWeb
     Browser -.->|Pre-Signed S3 Downloads| MinioStore
+    Browser -->|HTTP Port 8888| DozzleViewer
     ExtTool -->|HTTP Port 8000| FastApiML
     ApacheWeb -->|HTTP JSON + X-API-Key| FastApiML
     ApacheWeb -->|MySQL Protocol| MySQLDb
@@ -85,6 +87,7 @@ flowchart LR
 | **`shared-mysql`** | Built-in Image (`mysql:8.4`) | MySQL 8.4 LTS | `3306` (Internal only) | **Relational Source of Truth:** Stores all agile entities, users, wiki versions, and AI interaction logs. |
 | **`shared-redis`** | Built-in Image (`redis:alpine`) | Redis 7 | `6379` (Internal only) | **In-Memory Cache & Job Queue:** Primary session engine for WebApp and async job tracker for ML backend. |
 | **`shared-minio`** | Built-in Image (`minio/minio`) | MinIO S3 API & Console | `9000` (API) / `9001` (Console) | **S3-Compatible Object Storage:** Stores task attachments, user avatars, and compressed database backup dumps. |
+| **`shared-dozzle`** | Built-in Image (`amir20/dozzle`) | Go Static Binary | `8888` (or `$DOZZLE_PORT`) | **Real-Time Observability:** Streams container stdout/stderr, displays live resource metrics, and filters project logs. |
 
 ---
 

@@ -18,6 +18,8 @@ This document specifies inter-service communication protocols, payload formats, 
 | **ML Backend** | `shared-mysql` | Async MySQL Protocol | Password Credentials | `mysql:3306` | Async SQLAlchemy queries for entity extraction |
 | **ML Backend** | `shared-redis` | Redis TCP Socket | None (Internal Network) | `redis://redis:6379/0` | Async task state & job tracking |
 | **ML Backend** | `shared-minio` | HTTP S3 REST (boto3) | S3 Credentials | `http://minio:9000` | Reads task attachments for AI summarization & QA tests |
+| **Browser / Operator** | `shared-dozzle` | HTTP / SSE | Anonymous / Simple Auth | `http://localhost:8888` | Real-time container log streaming and live resource metrics |
+| **Dozzle** | **Docker Engine** | UNIX Domain Socket | Host File Permissions (RO) | `/var/run/docker.sock` | Read-only container discovery and stdout/stderr stream attach |
 
 ---
 

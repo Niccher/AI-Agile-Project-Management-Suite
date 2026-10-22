@@ -87,6 +87,7 @@ nav:
       - "Engineering Troubleshooting": engineering/troubleshooting.md
   - "Runbooks":
       - "Service Restart": runbooks/restart.md
+      - "Log Inspection & Debugging": runbooks/log-inspection-and-debugging.md
       - "Backup & Restore": runbooks/backup-and-restore.md
   - "Architecture Decision Records":
       - "0001: On-Premise Quantized LLM Inference": adr/0001-on-premise-quantized-llm-inference.md
