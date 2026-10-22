@@ -33,7 +33,7 @@ git checkout -b feat/your-feature-name
 
 ## 🧪 Development & Coding Standards
 
-### 1. WebApp (PHP 8.3 / CodeIgniter 4)
+### 1. WebApp (PHP 8.4 / CodeIgniter 4)
 - **Style:** Follow **PSR-12** formatting and CodeIgniter 4 conventions.
 - **Linting:** Run `php -l` on modified files to ensure zero syntax errors.
 - **Testing:** Add PHPUnit tests in `services/web/tests/`:

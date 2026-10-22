@@ -15,7 +15,7 @@ flowchart TD
     
     subgraph "ci.yml Jobs"
         CI --> J1[validate-docker: Compose Config & deploy.sh]
-        CI --> J2[test-web: PHP 8.3 Syntax & Lint]
+        CI --> J2[test-web: PHP 8.4 Syntax & Lint]
         CI --> J3[test-ml: Python 3.12 Ruff & Pytest]
         CI --> J4[test-synthetic-data: Synthetic Data Generator]
     end
@@ -35,7 +35,7 @@ flowchart TD
    - Runs `docker compose -f docker-compose.yml config` to catch YAML syntax or service dependency errors.
    - Runs `bash -n scripts/deploy.sh` to ensure bash deployment scripts are syntactically valid.
 2. **`test-web`:**
-   - Installs PHP 8.3 and required extensions (`intl`, `mbstring`, `mysqli`, `pdo_mysql`, `curl`, `zip`).
+   - Installs PHP 8.4 and required extensions (`intl`, `mbstring`, `mysqli`, `pdo_mysql`, `curl`, `zip`).
    - Lints every PHP file across `services/web/app/` using parallel `php -l`.
 3. **`test-ml`:**
    - Installs Python 3.12 and dependencies.

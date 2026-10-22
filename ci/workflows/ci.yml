@@ -25,16 +25,16 @@ jobs:
 
   # ── 2. WebApp PHP Quality & Syntax ──────────────────────────
   test-web:
-    name: WebApp Syntax & Static Analysis (PHP 8.3)
+    name: WebApp Syntax & Static Analysis (PHP 8.4)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup PHP 8.3
+      - name: Setup PHP 8.4
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
           extensions: intl, mbstring, mysqli, pdo_mysql, curl, zip
           coverage: none
 

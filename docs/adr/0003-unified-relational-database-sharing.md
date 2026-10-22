@@ -9,7 +9,7 @@
 ## 📌 Context and Problem Statement
 
 The platform comprises two backend services operating on the same business domain:
-1. **WebApp (CodeIgniter 4 / PHP 8.3):** Handles user interactions, Kanban boards, timelogging, project settings, and role-based access control.
+1. **WebApp (CodeIgniter 4 / PHP 8.4):** Handles user interactions, Kanban boards, timelogging, project settings, and role-based access control.
 2. **ML Backend (FastAPI / Python 3.12):** Executes LLM prompt construction, retrieval-augmented generation (RAG), sprint metrics summarization, and timelog anomaly analysis.
 
 When generating a sprint retrospective or analyzing 3 months of engineering timelogs, the ML service requires access to hundreds of related entities: task comments, status transitions, estimated vs logged seconds, and sprint burndown snapshots.

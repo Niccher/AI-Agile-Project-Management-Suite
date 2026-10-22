@@ -37,14 +37,14 @@ Rather than propagating `500 Internal Server Error` responses, logging out activ
 sequenceDiagram
     autonumber
     actor User as Web Client / Browser
-    participant Nginx as Nginx Web Server
-    participant PHP as PHP-FPM / CodeIgniter 4
+    participant Apache as Apache Web Server
+    participant PHP as PHP 8.4 / CodeIgniter 4
     participant Resilient as ResilientSessionHandler
     participant Redis as Redis 7 (In-Memory)
     participant MySQL as MySQL 8.4 (ci_sessions)
 
-    User->>Nginx: HTTP Request (GET /tasks)
-    Nginx->>PHP: Forward Request
+    User->>Apache: HTTP Request (GET /tasks)
+    Apache->>PHP: Process Request (mod_php)
     PHP->>Resilient: Initialize Session (open)
     
     alt Memoized in Current Request
@@ -65,8 +65,8 @@ sequenceDiagram
         Resilient-->>PHP: Session Ready (Engine: MySQL)
     end
 
-    PHP-->>Nginx: Rendered View (Zero 500 Errors)
-    Nginx-->>User: 200 OK (User Remains Logged In)
+    PHP-->>Apache: Rendered View (Zero 500 Errors)
+    Apache-->>User: 200 OK (User Remains Logged In)
 ```
 
 ---

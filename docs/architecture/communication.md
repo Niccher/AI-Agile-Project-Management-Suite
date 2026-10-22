@@ -29,14 +29,14 @@ This document specifies inter-service communication protocols, payload formats, 
 sequenceDiagram
     autonumber
     actor User as Web Browser
-    participant Nginx as Nginx Web Server
+    participant Apache as Apache Web Server
     participant CI as CodeIgniter 4 WebApp
     participant Resilient as ResilientSessionHandler
     participant Redis as Redis 7 (In-Memory)
     participant MySQL as MySQL 8.4 (ci_sessions)
 
-    User->>Nginx: POST /login {username, password, csrf_token}
-    Nginx->>CI: Forward Request
+    User->>Apache: POST /login {username, password, csrf_token}
+    Apache->>CI: Handle Request (mod_php / MPM)
     CI->>CI: Verify CSRF & Validate Password Hash
     CI->>Resilient: Initialize Session (write session id)
     Resilient->>Redis: 50ms Socket Probe (@fsockopen)
@@ -51,8 +51,8 @@ sequenceDiagram
         Resilient-->>CI: Session Stored in MySQL (2-5ms)
     end
 
-    CI-->>Nginx: Set-Cookie: ci_session=...; HttpOnly; SameSite=Lax
-    Nginx-->>User: HTTP 302 Redirect to /dashboard
+    CI-->>Apache: Set-Cookie: ci_session=...; HttpOnly; SameSite=Lax
+    Apache-->>User: HTTP 302 Redirect to /dashboard
 ```
 
 ---

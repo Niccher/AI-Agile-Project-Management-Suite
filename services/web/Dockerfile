@@ -1,19 +1,35 @@
 # syntax=docker/dockerfile:1
-FROM php:8.3-fpm
+FROM php:8.4.27-apache
 
-# ── System dependencies & pre-compiled PHP extensions ─────────────────────────
+# ── System dependencies & tools ───────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        nginx \
         zip \
         unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install pre-compiled PHP extensions (eliminates 10-minute ICU/gd source compilation)
+# ── Apache Configuration ──────────────────────────────────────────────────────
+# Enable mod_rewrite, mod_headers, and mod_deflate for CodeIgniter 4 routing, CORS, and compression
+RUN a2enmod rewrite headers deflate
+
+# Point Apache DocumentRoot to CodeIgniter's /public directory
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
+    && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
+# Configure directory permissions, allow .htaccess overrides, and apply security hardening
+RUN printf '<Directory /var/www/html/public>\n\
+    Options -Indexes +FollowSymLinks\n\
+    AllowOverride All\n\
+    Require all granted\n\
+</Directory>\n\
+ServerTokens Prod\n\
+ServerSignature Off\n\
+TraceEnable Off\n' > /etc/apache2/conf-available/codeigniter.conf \
+    && a2enconf codeigniter
+
+# ── Pre-compiled PHP extensions ───────────────────────────────────────────────
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 RUN install-php-extensions intl mysqli pdo_mysql zip gd redis
-
-# Configure Nginx
-COPY nginx.conf /etc/nginx/sites-available/default
 
 WORKDIR /var/www/html
 

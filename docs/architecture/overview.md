@@ -50,7 +50,7 @@ flowchart LR
     end
 
     subgraph "Public Edge (Exposed Ports)"
-        NginxWeb["chege-jira-webapp\n(Nginx + PHP 8.3 / CI4)\nPort: 80"]
+        ApacheWeb["chege-jira-webapp\n(Apache + PHP 8.4 / CI4)\nPort: 80"]
         FastApiML["ml-chege-jira\n(Python 3.12 / FastAPI)\nPort: 8000"]
         MinioStore["shared-minio\n(MinIO S3 & Console)\nPorts: 9000 / 9001"]
     end
@@ -62,13 +62,13 @@ flowchart LR
         MinioData[("Persistent Volume:\nminio-data")]
     end
 
-    Browser -->|HTTP Port 80| NginxWeb
+    Browser -->|HTTP Port 80| ApacheWeb
     Browser -.->|Pre-Signed S3 Downloads| MinioStore
     ExtTool -->|HTTP Port 8000| FastApiML
-    NginxWeb -->|HTTP JSON + X-API-Key| FastApiML
-    NginxWeb -->|MySQL Protocol| MySQLDb
-    NginxWeb -->|Redis TCP| RedisCache
-    NginxWeb -->|S3 AWSv4 REST API| MinioStore
+    ApacheWeb -->|HTTP JSON + X-API-Key| FastApiML
+    ApacheWeb -->|MySQL Protocol| MySQLDb
+    ApacheWeb -->|Redis TCP| RedisCache
+    ApacheWeb -->|S3 AWSv4 REST API| MinioStore
     FastApiML -->|Async SQLAlchemy| MySQLDb
     FastApiML -->|Async Task State| RedisCache
     FastApiML -->|Local Read/Write| ModelStorage
@@ -80,7 +80,7 @@ flowchart LR
 
 | Container Name | Service Folder | Base Runtime | Exposed Port | Role & Ownership |
 | :--- | :--- | :--- | :---: | :--- |
-| **`chege-jira-webapp`** | `services/web` | PHP 8.3-FPM + Nginx | `80` (or `$WEB_PORT`) | **Frontend & Business Engine:** Serves HTML/JS, handles user authentication, manages Kanban/Sprints, and owns database migrations. |
+| **`chege-jira-webapp`** | `services/web` | PHP 8.4 Apache (CVE Patched) | `80` (or `$WEB_PORT`) | **Frontend & Business Engine:** Serves HTML/JS, handles user authentication, manages Kanban/Sprints, and owns database migrations. |
 | **`ml-chege-jira`** | `services/ml` | Python 3.12 + OpenBLAS | `8000` (or `$ML_PORT`) | **AI Copilot & Worker:** Executes local GGUF models, renders Jinja2 prompts, and manages background AI jobs. |
 | **`shared-mysql`** | Built-in Image (`mysql:8.4`) | MySQL 8.4 LTS | `3306` (Internal only) | **Relational Source of Truth:** Stores all agile entities, users, wiki versions, and AI interaction logs. |
 | **`shared-redis`** | Built-in Image (`redis:alpine`) | Redis 7 | `6379` (Internal only) | **In-Memory Cache & Job Queue:** Primary session engine for WebApp and async job tracker for ML backend. |

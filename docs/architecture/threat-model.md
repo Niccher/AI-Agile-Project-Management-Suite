@@ -12,7 +12,7 @@ This document defines trust boundaries, sensitive data assets, STRIDE threat ana
                    │ (HTTP / HTTPS Port 80)
                    ▼
 ┌────────────────────────────────────────────────────────┐
-│ PUBLIC EDGE: Nginx & WebApp (services/web)             │
+│ PUBLIC EDGE: Apache & WebApp (services/web)             │
 │ - CSRF Token Verification on POST/PUT requests         │
 │ - Secure Session Cookie Flags (HttpOnly, SameSite=Lax) │
 │ - Input Sanitization & Parameterized Query Binding     │

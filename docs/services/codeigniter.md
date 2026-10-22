@@ -1,6 +1,6 @@
 # CodeIgniter 4 WebApp Service Guide
 
-The **WebApp** service provides the primary user-facing web dashboard, Kanban boards, sprint tracking, time tracking, Wiki documentation, client portal, and administration controls. Built with PHP 8.3 on **CodeIgniter 4**, it is served via Nginx and PHP-FPM.
+The **WebApp** service provides the primary user-facing web dashboard, Kanban boards, sprint tracking, time tracking, Wiki documentation, client portal, and administration controls. Built with PHP 8.4 on **CodeIgniter 4**, it is served via Apache (`php:8.4.27-apache`).
 
 ---
 
@@ -28,8 +28,8 @@ services/web/
 │   └── Views/               # PHP UI views (Layouts, Modals, Kanban, Dashboard)
 ├── public/                  # Document root: index.php, assets (CSS, JS, images)
 ├── writable/                # Runtime data: cache, sessions, uploads, backups, logs
-├── entrypoint.sh            # Container bootstrap script (waits for MySQL, migrates, seeds)
-├── nginx.conf               # Web server virtual host and asset caching configuration
+├── entrypoint.sh            # Container bootstrap script (waits for MySQL, migrates, seeds, starts Apache)
+├── nginx.conf               # Reference configuration for external reverse proxy / ingress
 ├── phpunit.xml.dist         # PHPUnit test configuration
 └── composer.json            # PHP dependencies (CodeIgniter 4, Shield, DomPDF, League CSV)
 ```

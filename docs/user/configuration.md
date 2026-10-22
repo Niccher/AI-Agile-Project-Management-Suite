@@ -10,7 +10,7 @@ This guide details all environment variables operators and system administrators
 | :--- | :--- | :---: | :--- | :--- |
 | `CI_ENVIRONMENT` | WebApp | Yes | `production` | CodeIgniter environment mode (`production` or `development`). In production, debug bars are disabled. |
 | `APP_ENV` | ML Service | Yes | `production` | Python application environment mode (`production` or `development`). Controls reload behavior and verbose logs. |
-| `WEB_PORT` | Compose / WebApp | Yes | `80` | Host port on which the Nginx / CodeIgniter WebApp is bound and exposed. |
+| `WEB_PORT` | Compose / WebApp | Yes | `80` | Host port on which the Apache / CodeIgniter WebApp is bound and exposed. |
 | `APP_URL` | WebApp | Yes | `http://localhost` | Public base URL used for email notifications, asset linking, and redirects. |
 | `ML_PORT` | Compose / ML | Yes | `8000` | Host port on which the FastAPI ML microservice is published. |
 | `ML_SERVICE_URL` | WebApp | Yes | `http://ml-chege-jira:8000` | Internal Docker network URL used by CodeIgniter `LlmService` to call FastAPI. |

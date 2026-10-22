@@ -48,7 +48,7 @@ docker compose logs -f ml-chege-jira
 If developing natively on Linux or macOS without Docker:
 
 ### Prerequisites:
-- PHP 8.3 with `intl`, `mysqli`, `pdo_mysql`, `curl`, `mbstring`, `zip`
+- PHP 8.4 (or 8.3+) with `intl`, `mysqli`, `pdo_mysql`, `curl`, `mbstring`, `zip`
 - Composer 2.x
 - Python 3.12 with `pip`
 - Local MySQL 8.4 running on `localhost:3306` with database `db_chege_jira`

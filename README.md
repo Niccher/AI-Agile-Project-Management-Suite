@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/badge/Release-v1.0.0-blue.svg)](https://github.com/Niccher/AI-Agile-Project-Management-Suite/releases)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
-[![PHP](https://img.shields.io/badge/PHP-8.3_%7C_CodeIgniter_4-777BB4.svg?logo=php&logoColor=white)](services/web)
+[![PHP](https://img.shields.io/badge/PHP-8.4_%7C_CodeIgniter_4-777BB4.svg?logo=php&logoColor=white)](services/web)
 [![Python](https://img.shields.io/badge/Python-3.12_%7C_FastAPI-3776AB.svg?logo=python&logoColor=white)](services/ml)
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-Quality_Gates_Passing-success.svg)](ci/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/Docs-MkDocs_Material-blueviolet.svg)](docs/README.md)
@@ -17,7 +17,7 @@
 
 The platform orchestrates agile sprints, Kanban boards, timelogs, Wiki documentation, management approvals, and automated AI assistance powered by local quantized GGUF models (`llama-cpp-python`).
 
-Stack: **CodeIgniter 4 (PHP 8.3)**, **FastAPI (Python 3.12)**, **MySQL 8.4**, **Redis 7**, **MinIO S3**.
+Stack: **CodeIgniter 4 (PHP 8.4 Apache)**, **FastAPI (Python 3.12)**, **MySQL 8.4**, **Redis 7**, **MinIO S3**.
 
 **If you only need to run the system, this page is enough.**  
 Software engineers: [docs/README.md](docs/README.md).

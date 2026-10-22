@@ -128,7 +128,7 @@
                                     <span class="badge bg-success-lighten text-success font-12">Fastest (2 min)</span>
                                 </div>
                                 <p class="text-muted font-14 mb-4">
-                                    The recommended zero-configuration deployment. Boots the unified container stack (Nginx + PHP 8.3, FastAPI ML microservice, MySQL 8.4, Redis 7, and MinIO S3 Object Storage) with automatic database migrations, bucket provisioning, and initial demo seeding.
+                                    The recommended zero-configuration deployment. Boots the unified container stack (Apache + PHP 8.4, FastAPI ML microservice, MySQL 8.4, Redis 7, and MinIO S3 Object Storage) with automatic database migrations, bucket provisioning, and initial demo seeding.
                                 </p>
 
                                 <div class="mb-4">
@@ -344,7 +344,7 @@
                         <div class="row font-14 text-muted g-3">
                             <div class="col-md-6">
                                 <ul class="list-unstyled mb-0">
-                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>PHP:</strong> 8.3+ (CodeIgniter 4.6.4 + Shield)</li>
+                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>PHP:</strong> 8.4+ (CodeIgniter 4.6.4 + Shield)</li>
                                     <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Database:</strong> MySQL 8.4 LTS</li>
                                     <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Session & Cache:</strong> Redis 7 (Dual-Engine HA)</li>
                                     <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Object Storage:</strong> MinIO S3-Compatible API (:9000/:9001)</li>
@@ -354,7 +354,7 @@
                                 <ul class="list-unstyled mb-0">
                                     <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>AI Microservice:</strong> FastAPI / Python 3.12 (Port 8000)</li>
                                     <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>LLM Inference:</strong> Local Quantized GGUF (`llama-cpp-python`)</li>
-                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Web Server:</strong> Nginx + PHP-FPM (Port 80)</li>
+                                    <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Web Server:</strong> Apache (Port 80) / PHP 8.4</li>
                                     <li class="mb-2"><i class="mdi mdi-check-circle text-success me-2"></i><strong>Frontend UI:</strong> Hyper SaaS Theme (Bootstrap 5)</li>
                                 </ul>
                             </div>

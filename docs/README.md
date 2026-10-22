@@ -20,7 +20,7 @@ If you are an operator or user looking for setup and execution instructions, ple
 | **Inspect dual-engine session HA** | [architecture/resilience-and-failover.md](architecture/resilience-and-failover.md) | 50ms pre-flight probe and Redis-to-MySQL session failover. |
 | **Deploy to cloud or containers** | [architecture/deployment.md](architecture/deployment.md) | Docker Compose and Google Cloud Platform (GCP) setup. |
 | **Review security & threat model** | [architecture/threat-model.md](architecture/threat-model.md) | STRIDE analysis, network isolation, and RBAC tiers. |
-| **Work on CodeIgniter 4 WebApp** | [services/codeigniter.md](services/codeigniter.md) | PHP 8.3 MVC layout, CLI spark commands, and recipes. |
+| **Work on CodeIgniter 4 WebApp** | [services/codeigniter.md](services/codeigniter.md) | PHP 8.4 MVC layout, CLI spark commands, and recipes. |
 | **Work on FastAPI ML Backend** | [services/fastapi.md](services/fastapi.md) | Python 3.12 routers, Pydantic schemas, and task manager. |
 | **Review local AI model card** | [services/ml.md](services/ml.md) | Quantized GGUF models, context windows, and Jinja2 prompts. |
 | **Inspect REST API endpoints** | [api/contract.md](api/contract.md) | Schema reference for all `/api/v1` endpoints. |

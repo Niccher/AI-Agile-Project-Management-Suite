@@ -1,6 +1,6 @@
 # WebApp Service Overview (CodeIgniter 4)
 
-The **WebApp** service is the primary user-facing component of the suite, built with **PHP 8.3** on the **CodeIgniter 4** framework and served via Nginx and PHP-FPM.
+The **WebApp** service is the primary user-facing component of the suite, built with **PHP 8.4** on the **CodeIgniter 4** framework and served via Apache HTTP Server (`php:8.4.27-apache`).
 
 For the comprehensive engineering handbook, CLI commands, and development recipes, see the canonical [CodeIgniter 4 Service Guide](codeigniter.md).
 
@@ -12,11 +12,10 @@ The service follows MVC design patterns with strict domain separation:
 
 ```mermaid
 flowchart TD
-    Client([Browser Client]) -->|HTTP Port 80| Nginx[Nginx Reverse Proxy]
-    Nginx -->|FastCGI UNIX Socket| PHP[PHP 8.3-FPM]
+    Client([Browser Client]) -->|HTTP Port 80| Apache[Apache Web Server (php:8.4.27-apache)]
     
     subgraph "CodeIgniter 4 Application (services/web/app)"
-        PHP --> Routes[Config/Routes.php]
+        Apache --> Routes[Config/Routes.php]
         Routes --> Filters[Filters: Session / Shield Auth]
         Filters --> Controllers[Controllers: Admin / User / Api]
         Controllers --> Models[Models: Task / Project / Sprint]
