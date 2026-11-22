@@ -35,6 +35,7 @@
 
     <!-- CSRF Token Meta for Asynchronous Requests -->
     <meta name="csrf-token" content="<?= csrf_hash() ?>">
+    <meta name="csrf-token-name" content="<?= csrf_token() ?>">
     <meta name="csrf-header" content="<?= csrf_header() ?>">
 
     <!-- Open Graph / Facebook / LinkedIn -->

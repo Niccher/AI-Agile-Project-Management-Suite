@@ -20,6 +20,13 @@
     });
 
     /**
+     * Get the CSRF token parameter name from DOM meta tags
+     */
+    function getCsrfTokenName() {
+        return document.querySelector('meta[name="csrf-token-name"]')?.getAttribute('content') || 'chege_jira_csrf_token';
+    }
+
+    /**
      * Get the latest CSRF token hash from DOM meta tags
      */
     function getCsrfToken() {
@@ -35,7 +42,9 @@
         if (meta) {
             meta.setAttribute('content', newToken);
         }
-        document.querySelectorAll('input[name="csrf_token"]').forEach((input) => {
+        const tokenName = getCsrfTokenName();
+        const selector = `input[name="${tokenName}"], input[name="chege_jira_csrf_token"], input[name="csrf_token"]`;
+        document.querySelectorAll(selector).forEach((input) => {
             input.value = newToken;
         });
     }
@@ -58,13 +67,17 @@
         };
 
         const csrfToken = getCsrfToken();
+        const csrfTokenName = getCsrfTokenName();
         let body = null;
 
         if (data instanceof FormData) {
-            if (csrfToken && !data.has('csrf_token')) {
-                data.append('csrf_token', csrfToken);
-            }
             if (csrfToken) {
+                if (!data.has(csrfTokenName)) {
+                    data.append(csrfTokenName, csrfToken);
+                }
+                if (csrfTokenName !== 'csrf_token' && !data.has('csrf_token')) {
+                    data.append('csrf_token', csrfToken);
+                }
                 headers['X-CSRF-TOKEN'] = csrfToken;
             }
             body = data;
@@ -72,6 +85,7 @@
             headers['Content-Type'] = 'application/json';
             if (csrfToken) {
                 headers['X-CSRF-TOKEN'] = csrfToken;
+                data[csrfTokenName] = csrfToken;
                 data.csrf_token = csrfToken;
             }
             body = JSON.stringify(data);
@@ -183,6 +197,7 @@
     // Expose helpers globally
     window.Toast = Toast;
     window.getCsrfToken = getCsrfToken;
+    window.getCsrfTokenName = getCsrfTokenName;
     window.updateCsrfToken = updateCsrfToken;
     window.dispatchAsyncAction = dispatchAsyncAction;
     window.confirmAction = confirmAction;

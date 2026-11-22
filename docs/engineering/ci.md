@@ -1,39 +1,35 @@
 # Continuous Integration & Automated Quality Gates
 
-This document details the Continuous Integration (CI) pipelines maintained in `ci/workflows/`.
+This document details the Continuous Integration (CI) and automated verification quality gates for the AI-Agile-Project-Management-Suite.
 
 ---
 
-## 🚀 CI Workflows Overview
+## 🚀 Quality Gates Overview
 
-The repository defines automated quality gates for CI execution:
+The repository defines automated verification stages for pre-commit, deployment, and testing:
 
 ```mermaid
 flowchart TD
-    PR[Git Push / Pull Request] --> CI[ci.yml: CI Quality Gates]
-    PR --> DOCS[docs-verify.yml: Documentation Linter]
+    DEV[Developer / Local Pipeline] --> GATE[Quality Verification Gates]
     
-    subgraph "ci.yml Jobs"
-        CI --> J1[validate-docker: Compose Config & deploy.sh]
-        CI --> J2[test-web: PHP 8.4 Syntax & Lint]
-        CI --> J3[test-ml: Python 3.12 Ruff & Pytest]
-        CI --> J4[test-synthetic-data: Synthetic Data Generator]
-    end
-
-    subgraph "docs-verify.yml Jobs"
-        DOCS --> D1[lint-documentation: lint-docs.py v3.1]
+    subgraph "Core Quality Gates"
+        GATE --> J1[validate-docker: Compose Config & deploy.sh]
+        GATE --> J2[test-web: PHP 8.4 Syntax & Lint]
+        GATE --> J3[test-ml: Python 3.12 Ruff & Pytest]
+        GATE --> J4[test-synthetic-data: Synthetic Data Generator]
+        GATE --> D1[lint-documentation: lint-docs.py v3.1]
     end
 ```
 
 ---
 
-## 📋 Workflow Details
+## 📋 Quality Gate Specifications
 
-### 1. `ci.yml` (`ci/workflows/ci.yml`)
+### 1. Docker Compose & Shell Verification
 
 1. **`validate-docker`:**
    - Runs `docker compose -f docker-compose.yml config` to catch YAML syntax or service dependency errors.
-   - Runs `bash -n scripts/deploy.sh` to ensure bash deployment scripts are syntactically valid.
+   - Runs `bash -n scripts/deploy.sh services/web/entrypoint.sh services/ml/scripts/download_model.sh` to ensure bash deployment scripts are syntactically valid.
 2. **`test-web`:**
    - Installs PHP 8.4 and required extensions (`intl`, `mbstring`, `mysqli`, `pdo_mysql`, `curl`, `zip`).
    - Lints every PHP file across `services/web/app/` using parallel `php -l`.
@@ -46,7 +42,7 @@ flowchart TD
 
 ---
 
-### 2. `docs-verify.yml` (`ci/workflows/docs-verify.yml`)
+### 2. Documentation & Link Linter (`scripts/lint-docs.py`)
 
 1. **`lint-documentation`:**
    - Executes `python3 scripts/lint-docs.py .`

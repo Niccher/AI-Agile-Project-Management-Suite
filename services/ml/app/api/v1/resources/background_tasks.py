@@ -24,33 +24,27 @@ class TaskResponse(BaseModel):
     status: str
     message: str
 
-def _run_background_inference(task_id: str, payload: GenerateRequest):
-    import asyncio
-    
-    async def _async_runner():
-        task_manager.update_task(task_id, "running")
+async def _run_background_inference(task_id: str, payload: GenerateRequest) -> None:
+    """Execute background LLM inference directly on the active event loop."""
+    task_manager.update_task(task_id, "running")
+    try:
+        inference_result = await engine_manager.generate_response(
+            prompt=payload.prompt,
+            model_key=payload.model,
+            max_tokens=payload.max_tokens,
+            temperature=payload.temperature,
+            system_prompt=payload.system_prompt,
+        )
+        # Try to parse as JSON if possible, else just string
         try:
-            inference_result = await engine_manager.generate_response(
-                prompt=payload.prompt,
-                model_key=payload.model,
-                max_tokens=payload.max_tokens,
-                temperature=payload.temperature,
-                system_prompt=payload.system_prompt
-            )
-            # Try to parse as JSON if possible, else just string
-            try:
-                parsed = engine_manager.extract_json(inference_result["raw_text"])
-                result_data = parsed
-            except Exception:
-                result_data = {"raw_text": inference_result["raw_text"]}
-                
-            task_manager.update_task(task_id, "completed", result=result_data)
-        except Exception as e:
-            task_manager.update_task(task_id, "failed", error=str(e))
-            
-    # Run the async runner in a new event loop if needed, or use the existing one
-    # FastAPI background tasks run in threadpool, so we need to run asyncio event loop
-    asyncio.run(_async_runner())
+            parsed = engine_manager.extract_json(inference_result["raw_text"])
+            result_data = parsed
+        except Exception:
+            result_data = {"raw_text": inference_result["raw_text"]}
+
+        task_manager.update_task(task_id, "completed", result=result_data)
+    except Exception as e:
+        task_manager.update_task(task_id, "failed", error=str(e))
 
 
 @router.post("/generate", response_model=TaskResponse, status_code=status.HTTP_202_ACCEPTED)

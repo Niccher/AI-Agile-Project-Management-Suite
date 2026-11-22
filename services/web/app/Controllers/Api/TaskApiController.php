@@ -21,13 +21,18 @@ class TaskApiController extends BaseController
         $storyPoints = $this->request->getPost('story_points');
         $storyPoints = ($storyPoints !== null && $storyPoints !== '') ? (int)$storyPoints : null;
 
+        $priority = $this->request->getPost('priority') ?? 'medium';
+        if ($priority === 'critical') {
+            $priority = 'urgent';
+        }
+
         $data = [
             'user_id'      => $userId,
             'project_id'   => $this->request->getPost('project_id'),
             'title'        => $this->request->getPost('title'),
             'description'  => $this->request->getPost('description'),
             'status'       => $this->request->getPost('status') ?? 'todo',
-            'priority'     => $this->request->getPost('priority') ?? 'medium',
+            'priority'     => $priority,
             'story_points' => $storyPoints,
             'assigned_to'  => $assignedTo,
             'assigned_by'  => $assignedTo ? $userId : null,
@@ -128,6 +133,10 @@ class TaskApiController extends BaseController
 
         if (empty($data)) {
             return $this->response->setJSON(['status' => 'error', 'message' => 'No data provided']);
+        }
+
+        if (isset($data['priority']) && $data['priority'] === 'critical') {
+            $data['priority'] = 'urgent';
         }
 
         $oldAssignedTo = $task['assigned_to'] ?? null;

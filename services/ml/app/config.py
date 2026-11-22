@@ -58,9 +58,16 @@ class Settings(BaseSettings):
 
     # CORS
     ALLOWED_ORIGINS: list[str] = [
+        "http://localhost",
+        "http://localhost:80",
+        "http://127.0.0.1",
+        "http://127.0.0.1:80",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://chege-jira-webapp",
+        "http://chege-jira-webapp:80",
         "http://localhost:9001",
         "http://127.0.0.1:9001",
-        "http://chege-jira-webapp:80",
     ]
 
     model_config = SettingsConfigDict(
@@ -115,6 +122,10 @@ class Settings(BaseSettings):
                 self.DB_PORT = int(env["MYSQLPORT"])
             except ValueError:
                 pass
+
+        # --- ML_API_KEY alias support for local dev and microservice parity ---
+        if self.API_KEY == "chege_jira_ml_super_secret_key_2026" and env.get("ML_API_KEY"):
+            self.API_KEY = env["ML_API_KEY"]
 
         return self
 

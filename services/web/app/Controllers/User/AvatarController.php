@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers\User;
 
 use App\Services\StorageService;
+use CodeIgniter\Exceptions\PageNotFoundException;
 
 class AvatarController extends BaseUserController
 {
@@ -13,12 +16,25 @@ class AvatarController extends BaseUserController
         $this->storage = new StorageService();
     }
 
-    public function show($filename)
+    /**
+     * Serve user avatar safely with path traversal protection and S3 offload.
+     *
+     * @param string $filename
+     * @return mixed
+     * @throws PageNotFoundException
+     */
+    public function show(string $filename)
     {
-        $bucket = (string) env('S3_BUCKET_AVATARS', 'agile-avatars');
-        $s3Key = "avatars/{$filename}";
+        // 1. Path traversal defense: strip directories and enforce strict alphanumeric naming
+        $cleanName = basename($filename);
+        if (!preg_match('/^[a-zA-Z0-9_\-\.]+$/', $cleanName)) {
+            throw PageNotFoundException::forPageNotFound('Invalid avatar filename.');
+        }
 
-        // 1. MinIO S3 Object Storage
+        $bucket = (string) env('S3_BUCKET_AVATARS', 'agile-avatars');
+        $s3Key = "avatars/{$cleanName}";
+
+        // 2. MinIO S3 Object Storage (if configured)
         if ($this->storage->isEnabled()) {
             if ($this->storage->useDirectPresigned()) {
                 $presignedUrl = $this->storage->getPresignedUrl($bucket, $s3Key, 1800);
@@ -33,17 +49,24 @@ class AvatarController extends BaseUserController
             }
         }
 
-        // 2. Fallback to Local Disk
-        $path = WRITEPATH . 'uploads/avatars/' . $filename;
-        if (!file_exists($path)) {
-            // Provide a default avatar or 404
-            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        // 3. Fallback to Local Disk with canonical directory confinement check
+        $avatarDir = realpath(WRITEPATH . 'uploads/avatars');
+        if ($avatarDir === false) {
+            throw PageNotFoundException::forPageNotFound('Avatar storage directory not found.');
         }
 
-        $mime = mime_content_type($path) ?: 'image/png';
+        $path = $avatarDir . DIRECTORY_SEPARATOR . $cleanName;
+        $realPath = realpath($path);
+
+        // Security gate: ensure resolved realpath is strictly inside the avatar directory
+        if ($realPath === false || !str_starts_with($realPath, $avatarDir . DIRECTORY_SEPARATOR)) {
+            throw PageNotFoundException::forPageNotFound('Avatar file does not exist.');
+        }
+
+        $mime = mime_content_type($realPath) ?: 'image/png';
 
         return $this->response
-                    ->setContentType($mime)
-                    ->setBody(file_get_contents($path));
+            ->setContentType($mime)
+            ->setBody((string) file_get_contents($realPath));
     }
 }

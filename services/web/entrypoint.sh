@@ -1,15 +1,16 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Wait for MySQL to be fully ready (beyond just ping)
 echo "Waiting for MySQL to accept connections..."
 max_retries=30
 count=0
 
-export DB_HOST=${MYSQLHOST:-mysql}
-export DB_PORT=${MYSQLPORT:-3306}
-export DB_USER=${MYSQLUSER:-root}
-export DB_PASS=${MYSQLPASSWORD:-root_password}
+# Normalize multi-convention database environment variables
+export DB_HOST="${database_default_hostname:-${DB_HOST:-${MYSQLHOST:-mysql}}}"
+export DB_PORT="${database_default_port:-${DB_PORT:-${MYSQLPORT:-3306}}}"
+export DB_USER="${database_default_username:-${DB_USER:-${MYSQLUSER:-root}}}"
+export DB_PASS="${database_default_password:-${DB_ROOT_PASSWORD:-${DB_PASSWORD:-${MYSQLPASSWORD:-root_password}}}}"
 
 while ! php -r "new PDO('mysql:host=' . getenv('DB_HOST') . ';port=' . getenv('DB_PORT'), getenv('DB_USER'), getenv('DB_PASS'));" 2>/dev/null; do
     count=$((count + 1))

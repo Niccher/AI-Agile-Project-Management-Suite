@@ -24,6 +24,7 @@ Thumbs.db
 # Docker Data, Local Volumes & Backups
 mysql-data/
 redis-data/
+minio-data/
 *.sql
 *.sql.gz
 *.rdb

@@ -60,4 +60,4 @@ The repository includes a strict automated documentation linter (`scripts/lint-d
 ```bash
 python3 scripts/lint-docs.py .
 ```
-*(Runs automatically on pull requests via `ci/workflows/docs-verify.yml`).*
+*(Automated quality check via `python3 scripts/lint-docs.py .`).*

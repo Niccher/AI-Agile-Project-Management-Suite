@@ -49,72 +49,86 @@ class DatabaseBackup extends BaseCommand
                 return ['status' => 'error', 'message' => 'Unable to create backup file in writable/backups/'];
             }
 
-            // Write SQL Dump Header
-            fwrite($handle, "-- ========================================================\n");
-            fwrite($handle, "-- Database Backup: {$dbName}\n");
-            fwrite($handle, "-- Generated: " . date('Y-m-d H:i:s T') . "\n");
-            fwrite($handle, "-- System: " . (setting('App.siteName') ?? 'Chege Jira') . " v1.0.0\n");
-            fwrite($handle, "-- ========================================================\n\n");
-            fwrite($handle, "SET FOREIGN_KEY_CHECKS=0;\n");
-            fwrite($handle, "SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';\n");
-            fwrite($handle, "SET AUTOCOMMIT = 0;\n");
-            fwrite($handle, "START TRANSACTION;\n\n");
+            try {
+                // Write SQL Dump Header
+                fwrite($handle, "-- ========================================================\n");
+                fwrite($handle, "-- Database Backup: {$dbName}\n");
+                fwrite($handle, "-- Generated: " . date('Y-m-d H:i:s T') . "\n");
+                fwrite($handle, "-- System: " . (setting('App.siteName') ?? 'Chege Jira') . " v1.0.0\n");
+                fwrite($handle, "-- ========================================================\n\n");
+                fwrite($handle, "SET FOREIGN_KEY_CHECKS=0;\n");
+                fwrite($handle, "SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';\n");
+                fwrite($handle, "SET AUTOCOMMIT = 0;\n");
+                fwrite($handle, "START TRANSACTION;\n\n");
 
-            $tables = $db->listTables();
+                $tables = $db->listTables();
 
-            foreach ($tables as $table) {
-                // Table structure
-                fwrite($handle, "\n-- --------------------------------------------------------\n");
-                fwrite($handle, "-- Structure for table `{$table}`\n");
-                fwrite($handle, "-- --------------------------------------------------------\n");
-                fwrite($handle, "DROP TABLE IF EXISTS `{$table}`;\n");
+                foreach ($tables as $table) {
+                    // Table structure
+                    fwrite($handle, "\n-- --------------------------------------------------------\n");
+                    fwrite($handle, "-- Structure for table `{$table}`\n");
+                    fwrite($handle, "-- --------------------------------------------------------\n");
+                    fwrite($handle, "DROP TABLE IF EXISTS `{$table}`;\n");
 
-                $createTableQuery = $db->query("SHOW CREATE TABLE `{$table}`");
-                $createRow = $createTableQuery->getRowArray();
-                $createSql = $createRow['Create Table'] ?? $createRow['Create View'] ?? null;
+                    $createTableQuery = $db->query("SHOW CREATE TABLE `{$table}`");
+                    $createRow = $createTableQuery->getRowArray();
+                    $createSql = $createRow['Create Table'] ?? $createRow['Create View'] ?? null;
 
-                if ($createSql) {
-                    fwrite($handle, $createSql . ";\n\n");
+                    if ($createSql) {
+                        fwrite($handle, $createSql . ";\n\n");
+                    }
+
+                    // Table data
+                    $rowsQuery = $db->table($table)->get();
+                    $rows = $rowsQuery->getResultArray();
+
+                    if (!empty($rows)) {
+                        fwrite($handle, "-- Dumping data for table `{$table}`\n");
+                        
+                        $columns = array_keys($rows[0]);
+                        $colList = '`' . implode('`, `', $columns) . '`';
+
+                        foreach (array_chunk($rows, 100) as $chunk) {
+                            $valuesList = [];
+                            foreach ($chunk as $row) {
+                                $escaped = array_map(function ($val) use ($db) {
+                                    if ($val === null) return 'NULL';
+                                    return $db->escape($val);
+                                }, array_values($row));
+                                $valuesList[] = '(' . implode(', ', $escaped) . ')';
+                            }
+                            fwrite($handle, "INSERT INTO `{$table}` ({$colList}) VALUES\n" . implode(",\n", $valuesList) . ";\n");
+                        }
+                        fwrite($handle, "\n");
+                    }
                 }
 
-                // Table data
-                $rowsQuery = $db->table($table)->get();
-                $rows = $rowsQuery->getResultArray();
-
-                if (!empty($rows)) {
-                    fwrite($handle, "-- Dumping data for table `{$table}`\n");
-                    
-                    $columns = array_keys($rows[0]);
-                    $colList = '`' . implode('`, `', $columns) . '`';
-
-                    foreach (array_chunk($rows, 100) as $chunk) {
-                        $valuesList = [];
-                        foreach ($chunk as $row) {
-                            $escaped = array_map(function ($val) use ($db) {
-                                if ($val === null) return 'NULL';
-                                return $db->escape($val);
-                            }, array_values($row));
-                            $valuesList[] = '(' . implode(', ', $escaped) . ')';
-                        }
-                        fwrite($handle, "INSERT INTO `{$table}` ({$colList}) VALUES\n" . implode(",\n", $valuesList) . ";\n");
-                    }
-                    fwrite($handle, "\n");
+                fwrite($handle, "SET FOREIGN_KEY_CHECKS=1;\n");
+                fwrite($handle, "COMMIT;\n");
+            } finally {
+                if (is_resource($handle)) {
+                    fclose($handle);
                 }
             }
-
-            fwrite($handle, "SET FOREIGN_KEY_CHECKS=1;\n");
-            fwrite($handle, "COMMIT;\n");
-            fclose($handle);
 
             // Compress with gzip if zlib available
             if (function_exists('gzopen')) {
                 $fpOut = gzopen($gzFilepath, 'wb9');
                 $fpIn = fopen($filepath, 'rb');
-                while (!feof($fpIn)) {
-                    gzwrite($fpOut, fread($fpIn, 1024 * 512));
+                try {
+                    if ($fpOut && $fpIn) {
+                        while (!feof($fpIn)) {
+                            gzwrite($fpOut, fread($fpIn, 1024 * 512));
+                        }
+                    }
+                } finally {
+                    if (is_resource($fpIn)) {
+                        fclose($fpIn);
+                    }
+                    if ($fpOut) {
+                        gzclose($fpOut);
+                    }
                 }
-                fclose($fpIn);
-                gzclose($fpOut);
                 @unlink($filepath);
 
                 $finalPath = $gzFilepath;

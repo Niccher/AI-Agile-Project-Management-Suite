@@ -33,23 +33,43 @@ class SettingsController extends BaseUserController
             $data['date_format'] = $this->request->getPost('date_format');
         }
 
-        // Handle avatar upload securely
+        // Handle avatar upload securely with strict MIME, magic byte, and size enforcement
         $avatar = $this->request->getFile('avatar');
         if ($avatar && $avatar->isValid() && !$avatar->hasMoved()) {
+            $maxSizeBytes = 2 * 1024 * 1024; // 2MB max
+            if ($avatar->getSize() > $maxSizeBytes) {
+                return redirect()->back()->withInput()->with('error', 'Avatar file exceeds the maximum allowed size of 2MB.');
+            }
+
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+            $extension = strtolower((string)$avatar->getExtension());
+            if (!in_array($extension, $allowedExtensions, true)) {
+                return redirect()->back()->withInput()->with('error', 'Only JPG, PNG, and WebP avatar images are allowed.');
+            }
+
+            // Inspect magic bytes directly from temporary upload file
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $detectedMime = $finfo->file($avatar->getTempName());
+            $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+
+            if (!in_array($detectedMime, $allowedMimes, true)) {
+                return redirect()->back()->withInput()->with('error', 'Invalid avatar image content. SVGs, scripts, and non-image files are prohibited.');
+            }
+
             $newName = $avatar->getRandomName();
             $uploadDir = WRITEPATH . 'uploads/avatars';
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
             }
             $avatar->move($uploadDir, $newName);
-            $data['avatar'] = $newName; // Just store filename, controller handles path
+            $data['avatar'] = $newName; // Just store randomized filename
 
-            // Mirror to MinIO S3 Object Storage
+            // Mirror to MinIO S3 Object Storage with verified MIME
             $storage = new \App\Services\StorageService();
             if ($storage->isEnabled()) {
                 $bucket = (string) env('S3_BUCKET_AVATARS', 'agile-avatars');
                 $storage->ensureBucket($bucket);
-                $storage->uploadFile($bucket, "avatars/{$newName}", $uploadDir . '/' . $newName, $avatar->getClientMimeType() ?: 'image/jpeg');
+                $storage->uploadFile($bucket, "avatars/{$newName}", $uploadDir . '/' . $newName, $detectedMime);
             }
         }
 

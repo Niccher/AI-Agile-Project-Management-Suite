@@ -31,6 +31,29 @@ class TaskAttachmentApiController extends BaseController
 
     public function list(int $taskId)
     {
+        $taskModel = new TaskModel();
+        $task = $taskModel->find($taskId);
+        if (!$task) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Task not found',
+            ]);
+        }
+
+        // Authorization check: verify project access
+        $userId = auth()->id();
+        $currentUser = auth()->user();
+        $isAdmin = $currentUser && ($currentUser->inGroup('admin') || $currentUser->inGroup('manager'));
+        $projectModel = new \App\Models\ProjectModel();
+        $project = $projectModel->find($task['project_id']);
+
+        if (!$isAdmin && (!$project || (int)$project['user_id'] !== (int)$userId)) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Permission denied to access attachments for this task.',
+            ]);
+        }
+
         $attachmentModel = new TaskAttachmentModel();
         $attachments = $attachmentModel->getAttachmentsForTask($taskId);
 
@@ -49,6 +72,20 @@ class TaskAttachmentApiController extends BaseController
             return $this->response->setJSON([
                 'status'  => 'error',
                 'message' => 'Task not found',
+            ]);
+        }
+
+        // Authorization check: verify project write access
+        $userId = auth()->id();
+        $currentUser = auth()->user();
+        $isAdmin = $currentUser && ($currentUser->inGroup('admin') || $currentUser->inGroup('manager'));
+        $projectModel = new \App\Models\ProjectModel();
+        $project = $projectModel->find($task['project_id']);
+
+        if (!$isAdmin && (!$project || (int)$project['user_id'] !== (int)$userId)) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Permission denied to upload attachments for this task.',
             ]);
         }
 
@@ -152,24 +189,52 @@ class TaskAttachmentApiController extends BaseController
             return $this->response->setStatusCode(404)->setBody('Attachment not found');
         }
 
+        $taskModel = new TaskModel();
+        $task = $taskModel->find($attachment['task_id']);
+        if (!$task) {
+            return $this->response->setStatusCode(404)->setBody('Associated task not found');
+        }
+
+        // Authorization check: verify project access
+        $userId = auth()->id();
+        $currentUser = auth()->user();
+        $isAdmin = $currentUser && ($currentUser->inGroup('admin') || $currentUser->inGroup('manager'));
+        $projectModel = new \App\Models\ProjectModel();
+        $project = $projectModel->find($task['project_id']);
+
+        if (!$isAdmin && (!$project || (int)$project['user_id'] !== (int)$userId)) {
+            return $this->response->setStatusCode(403)->setBody('Unauthorized to access this attachment');
+        }
+
         $bucket = (string) env('S3_BUCKET_ATTACHMENTS', 'agile-attachments');
         $s3Key  = "tasks/{$attachment['task_id']}/{$attachment['file_name']}";
+
+        $isSvg = ($attachment['mime_type'] === 'image/svg+xml');
+        // SVG files are forced to download as attachment to prevent stored script execution
+        $disposition = $isSvg ? 'attachment' : 'inline';
+        $safeOriginalName = str_replace(["\r", "\n", '"', '\\'], '', $attachment['original_name']);
 
         // 1. Check MinIO S3 Object Storage
         if ($this->storage->isEnabled()) {
             // Direct pre-signed URL offload
             if ($this->storage->useDirectPresigned()) {
-                $presignedUrl = $this->storage->getPresignedUrl($bucket, $s3Key, 900, $attachment['original_name']);
+                $presignedUrl = $this->storage->getPresignedUrl($bucket, $s3Key, 900, $safeOriginalName, $disposition);
                 return $this->response->redirect($presignedUrl, 'auto', 302);
             }
 
             // Internal streaming proxy (when MinIO host port is private)
             $s3Object = $this->storage->getObject($bucket, $s3Key);
             if ($s3Object !== null) {
-                return $this->response
+                $response = $this->response
                     ->setHeader('Content-Type', $attachment['mime_type'])
-                    ->setHeader('Content-Disposition', 'inline; filename="' . addslashes($attachment['original_name']) . '"')
+                    ->setHeader('Content-Disposition', "{$disposition}; filename=\"{$safeOriginalName}\"")
                     ->setBody($s3Object['body']);
+
+                if ($isSvg) {
+                    $response->setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+                }
+
+                return $response;
             }
         }
 
@@ -179,10 +244,16 @@ class TaskAttachmentApiController extends BaseController
             return $this->response->setStatusCode(404)->setBody('File does not exist on disk or object store');
         }
 
-        return $this->response
+        $response = $this->response
             ->setHeader('Content-Type', $attachment['mime_type'])
-            ->setHeader('Content-Disposition', 'inline; filename="' . addslashes($attachment['original_name']) . '"')
-            ->setBody(file_get_contents($filePath));
+            ->setHeader('Content-Disposition', "{$disposition}; filename=\"{$safeOriginalName}\"")
+            ->setBody((string) file_get_contents($filePath));
+
+        if ($isSvg) {
+            $response->setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+        }
+
+        return $response;
     }
 
     public function delete(int $id)

@@ -144,7 +144,7 @@ class StorageService
      * Generate an S3 pre-signed GET URL valid for a specified duration.
      * Uses S3_PUBLIC_ENDPOINT so user browsers can access MinIO directly.
      */
-    public function getPresignedUrl(string $bucket, string $key, int $expirySeconds = 900, string $downloadName = ''): string
+    public function getPresignedUrl(string $bucket, string $key, int $expirySeconds = 900, string $downloadName = '', string $disposition = 'inline'): string
     {
         $key = ltrim($key, '/');
         $uri = "/{$bucket}/{$key}";
@@ -168,7 +168,9 @@ class StorageService
         ];
 
         if (!empty($downloadName)) {
-            $queryParams['response-content-disposition'] = 'inline; filename="' . addslashes($downloadName) . '"';
+            $safeName = str_replace(["\r", "\n", '"', '\\'], '', $downloadName);
+            $dispMode = in_array(strtolower($disposition), ['attachment', 'inline'], true) ? strtolower($disposition) : 'inline';
+            $queryParams['response-content-disposition'] = "{$dispMode}; filename=\"{$safeName}\"";
         }
 
         ksort($queryParams);

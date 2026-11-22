@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
@@ -16,13 +18,25 @@ class CreateAiConfigTable extends Migration
                     'unsigned'       => true,
                     'auto_increment' => true,
                 ],
-                'key' => [
+                'default_model' => [
                     'type'       => 'VARCHAR',
                     'constraint' => 64,
+                    'default'    => 'phi3-mini',
                 ],
-                'value' => [
-                    'type' => 'TEXT',
-                    'null' => true,
+                'n_gpu_layers' => [
+                    'type'       => 'INT',
+                    'constraint' => 11,
+                    'default'    => 0,
+                ],
+                'n_threads' => [
+                    'type'       => 'INT',
+                    'constraint' => 11,
+                    'default'    => 4,
+                ],
+                'n_ctx' => [
+                    'type'       => 'INT',
+                    'constraint' => 11,
+                    'default'    => 4096,
                 ],
                 'updated_at' => [
                     'type' => 'DATETIME',
@@ -30,8 +44,17 @@ class CreateAiConfigTable extends Migration
                 ],
             ]);
             $this->forge->addKey('id', true);
-            $this->forge->addUniqueKey('key');
             $this->forge->createTable('ai_config', true);
+
+            // Seed initial default AI configuration row
+            $this->db->table('ai_config')->ignore(true)->insert([
+                'id'            => 1,
+                'default_model' => 'phi3-mini',
+                'n_gpu_layers'  => 0,
+                'n_threads'     => 4,
+                'n_ctx'         => 4096,
+                'updated_at'    => date('Y-m-d H:i:s'),
+            ]);
         }
     }
 

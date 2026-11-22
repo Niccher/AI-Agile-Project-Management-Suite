@@ -133,6 +133,25 @@ class PortalController extends BaseController
             return redirect()->to('/auth/login');
         }
 
+        $userId = (int)auth()->id();
+        $isAdmin = auth()->user() && auth()->user()->inGroup('admin', 'manager');
+
+        $token = $this->portalTokenModel->find($tokenId);
+        if (!$token) {
+            if ($this->request->isAJAX() || $this->request->header('Accept')?->getValue() === 'application/json') {
+                return $this->response->setStatusCode(404)->setJSON(['status' => 'error', 'message' => 'Portal token not found.']);
+            }
+            return redirect()->back()->with('error', 'Portal token not found.');
+        }
+
+        $project = $this->projectModel->find($token['project_id']);
+        if (!$isAdmin && (!$project || (int)$project['user_id'] !== $userId)) {
+            if ($this->request->isAJAX() || $this->request->header('Accept')?->getValue() === 'application/json') {
+                return $this->response->setStatusCode(403)->setJSON(['status' => 'error', 'message' => 'Unauthorized to revoke this portal link.']);
+            }
+            return redirect()->back()->with('error', 'Unauthorized to revoke this portal link.');
+        }
+
         $this->portalTokenModel->revokeToken($tokenId);
 
         if ($this->request->isAJAX() || $this->request->header('Accept')?->getValue() === 'application/json') {

@@ -13,7 +13,7 @@ DDL_STATEMENTS: list[tuple[str, str]] = [
         """
         CREATE TABLE IF NOT EXISTS ai_config (
             id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            default_model   VARCHAR(64)  NOT NULL DEFAULT 'mistral-7b',
+            default_model   VARCHAR(64)  NOT NULL DEFAULT 'phi3-mini',
             n_gpu_layers    INT          NOT NULL DEFAULT 0,
             n_threads       INT          NOT NULL DEFAULT 4,
             n_ctx           INT          NOT NULL DEFAULT 4096,
@@ -25,7 +25,7 @@ DDL_STATEMENTS: list[tuple[str, str]] = [
         "ai_config_seed",
         """
         INSERT INTO ai_config (id, default_model, n_gpu_layers, n_threads, n_ctx)
-        VALUES (1, 'mistral-7b', 0, 4, 4096)
+        VALUES (1, 'phi3-mini', 0, 4, 4096)
         ON DUPLICATE KEY UPDATE id=id;
         """,
     ),

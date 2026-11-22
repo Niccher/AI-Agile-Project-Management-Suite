@@ -19,7 +19,7 @@ class TaskEnhanceData(BaseModel):
     summary: str
     acceptance_criteria: list[str]
     story_points: int | None
-    priority: Literal["low", "medium", "high", "critical"] | None
+    priority: Literal["low", "medium", "high", "urgent", "critical"] | None
 
 
 class PrioritySuggestRequest(BaseModel):
@@ -30,6 +30,6 @@ class PrioritySuggestRequest(BaseModel):
 
 class PrioritySuggestData(BaseModel):
     task_id: int
-    priority: Literal["low", "medium", "high", "critical"]
+    priority: Literal["low", "medium", "high", "urgent", "critical"]
     story_points: int
     reasoning: str | None = None

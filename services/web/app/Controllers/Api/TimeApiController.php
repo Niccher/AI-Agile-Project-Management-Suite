@@ -62,10 +62,21 @@ class TimeApiController extends BaseController
 
     public function stop($id)
     {
+        $userId = auth()->id();
         $timeModel = new TimeLogModel();
         $log = $timeModel->find($id);
         
         if ($log) {
+            $currentUser = auth()->user();
+            $isAdminOrManager = $currentUser && ($currentUser->inGroup('admin', 'manager') || is_solo_mode());
+            if ($log['user_id'] != $userId && !$isAdminOrManager) {
+                return $this->response->setStatusCode(403)->setJSON([
+                    'status'  => 'error',
+                    'success' => false,
+                    'message' => 'Unauthorized to stop another user\'s timer'
+                ]);
+            }
+
             $endTime = date('Y-m-d H:i:s');
             $startTime = $log['start_time'];
             $duration = max(1, strtotime($endTime) - strtotime($startTime));

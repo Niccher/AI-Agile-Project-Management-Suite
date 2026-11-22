@@ -215,6 +215,18 @@ set_env() {
     fi
 }
 
+set_env_if_empty() {
+    local K="$1" V="$2"
+    local current
+    current=$(grep -E "^${K}=" .env 2>/dev/null | head -n1 | cut -d'=' -f2- | tr -d ' \r\n' || true)
+    if [ -z "$current" ]; then
+        current=$(grep -E "^${K} *=" .env 2>/dev/null | head -n1 | cut -d'=' -f2- | tr -d ' \r\n' || true)
+    fi
+    if [ -z "$current" ]; then
+        set_env "$K" "$V"
+    fi
+}
+
 set_env "WEB_PORT" "$WEB_PORT"
 set_env "ML_PORT" "$ML_PORT"
 set_env "MINIO_PORT" "$MINIO_PORT"
@@ -223,13 +235,21 @@ set_env "DOZZLE_PORT" "$DOZZLE_PORT"
 set_env "APP_URL" "$BASE_URL"
 set_env "app.baseURL" "$BASE_URL"
 set_env "BASE_URL" "$BASE_URL"
-set_env "DB_ROOT_PASSWORD" "root_password"
-set_env "DB_NAME" "db_chege_jira"
-set_env "ML_SERVICE_URL" "http://ml-chege-jira:8000"
-set_env "ML_API_KEY" "chege_jira_ml_super_secret_key_2026"
-set_env "DEFAULT_MODEL" "phi3-mini"
-set_env "S3_ENDPOINT" "http://minio:9000"
-set_env "S3_PUBLIC_ENDPOINT" "http://${DETECTED_IP}:${MINIO_PORT}"
+
+# Preserve existing customized credentials and database settings
+set_env_if_empty "DB_ROOT_PASSWORD" "root_password"
+set_env_if_empty "DB_NAME" "db_chege_jira"
+set_env_if_empty "ML_SERVICE_URL" "http://ml-chege-jira:8000"
+set_env_if_empty "ML_API_KEY" "chege_jira_ml_super_secret_key_2026"
+set_env_if_empty "DEFAULT_MODEL" "phi3-mini"
+set_env_if_empty "S3_ENDPOINT" "http://minio:9000"
+set_env_if_empty "S3_PUBLIC_ENDPOINT" "http://${DETECTED_IP}:${MINIO_PORT}"
+set_env_if_empty "MINIO_ROOT_USER" "minio_admin"
+set_env_if_empty "MINIO_ROOT_PASSWORD" "minio_super_secret_2026"
+set_env_if_empty "S3_ACCESS_KEY" "minio_admin"
+set_env_if_empty "S3_SECRET_KEY" "minio_super_secret_2026"
+set_env_if_empty "DOZZLE_USER" "admin"
+set_env_if_empty "DOZZLE_PASSWORD" "admin_password_123"
 
 log "app.baseURL               -> ${BASE_URL}"
 log "WEB_PORT                  -> ${WEB_PORT} (Standard HTTP)"

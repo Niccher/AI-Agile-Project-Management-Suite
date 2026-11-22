@@ -24,6 +24,7 @@ docs/
 # Local Data Volumes & Dumps
 mysql-data/
 redis-data/
+minio-data/
 *.sql
 *.sql.gz
 *.rdb

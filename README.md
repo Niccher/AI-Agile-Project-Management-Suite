@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![PHP](https://img.shields.io/badge/PHP-8.4_%7C_CodeIgniter_4-777BB4.svg?logo=php&logoColor=white)](services/web)
 [![Python](https://img.shields.io/badge/Python-3.12_%7C_FastAPI-3776AB.svg?logo=python&logoColor=white)](services/ml)
-[![CI/CD](https://img.shields.io/badge/CI%2FCD-Quality_Gates_Passing-success.svg)](ci/workflows/ci.yml)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-Quality_Gates_Passing-success.svg)](docs/engineering/ci.md)
 [![Docs](https://img.shields.io/badge/Docs-MkDocs_Material-blueviolet.svg)](docs/README.md)
 
 **Enterprise-grade agile project management platform & issue tracker with an on-premise local LLM copilot.**

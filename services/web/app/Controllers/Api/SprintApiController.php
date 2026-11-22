@@ -33,6 +33,15 @@ class SprintApiController extends BaseController
             return $this->response->setStatusCode(404)->setJSON(['status' => 'error', 'message' => 'Task not found']);
         }
 
+        // Authorization check: verify user has access to task's project
+        $currentUser = auth()->user();
+        $isAdmin = $currentUser && ($currentUser->inGroup('admin') || $currentUser->inGroup('manager'));
+        $projectModel = new \App\Models\ProjectModel();
+        $project = $projectModel->find($task['project_id']);
+        if (!$isAdmin && (!$project || (int)$project['user_id'] !== (int)$userId)) {
+            return $this->response->setStatusCode(403)->setJSON(['status' => 'error', 'message' => 'Permission denied to manage tasks in this project.']);
+        }
+
         $oldSprintId = $task['sprint_id'];
         $taskModel->update($taskId, ['sprint_id' => $sprintId]);
 
@@ -79,6 +88,15 @@ class SprintApiController extends BaseController
 
         if (!$task) {
             return $this->response->setStatusCode(404)->setJSON(['status' => 'error', 'message' => 'Task not found']);
+        }
+
+        // Authorization check: verify user has access to task's project
+        $currentUser = auth()->user();
+        $isAdmin = $currentUser && ($currentUser->inGroup('admin') || $currentUser->inGroup('manager'));
+        $projectModel = new \App\Models\ProjectModel();
+        $project = $projectModel->find($task['project_id']);
+        if (!$isAdmin && (!$project || (int)$project['user_id'] !== (int)$userId)) {
+            return $this->response->setStatusCode(403)->setJSON(['status' => 'error', 'message' => 'Permission denied to estimate tasks in this project.']);
         }
 
         $taskModel->update($taskId, ['story_points' => $points]);

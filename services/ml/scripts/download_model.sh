@@ -47,13 +47,19 @@ fi
 echo "Downloading from: $URL"
 echo "Saving to:        $DEST"
 
+TEMP_DEST="${DEST}.tmp"
+trap 'rm -f "$TEMP_DEST"' EXIT INT TERM
+
 if command -v curl >/dev/null 2>&1; then
-    curl -L --progress-bar -o "$DEST" "$URL"
+    curl -L --progress-bar -o "$TEMP_DEST" "$URL"
 elif command -v wget >/dev/null 2>&1; then
-    wget -O "$DEST" "$URL"
+    wget -O "$TEMP_DEST" "$URL"
 else
     echo "Error: Neither curl nor wget found on system."
     exit 1
 fi
+
+mv "$TEMP_DEST" "$DEST"
+trap - EXIT INT TERM
 
 echo "Download complete! Verified file: $(ls -lh "$DEST")"
